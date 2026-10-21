@@ -115,6 +115,8 @@ namespace DragonBall
         internal double Speed = 1.0, FallSpeed = 1.2, SlideSpeed = 1.0, EscapeDelay = .12;
         internal int HungerMinutes = 60;
         internal int PetOpacityPercent = 100, MemoOpacityPercent = 100;
+        internal int SigFreq = 2;            // 시그니처(★) 자동 재생 빈도: 0 끔 · 1 드물게 · 2 보통 · 3 자주
+        internal int SizePercent = 100;      // 캐릭터 크기(%)
         internal ClickReaction ClickMode = ClickReaction.Cycle;
         internal int HelperBackgroundArgb = Color.FromArgb(255, 252, 249).ToArgb();
         internal int HelperForegroundArgb = Color.FromArgb(68, 50, 50).ToArgb();
@@ -123,6 +125,8 @@ namespace DragonBall
         internal static PlayOptions Current = new PlayOptions();
         internal const string Name = "드래곤볼_움직임.ini";
         internal static string FilePath { get { return Path.Combine(Paths.Dir, Name); } }
+        internal static double SigChance(int freq) { return freq <= 0 ? 0 : freq == 1 ? .08 : freq == 2 ? .20 : .38; }
+        internal float SizeScale { get { return Math.Max(.6f, Math.Min(2f, SizePercent / 100f)); } }
         internal byte PetAlpha { get { return (byte)Math.Round(Math.Max(20, Math.Min(100, PetOpacityPercent)) * 255.0 / 100); } }
 
         internal static bool IsFocus(DateTime now)
@@ -158,6 +162,8 @@ namespace DragonBall
                 if (d.TryGetValue("HungerMinutes", out v) && int.TryParse(v, out n)) o.HungerMinutes = Math.Max(0, Math.Min(360, n));
                 if (d.TryGetValue("PetOpacityPercent", out v) && int.TryParse(v, out n)) o.PetOpacityPercent = Math.Max(20, Math.Min(100, n));
                 if (d.TryGetValue("MemoOpacityPercent", out v) && int.TryParse(v, out n)) o.MemoOpacityPercent = Math.Max(20, Math.Min(100, n));
+                if (d.TryGetValue("SigFreq", out v) && int.TryParse(v, out n)) o.SigFreq = Math.Max(0, Math.Min(3, n));
+                if (d.TryGetValue("SizePercent", out v) && int.TryParse(v, out n)) o.SizePercent = Math.Max(60, Math.Min(200, n));
                 ClickReaction mode;
                 if (d.TryGetValue("ClickMode", out v) && Enum.TryParse(v, true, out mode) && Enum.IsDefined(typeof(ClickReaction), mode)) o.ClickMode = mode;
                 foreach (string key in new[] { "HelperBackground", "HelperForeground" })
@@ -188,6 +194,7 @@ namespace DragonBall
             t.Append("Speed=" + f(Speed) + "\r\nFallSpeed=" + f(FallSpeed) + "\r\nSlideSpeed=" + f(SlideSpeed) + "\r\nClickMode=" + ClickMode + "\r\n");
             t.Append("EscapeDelay=" + f(EscapeDelay) + "\r\nHungerMinutes=" + HungerMinutes + "\r\n");
             t.Append("PetOpacityPercent=" + PetOpacityPercent + "\r\nMemoOpacityPercent=" + MemoOpacityPercent + "\r\n");
+            t.Append("SigFreq=" + SigFreq + "\r\nSizePercent=" + SizePercent + "\r\n");
             t.Append("FixedX=" + FixedX.ToString("R", CultureInfo.InvariantCulture) + "\r\nFixedY=" + FixedY.ToString("R", CultureInfo.InvariantCulture) + "\r\n");
             t.Append("HelperBackground=" + (HelperBackgroundArgb & 0xffffff).ToString("X6", CultureInfo.InvariantCulture) + "\r\n");
             t.Append("HelperForeground=" + (HelperForegroundArgb & 0xffffff).ToString("X6", CultureInfo.InvariantCulture) + "\r\n");

@@ -10,7 +10,7 @@ namespace DragonBall
     [Flags]
     internal enum Decor
     {
-        None = 0, Rotor = 1, Stars = 8, Flower = 16, Notes = 64, Speed = 256, Sleepy = 512, Dots = 2048
+        None = 0, Stars = 8, Flower = 16, Notes = 64, Speed = 256, Sleepy = 512, Dots = 2048, Moon = 4096, SigStars = 8192
     }
 
     internal sealed partial class Pet
@@ -22,6 +22,7 @@ namespace DragonBall
             public bool FaceRight;               // 그림은 왼쪽을 보는 모습이 기준 — 오른쪽이면 좌우 반전
             public bool Upside;                  // 천장에 거꾸로 매달림
             public float Sx, Sy, Angle, Px, Py, HopY;
+            public float Alpha, Moon;            // 몸의 투명도(순간이동)·보름달 밝기
             public string Bubble;
             public int ZPhase; public float ZTime;
             public Decor Decor; public float DecorPhase;
@@ -29,9 +30,9 @@ namespace DragonBall
 
             public string Key()
             {
-                return string.Format("{0}|{1}|{2}|{3:0.00}|{4:0.00}|{5:0.0}|{6:0}|{7:0}|{8}|{9}|{10}|{11}|{12}|{13}",
+                return string.Format("{0}|{1}|{2}|{3:0.00}|{4:0.00}|{5:0.0}|{6:0}|{7:0}|{8}|{9}|{10}|{11}|{12}|{13}|{14:0.00}|{15:0.00}",
                     Pose.Hash(), FaceRight ? 1 : 0, Upside ? 1 : 0, Sx, Sy, Angle, Px, Py, Bubble ?? "", ZPhase, (int)Decor,
-                    Decor == Decor.None ? 0 : (int)(DecorPhase * 24), AffinityLabel, AffinityOnLeft);
+                    Decor == Decor.None ? 0 : (int)(DecorPhase * 24), AffinityLabel, AffinityOnLeft, Alpha, Moon);
             }
         }
 
@@ -39,7 +40,7 @@ namespace DragonBall
 
         public Look GetLook(double now)
         {
-            var L = new Look { Art = Art, Pose = new Pose(), Sx = 1, Sy = 1, ZPhase = -1, FaceRight = Dir > 0 };
+            var L = new Look { Art = Art, Pose = new Pose(), Sx = 1, Sy = 1, Alpha = 1, ZPhase = -1, FaceRight = Dir > 0 };
             Pose P = L.Pose;
             lookJitterX = 0;
             double t = animT;
@@ -47,20 +48,20 @@ namespace DragonBall
             switch (State)
             {
                 case PetState.Walk: case PetState.Gather:
-                    IdleBase(P, t, false); ApplyWalk(P, gait, walkAmp, 22, 16, 24, 3.5f);
+                    IdleBase(P, t, false); ApplyWalk(P, gait, walkAmp, 22, 16, 12, 3f);
                     break;
                 case PetState.Pause: case PetState.WaitHome:
                     if (State == PetState.WaitHome) WaitPose(P); else IdleBase(P, t, true);
-                    ApplyWalk(P, gait, walkAmp, 22, 16, 24, 3.5f);
+                    ApplyWalk(P, gait, walkAmp, 22, 16, 12, 3f);
                     break;
                 case PetState.Climb:
-                    L.FaceRight = climbDir > 0; IdleBase(P, t, false); ApplyWalk(P, gait, walkAmp, 22, 16, 24, 3.5f);
+                    L.FaceRight = climbDir > 0; IdleBase(P, t, false); ApplyWalk(P, gait, walkAmp, 22, 16, 12, 3f);
                     break;
                 case PetState.Falling: case PetState.PowerRise:
-                    // 프로펠러 아래에 매달려 천천히 흔들린다: 회전축은 프로펠러 쪽.
-                    L.FaceRight = false; L.Decor |= Decor.Rotor; L.DecorPhase = (float)StateT;
+                    // 기를 모아 둥실 떠서 천천히 흔들리며 내려온다(어린 오공은 근두운을 타고).
+                    L.FaceRight = false;
                     FallingPose(P);
-                    L.Angle = (float)(3 * Math.Sin(StateT * 2.4)); L.Px = 0; L.Py = -h * .95f;
+                    L.Angle = (float)(3 * Math.Sin(StateT * 2.4)); L.Px = 0; L.Py = -h * .5f;
                     break;
                 case PetState.Squish:
                     SquishPose(P, ref L);
@@ -177,8 +178,8 @@ namespace DragonBall
                     if (u >= .9) { double sh = Math.Sin((u - .9) * 150) * (1 - (u - .9) / .1); P.Lean += F(sh * 3); P.HeadTilt += F(sh * 5); P.EarL += F(sh * 10); P.EarR -= F(sh * 10); }
                     break;
                 }
-                case RestPose.Special:
-                    SpecialPose(P, t);
+                case RestPose.Sig:
+                    SigPose(P, ref L, t);
                     break;
                 default:
                     SitIdlePose(P, animT);
@@ -267,7 +268,7 @@ namespace DragonBall
         private static RectangleF DecorExtent(Look L, float w, float h, float s, int rotorH)
         {
             float l = 0, t = 0, r = 0, b = 0;
-            if ((L.Decor & Decor.Rotor) != 0) { l = Math.Min(l, -w * .72f); r = Math.Max(r, w * .72f); t = Math.Min(t, -h - rotorH - 4 * s); }
+            if ((L.Decor & Decor.SigStars) != 0) { l = Math.Min(l, -w * .66f); r = Math.Max(r, w * .66f); t = Math.Min(t, -h * 1.12f); }
             if ((L.Decor & Decor.Dots) != 0) { r = Math.Max(r, w * .6f); t = Math.Min(t, -h - 14 * s); }
             if ((L.Decor & Decor.Stars) != 0) { l = Math.Min(l, -w * .45f); r = Math.Max(r, w * .45f); t = Math.Min(t, -h - 14 * s); }
             if ((L.Decor & Decor.Flower) != 0) { l = Math.Min(l, -w * .3f); r = Math.Max(r, w * .3f); t = Math.Min(t, -h * .6f); }
@@ -288,6 +289,9 @@ namespace DragonBall
             matrix.Scale(L.Sx, L.Sy);
             // 팔을 벌리거나 꼬리가 흔들려도 잘리지 않도록 몸 상자보다 넉넉하게 잡는다.
             float padX = w * .42f, padTop = 3 * scale, padBottom = 3 * scale;
+            Pose ps = L.Pose; float K = art.K;
+            if (ps.Nimbus > .01f) padBottom += 34 * K;                                              // 근두운이 발 밑으로 내려옴
+            if (ps.Aura > .01f || ps.Spark > .01f || ps.Flash > .01f) padTop += 70 * K;              // 오라·번쩍임이 머리 위로
             bool lying = Math.Abs(L.Pose.Lie) > .01f;
             // 누우면 몸이 옆으로 길어진다
             float bx = lying ? Math.Max(w / 2 + padX, h * .62f) : w / 2 + padX, by = h + padTop;
@@ -308,6 +312,25 @@ namespace DragonBall
                 matrix.TransformPoints(ep);
                 foreach (PointF p in ep) { minX = Math.Min(minX, p.X); maxX = Math.Max(maxX, p.X); minY = Math.Min(minY, p.Y); }
                 spriteTop = Math.Min(spriteTop, minY);
+            }
+            // 광선·기탄·늘어난 팔·여의봉은 몸 밖으로 멀리 뻗는다(앞쪽 = 바라보는 쪽)
+            float fwd = 0, up = 0;
+            if (ps.BeamLen > 1) fwd = Math.Max(fwd, (ps.BeamLen + 280) * K);
+            if (ps.Shot >= 0) fwd = Math.Max(fwd, (1000 + 260 + 200) * K);
+            if (ps.Staff >= 1.5f) { fwd = Math.Max(fwd, (250 * ps.StaffLen + 140) * K); up = Math.Max(up, (250 * ps.StaffLen + 160) * K); }
+            if (ps.ArmLenL > 1.15f || ps.ArmLenR > 1.15f) { float m = Math.Max(ps.ArmLenL, ps.ArmLenR); fwd = Math.Max(fwd, (m * 130 + 150) * K); up = Math.Max(up, (m * 130 + 120) * K); }
+            if (fwd > 0 || up > 0)
+            {
+                var fp = new[] { new PointF(L.FaceRight ? fwd : -fwd, -h * .55f), new PointF(0, -up - h * .3f) };
+                matrix.TransformPoints(fp);
+                minX = Math.Min(minX, fp[0].X); maxX = Math.Max(maxX, fp[0].X);
+                if (up > 0) { minY = Math.Min(minY, fp[1].Y); spriteTop = Math.Min(spriteTop, fp[1].Y + h * .3f); }
+            }
+            float moonR = h * .24f; PointF moonC = PointF.Empty;
+            if ((L.Decor & Decor.Moon) != 0)
+            {
+                moonC = new PointF(w * .5f * L.Sx + moonR * 1.35f, spriteTop + moonR * .3f);
+                maxX = Math.Max(maxX, moonC.X + moonR * 1.7f); minY = Math.Min(minY, moonC.Y - moonR * 1.7f);
             }
 
             SizeF textSize = SizeF.Empty; RectangleF bubble = RectangleF.Empty;
@@ -339,13 +362,39 @@ namespace DragonBall
                 CharacterArt.Quality(g);
                 var full = new Matrix(); full.Translate(origin.X, origin.Y); full.Multiply(matrix);
                 g.Transform = full;
-                if (L.Upside) { g.TranslateTransform(0, -h / 2); g.RotateTransform(180); g.TranslateTransform(0, h / 2); }
-                art.Rig.Draw(g, L.Pose, art.K, L.FaceRight);
+                if (L.Alpha < .995f)
+                {
+                    // 순간이동: 몸만 투명하게(장식·말풍선은 그대로)
+                    var gtr = g.Transform;
+                    using (var layer = new Bitmap(result.Width, result.Height, PixelFormat.Format32bppArgb))
+                    {
+                        using (var lg = Graphics.FromImage(layer))
+                        {
+                            lg.Clear(Color.Transparent); CharacterArt.Quality(lg); lg.Transform = gtr;
+                            if (L.Upside) { lg.TranslateTransform(0, -h / 2); lg.RotateTransform(180); lg.TranslateTransform(0, h / 2); }
+                            art.Rig.Draw(lg, L.Pose, art.K, L.FaceRight);
+                        }
+                        if (L.Alpha > .01f)
+                            using (var ia = new ImageAttributes())
+                            {
+                                ia.SetColorMatrix(new ColorMatrix { Matrix33 = Math.Max(0, Math.Min(1, L.Alpha)) });
+                                g.ResetTransform();
+                                g.DrawImage(layer, new Rectangle(0, 0, layer.Width, layer.Height), 0, 0, layer.Width, layer.Height, GraphicsUnit.Pixel, ia);
+                                g.Transform = gtr;
+                            }
+                    }
+                }
+                else
+                {
+                    if (L.Upside) { g.TranslateTransform(0, -h / 2); g.RotateTransform(180); g.TranslateTransform(0, h / 2); }
+                    art.Rig.Draw(g, L.Pose, art.K, L.FaceRight);
+                }
 
                 // 몸에 붙어 따라 움직이는 장식
                 g.Transform = full;
                 DrawDecor(g, L, art, w, h, scale, rotorH);
                 g.ResetTransform(); g.TranslateTransform(origin.X, origin.Y);
+                if ((L.Decor & Decor.Moon) != 0) DrawMoon(g, moonC, moonR, L.Moon);
                 DrawAffinityBadge(g, L, badge, scale);
                 if (L.ZPhase >= 0) DrawZ(g, L, w, h, scale);
                 if (!bubble.IsEmpty) DrawBubble(g, L, bubble, textSize, tail, scale);
@@ -363,12 +412,12 @@ namespace DragonBall
                 {
                     g.FillPath(fill, path); g.DrawPath(pen, path);
                     g.FillPolygon(fill, tri); g.DrawLine(pen, tri[0], tri[1]); g.DrawLine(pen, tri[1], tri[2]);
-                    using (var cover = new Pen(Color.White, 2.2f * scale))
+                    using (var cover = new Pen(gold ? Color.FromArgb(255, 255, 244, 196) : Color.White, 2.2f * scale))
                         g.DrawLine(cover, tri[0].X + 2.2f * scale, r.Bottom - .5f * scale, tri[2].X - 2.2f * scale, r.Bottom - .5f * scale);
                 }
             }
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-            using (var text = new SolidBrush(Color.FromArgb(255, 40, 40, 40)))
+            using (var text = new SolidBrush(L.Bubble != null && L.Bubble.StartsWith("★") ? Color.FromArgb(255, 96, 52, 8) : Color.FromArgb(255, 40, 40, 40)))
             using (var fmt = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Center })
             {
                 var box = new RectangleF(r.Left + (r.Width - textSize.Width) / 2, r.Top + (r.Height - textSize.Height) / 2, textSize.Width + 2, textSize.Height + 2);
@@ -473,7 +522,7 @@ namespace DragonBall
                             g.DrawLine(line, x0, y, x0 + side * (8 + i * 3) * s, y);
                         }
                 }
-                if ((L.Decor & Decor.Rotor) != 0) DrawRotor(g, art, L.FaceRight, w, h, s, rotorH, t);
+                if ((L.Decor & Decor.SigStars) != 0) DrawSigStars(g, w, h, s, t);
                 if ((L.Decor & Decor.Dots) != 0) DrawDots(g, w, h, s, t);
                 if ((L.Decor & Decor.Stars) != 0)
                     using (var stars = new Pen(Color.FromArgb(222, 172, 71), 2 * s) { StartCap = LineCap.Round, EndCap = LineCap.Round })
@@ -496,31 +545,46 @@ namespace DragonBall
             }
         }
 
-        /// <summary>머리 위에 씌운 프로펠러(대나무 헬리콥터처럼 두 귀 사이로 축이 올라간다).</summary>
-        private static void DrawRotor(Graphics g, CharacterArt art, bool faceRight, float w, float h, float s, int rotorH, float t)
+        /// <summary>시그니처(★) 기술 중 몸 둘레를 돌며 반짝이는 금빛 별.</summary>
+        private static void DrawSigStars(Graphics g, float w, float h, float s, float t)
         {
-            float cx = art.Rig.HeadAxisDx * art.K * (faceRight ? -1 : 1);   // 머리 가운데는 몸 가운데에서 살짝 치우쳐 있을 수 있다
-            float topY = -(art.Rig.FootY - art.Rig.GripY) * art.K, hubY = -h - rotorH * .72f, radius = w * .62f;
-            using (var edge = new Pen(Color.FromArgb(70, 62, 66), 1.4f * s))
+            for (int i = 0; i < 5; i++)
             {
-                // 이마에 쓰는 회색 고정 장치와 축
-                var grip = new RectangleF(cx - w * .13f, topY - 1.5f * s, w * .26f, 4.5f * s);
-                using (var gp = RoundRect(grip, 2.2f * s)) using (var gb = new SolidBrush(Color.FromArgb(175, 175, 186))) { g.FillPath(gb, gp); g.DrawPath(edge, gp); }
-                using (var shaftOutline = new Pen(Color.FromArgb(70, 62, 66), 4f * s) { StartCap = LineCap.Round, EndCap = LineCap.Round })
-                using (var shaft = new Pen(Color.FromArgb(150, 150, 162), 2.2f * s) { StartCap = LineCap.Round, EndCap = LineCap.Round })
-                { g.DrawLine(shaftOutline, cx, topY - 1 * s, cx, hubY); g.DrawLine(shaft, cx, topY - 1 * s, cx, hubY); }
-                // 위에서 본 빠른 날개: 길이가 |cos|로 깜빡이며 도는 것처럼 보인다(최소 12%).
-                float spread = (float)Math.Max(.12, Math.Abs(Math.Cos(t * 38)));
-                using (var disc = new SolidBrush(Color.FromArgb(40, 255, 236, 160)))
-                    g.FillEllipse(disc, cx - radius, hubY - radius * .16f, radius * 2, radius * .32f);
-                for (int i = -1; i <= 1; i += 2)
-                    using (var outline = new Pen(Color.FromArgb(150, 90, 80, 70), 5.2f * s) { StartCap = LineCap.Round, EndCap = LineCap.Round })
-                    using (var blade = new Pen(Color.FromArgb(255, 255, 236, 160), 3.4f * s) { StartCap = LineCap.Round, EndCap = LineCap.Round })
-                    { g.DrawLine(outline, cx, hubY, cx + i * radius * spread, hubY); g.DrawLine(blade, cx, hubY, cx + i * radius * spread, hubY); }
-                using (var hub = new SolidBrush(Color.FromArgb(165, 165, 176))) { g.FillEllipse(hub, cx - 3 * s, hubY - 3 * s, 6 * s, 6 * s); g.DrawEllipse(edge, cx - 3 * s, hubY - 3 * s, 6 * s, 6 * s); }
+                double a = t * 1.9 + i * Math.PI * 2 / 5;
+                float x = (float)Math.Cos(a) * w * .6f, y = -h * .52f + (float)Math.Sin(a) * h * .52f;
+                float tw = .75f + .25f * (float)Math.Sin(t * 8 + i * 1.7), r = (4.2f + (i % 2) * 1.6f) * s * tw * 1.35f;
+                var pts = new PointF[10];
+                for (int k = 0; k < 10; k++)
+                {
+                    double an = -Math.PI / 2 + k * Math.PI / 5; float rr = k % 2 == 0 ? r : r * .42f;
+                    pts[k] = new PointF(x + (float)Math.Cos(an) * rr, y + (float)Math.Sin(an) * rr);
+                }
+                using (var glow = new SolidBrush(Color.FromArgb(70, 255, 220, 90))) g.FillEllipse(glow, x - r * 1.5f, y - r * 1.5f, r * 3, r * 3);
+                using (var fill = new SolidBrush(Color.FromArgb(255, 255, 214, 48)))
+                using (var pen = new Pen(Color.FromArgb(255, 176, 108, 14), 1.2f * s) { LineJoin = LineJoin.Round })
+                { g.FillPolygon(fill, pts); g.DrawPolygon(pen, pts); }
             }
         }
 
+        /// <summary>보름달(대원숭이 변신): 부드러운 빛 번짐과 분화구.</summary>
+        private static void DrawMoon(Graphics g, PointF c, float r, float a)
+        {
+            if (a <= .01f) return;
+            int al = (int)(255 * Math.Min(1, a)); r *= .6f + .4f * Math.Min(1, a);
+            using (var path = new GraphicsPath())
+            {
+                path.AddEllipse(c.X - r * 1.7f, c.Y - r * 1.7f, r * 3.4f, r * 3.4f);
+                using (var pg = new PathGradient(path) { CenterColor = Color.FromArgb(al * 150 / 255, 255, 248, 190), SurroundColors = new[] { Color.FromArgb(0, 255, 248, 190) } }) g.FillPath(pg, path);
+            }
+            using (var body = new SolidBrush(Color.FromArgb(al, 255, 247, 205)))
+            using (var rim = new Pen(Color.FromArgb(al, 214, 190, 110), Math.Max(1.5f, r * .06f)))
+            using (var crater = new SolidBrush(Color.FromArgb(al * 150 / 255, 226, 208, 150)))
+            {
+                g.FillEllipse(body, c.X - r, c.Y - r, r * 2, r * 2); g.DrawEllipse(rim, c.X - r, c.Y - r, r * 2, r * 2);
+                g.FillEllipse(crater, c.X - r * .5f, c.Y - r * .45f, r * .46f, r * .4f); g.FillEllipse(crater, c.X + r * .15f, c.Y + r * .1f, r * .56f, r * .5f);
+                g.FillEllipse(crater, c.X - r * .3f, c.Y + r * .4f, r * .3f, r * .26f); g.FillEllipse(crater, c.X + r * .3f, c.Y - r * .55f, r * .24f, r * .22f);
+            }
+        }
         /// <summary>두 손으로 안아 든 꽃다발(손은 Rig 가 배 앞에 모아 쥐고 있다).</summary>
         private static void DrawBouquet(Graphics g, CharacterArt art, float w, float h, float s, Pen ink)
         {
@@ -532,7 +596,7 @@ namespace DragonBall
                 var pts = new[] { new PointF(x - 13 * s, y + 8 * s), new PointF(x + 10 * s, y + 8 * s), new PointF(x - 2 * s, y + 28 * s) };
                 g.FillPolygon(wrap, pts); g.DrawPolygon(ink, pts);
             }
-            using (var paw = new SolidBrush(Color.FromArgb(250, 240, 227)))
+            using (var paw = new SolidBrush(Color.FromArgb(255, 224, 190)))
                 for (int sd = -1; sd <= 1; sd += 2)
                 { float px = x - 2 * s + sd * 7 * s; g.FillEllipse(paw, px - 4.5f * s, y + 18 * s, 9 * s, 7 * s); g.DrawEllipse(ink, px - 4.5f * s, y + 18 * s, 9 * s, 7 * s); }
             for (int j = -1; j <= 1; j++)
