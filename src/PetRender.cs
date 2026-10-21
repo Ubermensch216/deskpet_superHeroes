@@ -56,7 +56,7 @@ namespace DragonBall
                 case PetState.Climb:
                     L.FaceRight = climbDir > 0; IdleBase(P, t, false); ApplyWalk(P, gait, walkAmp, 22, 16, 24, 3.5f);
                     break;
-                case PetState.Falling: case PetState.PilotRise:
+                case PetState.Falling: case PetState.PowerRise:
                     // 프로펠러 아래에 매달려 천천히 흔들린다: 회전축은 프로펠러 쪽.
                     L.FaceRight = false; L.Decor |= Decor.Rotor; L.DecorPhase = (float)StateT;
                     FallingPose(P);

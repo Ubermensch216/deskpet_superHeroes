@@ -526,7 +526,6 @@ namespace DragonBall
 
         private void DrawArms()
         {
-            float[] lens = { p.ArmLenL, p.ArmRL() };
             for (int side = 0; side < 2; side++)
             {
                 bool right = side == 1; int outSign = right ? 1 : -1;
@@ -631,8 +630,4 @@ namespace DragonBall
         }
     }
 
-    internal static class PoseExt
-    {
-        internal static float ArmRL(this Pose p) { return p.ArmLenR; }
-    }
 }

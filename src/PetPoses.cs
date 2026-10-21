@@ -76,7 +76,7 @@ namespace DragonBall
             P.OpenL = P.OpenR = BlinkOpen(animT);
             if (lookAround) Wander(P, t, 1); else { P.Gy = .45f; P.Cross = .7f; }
             P.HeadTilt = F(P.Gx * 2.2 + Math.Sin(t * .8) * 1.2);
-            P.EarL = Twitch(animT, 5.3, blinkOffset * 1.7); P.EarR = Twitch(animT, 7.1, blinkOffset * 2.9 + 1.3);
+            P.EarL = F(Math.Sin(animT * 1.7 + blinkOffset) * 2.2); P.EarR = F(Math.Sin(animT * 1.7 + blinkOffset + 1.1) * 2.2);
             P.Tail = F(3 + Math.Sin(t * .9) * 4); P.TailWaveAmp = 9; P.TailWavePhase = F(t * 2.1);
             P.ArmLA = F(60 + Math.Sin(t * 2.0 + .4) * 1.5); P.ArmRA = F(60 + Math.Sin(t * 2.0 + .1) * 1.5);
             P.ArmLB = F(43 + Math.Sin(t * 2.0) * 2); P.ArmRB = F(43 + Math.Sin(t * 2.0 + .3) * 2);
@@ -121,7 +121,7 @@ namespace DragonBall
             P.Tail += F(Math.Sin(ph - 1.0) * 7) * amp; P.TailCurl += F(10 * amp); P.TailWaveAmp += 8 * amp; P.TailWavePhase = F(ph);
             P.EarL += F(Math.Sin(2 * ph - .8) * 4) * amp; P.EarR += F(Math.Sin(2 * ph - 1.1) * 4) * amp;
             P.HeadTilt += F(Math.Sin(ph + .5) * 1.5) * amp;
-            if (amp > .35f) { P.View = 1; P.Gx = -.25f; P.Gy = 0; P.Cross = 0; }
+            if (amp > .35f) { P.View = 1; P.Turn = .42f * amp; P.Gx = -.25f; P.Gy = 0; P.Cross = 0; }
         }
 
         // ───────── 상태별 자세 ─────────
@@ -134,9 +134,19 @@ namespace DragonBall
                 // 콕 찔려 발끈: 몸을 웅크리고 주먹을 쥐며 💢
                 IdleBase(P, animT, false);
                 P.BodyY = F(20 * k); P.Knee = F(12 * k); P.Lean = F(5 * k);
-                P.HandL = P.HandR = HandStyle.Fist; P.ArmLA = F(60 - 22 * k); P.ArmRA = F(60 - 22 * k); P.ArmLB = F(30 - 20 * k); P.ArmRB = F(30 - 20 * k);
-                P.Brow = F(.95 * Math.Min(1, k * 2.2)); P.Mouth = MouthStyle.Frown; P.EyeScale = 1f; P.PupilR = F(.85 - .15 * k);
-                P.Cross = 0; P.Gy = 0; P.Anger = F(Math.Min(1, StateT * 3 + .15)) * (k > .05 ? 1f : 0f);
+                if (AngryType)
+                {
+                    P.HandL = P.HandR = HandStyle.Fist; P.ArmLA = F(60 - 22 * k); P.ArmRA = F(60 - 22 * k); P.ArmLB = F(30 - 20 * k); P.ArmRB = F(30 - 20 * k);
+                    P.Brow = F(.95 * Math.Min(1, k * 2.2)); P.Mouth = MouthStyle.Frown; P.EyeScale = 1f; P.PupilR = F(.85 - .15 * k);
+                    P.Cross = 0; P.Gy = 0; P.Anger = F(Math.Min(1, StateT * 3 + .15)) * (k > .05 ? 1f : 0f);
+                }
+                else
+                {
+                    // 깜짝 놀라 눈이 동그래지고 팔이 번쩍
+                    P.ArmLA = F(60 + 40 * k); P.ArmRA = F(60 + 40 * k); P.ArmLB = F(43 + 46 * k); P.ArmRB = F(43 + 46 * k);
+                    P.Brow = F(-.4 * k); P.Mouth = MouthStyle.Scared; P.MouthOpen = F(.6 * k); P.EyeScale = F(1 + .16 * k); P.PupilR = .7f;
+                    P.Cross = 0; P.Gy = F(-.2 * k); P.Sweat = F(StateT);
+                }
                 P.EarL = F(-10 * k); P.EarR = F(10 * k); P.Tail = F(-14 * k); P.TailWaveAmp = 16; P.TailWavePhase = F(animT * 26);
                 lookJitterX = Math.Sin(StateT * 70) * .5 * S * k;
                 P.HeadY = F(4 * k);
@@ -173,14 +183,24 @@ namespace DragonBall
             P.Breath = F(Math.Sin(t * 3));
             P.OpenL = P.OpenR = BlinkOpen(t); P.Gy = -.95f; P.Gx = F(Math.Sin(t * 1.3) * .2); P.Cross = .15f;
             P.PupilR = .85f;
-            P.ArmLA = F(96 + sway * 6); P.ArmRA = F(96 - sway * 6); P.ArmLB = F(112 + sway * 10); P.ArmRB = F(112 - sway * 10);
-            P.FootLX = F(-5 - sway * 4); P.FootRX = F(5 - sway * 4); P.FootLY = F(-9 + Math.Sin(t * 3.1) * 3); P.FootRY = F(-9 + Math.Sin(t * 3.1 + 1.3) * 3);
-            P.FootLRot = F(-14 + sway * 5); P.FootRRot = F(-14 - sway * 5); P.Knee = 5;
-            double flutter = Math.Sin(t * 42);
-            P.EarL = F(-12 + flutter * 7); P.EarR = F(12 - flutter * 7);
-            P.Tail = F(-6 + sway * 8); P.TailWaveAmp = 20; P.TailWavePhase = F(t * 9); P.TailCurl = 12;
-            P.Mouth = MouthStyle.Pout; P.MouthOpen = .5f;
-            if (IsPilotFlight) { P.Goggles = true; P.Mouth = MouthStyle.Smile; P.Gy = -.2f; P.Gx = 0; P.Cross = 0; }
+            P.ArmLA = F(78 + sway * 6); P.ArmRA = F(78 - sway * 6); P.ArmLB = F(70 + sway * 8); P.ArmRB = F(70 - sway * 8);
+            P.FootLX = F(-3 - sway * 3); P.FootRX = F(3 - sway * 3); P.FootLY = F(-9 + Math.Sin(t * 3.1) * 3); P.FootRY = F(-9 + Math.Sin(t * 3.1 + 1.3) * 3);
+            P.FootLRot = F(-14 + sway * 5); P.FootRRot = F(-14 - sway * 5); P.Knee = 3;
+            double flutter = Math.Sin(t * 30);
+            P.EarL = F(-4 + flutter * 5); P.EarR = F(4 - flutter * 5);
+            P.Tail = F(-10 + sway * 8); P.TailWaveAmp = 20; P.TailWavePhase = F(t * 9); P.TailCurl = 12;
+            P.Mouth = MouthStyle.Neutral; P.MouthOpen = .3f;
+            // 기를 모아 둥실 떠 내려온다: 오라(어린 오공은 근두운)
+            int aura = Who == Persona.Vegeta ? 3 : Who == Persona.Piccolo ? 5 : 1;
+            if (Who == Persona.Kid) P.Nimbus = F(Math.Min(1, t * 4));
+            else { P.Aura = F(.55 + .1 * Math.Sin(t * 5)); P.AuraKind = aura; P.AuraT = F(t); }
+            if (IsPowerFlight)
+            {
+                // 기 폭발: 변신하며 천장까지 솟구친다
+                P.Super = 1; P.Aura = 1; P.AuraKind = 2; P.AuraT = F(t); P.Spark = .6f; P.Muscle = 1; P.Nimbus = 0;
+                P.Mouth = MouthStyle.Smile; P.Gy = -.2f; P.Gx = 0; P.Cross = 0; P.Brow = .5f;
+                P.ArmLA = F(40); P.ArmRA = F(40); P.ArmLB = 20; P.ArmRB = 20; P.HandL = P.HandR = HandStyle.Fist;
+            }
         }
 
         private void DragPose(Pose P)
@@ -353,8 +373,9 @@ namespace DragonBall
             Foot(g + .5, 30, 22, out dx, out dy, out rot); P.FootRX = dx; P.FootRY = dy; P.FootRRot = rot;
             P.ArmLA = F(120 + Math.Sin(ph) * 22); P.ArmRA = F(120 - Math.Sin(ph) * 22); P.ArmLB = F(142 + Math.Sin(ph - .6) * 24); P.ArmRB = F(142 - Math.Sin(ph - .6) * 24);
             P.Eyes = EyeStyle.Open; P.OpenL = P.OpenR = 1; P.EyeScale = 1.04f; P.Gx = -.9f; P.Gy = 0; P.Cross = 0; P.PupilR = .85f;
-            P.Mouth = MouthStyle.Open; P.MouthOpen = F(.45 + Math.Sin(ph * 2) * .06); P.Tongue = .85f;
-            P.EarL = F(30 + Math.Sin(ph * 2) * 5); P.EarR = F(30 + Math.Sin(ph * 2 + .5) * 5);
+            P.Mouth = MouthStyle.Open; P.MouthOpen = F(.35 + Math.Sin(ph * 2) * .06); P.Turn = .85f;
+            P.Aura = .35f; P.AuraKind = Who == Persona.Vegeta ? 3 : Who == Persona.Piccolo ? 5 : 1; P.AuraT = F(t);
+            P.EarL = F(26 + Math.Sin(ph * 2) * 5); P.EarR = F(26 + Math.Sin(ph * 2 + .5) * 5);
             P.Tail = F(-8 + Math.Sin(ph - 1) * 6); P.TailCurl = -6; P.TailWaveAmp = 10; P.TailWavePhase = F(ph * 2);
             P.HeadTilt = F(-4); P.HeadX = -4; P.Sweat = F(t);
         }

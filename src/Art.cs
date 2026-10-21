@@ -9,11 +9,13 @@ namespace DragonBall
 {
     internal sealed class CharInfo
     {
-        public string Key, Name;
+        public string Key, Name, Title;       // 키, 이름, 별명
         public Color Accent;                  // 말풍선·꽃 장식 등에 어울리는 색
-        public Persona Persona;               // 성격(행동·몸짓이 캐릭터마다 다르다)
+        public Persona Persona;               // 성격(행동·몸짓·시그니처가 캐릭터마다 다르다)
         public CharRig Rig;                   // 그림 도구
         public float HeightFactor = 1f;       // 서 있는 키(상대)
+        public float SpeedFactor = 1f;        // 걷는 속도(상대)
+        public string[] Traits;               // 특징 설명(도감용)
     }
 
     /// <summary>벽·천장 상태에서 쓰는 몸 크기 상자.</summary>
@@ -23,21 +25,28 @@ namespace DragonBall
     }
 
     /// <summary>
-    /// 드래곤볼의 크기와 기준 치수. 그림은 Rig.cs 가 부위별로 그린다
-    /// (원본 감천이처럼 이미지 한 장을 변형하는 방식이 아니라, 팔·다리·꼬리·귀·눈·입이 따로 움직인다).
+    /// 캐릭터의 크기와 기준 치수. 그림은 DbRig*.cs 가 부위별로 그린다
+    /// (이미지 한 장을 변형하는 방식이 아니라, 머리카락·팔·다리·표정·기 에너지가 따로 움직인다).
     /// </summary>
     internal sealed class CharacterArt
     {
         internal static readonly CharInfo[] Infos =
         {
-            new CharInfo { Key = "neoburi", Name = "드래곤볼", Accent = Color.FromArgb(232, 150, 60), Persona = Persona.Raccoon, Rig = new RaccoonRig(), HeightFactor = 1f },
-            new CharInfo { Key = "bonobono", Name = "보노보노", Accent = Color.FromArgb(82, 178, 243), Persona = Persona.Bono, Rig = new BonoRig(), HeightFactor = 1.04f },
-            new CharInfo { Key = "squirrel", Name = "다람쥐", Accent = Color.FromArgb(238, 108, 132), Persona = Persona.Squirrel, Rig = new SquirrelRig(), HeightFactor = .8f },
+            new CharInfo { Key = "goku", Name = "손오공", Title = "지구를 지키는 사이어인", Accent = Color.FromArgb(244, 124, 30), Persona = Persona.Goku, Rig = new DbRig(Persona.Goku), HeightFactor = 1f, SpeedFactor = 1.05f,
+                Traits = new[] { "늘 밝게 웃고 머리카락이 살랑살랑", "가만히 있으면 머리 긁적·손 흔들기·주먹 불끈", "맛있는 걸 보면 정신을 못 차려요" } },
+            new CharInfo { Key = "kid", Name = "어린 오공", Title = "꼬리 달린 장난꾸러기", Accent = Color.FromArgb(240, 100, 60), Persona = Persona.Kid, Rig = new DbRig(Persona.Kid), HeightFactor = .74f, SpeedFactor = 1.18f,
+                Traits = new[] { "꼬리가 살랑살랑, 등에는 여의봉", "통통 뛰듯 총총 걷고 호기심이 많아요", "배고프면 금방 시무룩해져요" } },
+            new CharInfo { Key = "roshi", Name = "무천도사", Title = "거북이 선인", Accent = Color.FromArgb(70, 170, 190), Persona = Persona.Roshi, Rig = new DbRig(Persona.Roshi), HeightFactor = .84f, SpeedFactor = .78f,
+                Traits = new[] { "선글라스에 하얀 수염, 지팡이를 짚고 천천히", "수염을 쓸어내리고 등딱지를 메고 다녀요", "차 한 잔이면 만사 OK" } },
+            new CharInfo { Key = "vegeta", Name = "베지터", Title = "사이어인의 왕자", Accent = Color.FromArgb(60, 96, 196), Persona = Persona.Vegeta, Rig = new DbRig(Persona.Vegeta), HeightFactor = .9f, SpeedFactor = .96f,
+                Traits = new[] { "늘 찌푸린 얼굴, 가만히 서면 팔짱", "클릭하면 바로 발끈(💢)해요", "자존심이 강해서 우는 모습은 보기 힘들어요" } },
+            new CharInfo { Key = "piccolo", Name = "피콜로", Title = "과묵한 나메크성인", Accent = Color.FromArgb(104, 168, 70), Persona = Persona.Piccolo, Rig = new DbRig(Persona.Piccolo), HeightFactor = 1.18f, SpeedFactor = .98f,
+                Traits = new[] { "더듬이와 뾰족한 귀가 쫑긋, 망토가 펄럭", "차분히 팔짱을 끼고 있어요", "먹는 건 오직 맑은 물 한 잔" } },
         };
         internal static int Count { get { return Infos.Length; } }
         internal static float Scale = 1f;
-        /// <summary>서 있을 때 키(귀끝~발바닥, 화면 픽셀). 배율 1 기준.</summary>
-        internal const float BaseHeight = 100f;
+        /// <summary>서 있을 때 키(머리카락 끝~발바닥, 화면 픽셀). 배율 1 기준.</summary>
+        internal const float BaseHeight = 104f;
 
         private static readonly Dictionary<int, CharacterArt> cache = new Dictionary<int, CharacterArt>();
         internal static CharacterArt Get(int id)
@@ -55,7 +64,7 @@ namespace DragonBall
         public Persona Persona { get { return Info.Persona; } }
         public readonly float K;          // 기준 그림 1픽셀 = 화면 K 픽셀
         public readonly int W, H;         // 서 있는 모습의 상자(걷기 기준) — 이동·충돌 기준
-        public readonly int RotorH;       // 프로펠러가 머리 위로 올라오는 높이
+        public readonly int RotorH;       // 오라(기)가 머리 위로 올라오는 높이
         public readonly Dim Ceiling;
         public int CeilingTopInset { get { return 0; } }
         public int CeilingContactHeight { get { return Ceiling.H; } }
@@ -67,7 +76,7 @@ namespace DragonBall
             H = (int)Math.Round(BaseHeight * Scale * Info.HeightFactor);
             K = H / Rig.RefH;
             W = (int)Math.Round(Rig.NominalW * K);
-            RotorH = (int)Math.Round(H * .30f);
+            RotorH = (int)Math.Round(H * .16f);
             Ceiling = new Dim { W = W, H = H };
         }
 
@@ -118,8 +127,8 @@ namespace DragonBall
             {
                 Quality(g); g.Clear(Color.Transparent);
                 float k = (n - 1.5f) / rig.HeadSize;
-                g.TranslateTransform(n / 2f - (rig.HeadCx - rig.FootX) * k, n / 2f - (rig.HeadCy - rig.FootY) * k);
-                rig.Draw(g, new Pose { Cross = .55f, Gy = .35f }, k, false);
+                g.TranslateTransform(n / 2f - (rig.HeadCx - rig.FootX) * k, n / 2f - (rig.HeadCy - rig.FootY) * k + n * .02f);
+                rig.Draw(g, new Pose { Mouth = MouthStyle.Smile }, k, false);
             }
             return bmp;
         }

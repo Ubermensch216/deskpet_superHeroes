@@ -8,7 +8,7 @@ namespace DragonBall
     internal enum PetState
     {
         Falling, Walk, Pause, Squish, Drag, Climb, Sleep, Waking, Gather, WaitHome, Cheer,
-        Resting, IdleCry, TouchCry, Hop, Sliding, Wall, Ceiling, WindowClimb, Eating, Thrown, Dizzy, SecretDance, PilotRise
+        Resting, IdleCry, TouchCry, Hop, Sliding, Wall, Ceiling, WindowClimb, Eating, Thrown, Dizzy, SecretDance, PowerRise
     }
 
     internal interface IWorld
@@ -51,9 +51,9 @@ namespace DragonBall
         private readonly double blinkOffset = new Random(Guid.NewGuid().GetHashCode()).NextDouble() * 4.3;
 
         private float S { get { return CharacterArt.Scale; } }
-        private double WalkSpeed { get { return 34 * S; } }
+        private double WalkSpeed { get { return 34 * S * Art.Info.SpeedFactor; } }
         private double HalfW { get { return Art.W * .36; } }
-        /// <summary>프로펠러까지 포함한 높이·반폭 (화면 맨 위/양끝 보정에 쓴다).</summary>
+        /// <summary>로로펠러까지 포함한 높이·반폭 (화면 맨 위/양끝 보정에 쓴다).</summary>
         internal double HeliH { get { return Art.H + Art.RotorH; } }
         internal double HeliHalf { get { return Art.W * .66; } }
         public bool CanReact { get { return State != PetState.Drag; } }
@@ -100,7 +100,10 @@ namespace DragonBall
             switch (s)
             {
                 case PetState.Walk: stateDur = 3 + w.Rng.NextDouble() * 7; break;
-                case PetState.Pause: stateDur = 1.2 + w.Rng.NextDouble() * 3; break;
+                case PetState.Pause:
+                    pauseAct = ChoosePauseAct(w);
+                    stateDur = pauseAct == 0 ? 1.2 + w.Rng.NextDouble() * 3 : 3.0 + w.Rng.NextDouble() * .8;
+                    break;
                 case PetState.Waking: stateDur = 1.6; break;
             }
         }
@@ -185,7 +188,7 @@ namespace DragonBall
             if (Bubble != null && w.Now > BubbleUntil) Bubble = null;
             switch (State)
             {
-                case PetState.Falling: HelicopterDrop(w, dt); break;
+                case PetState.Falling: FlightDrop(w, dt); break;
                 case PetState.Walk: UpdateWalk(w, dt); break;
                 case PetState.Pause:
                     SnapToFloor(w);
@@ -263,7 +266,7 @@ namespace DragonBall
             Rectangle next = other.Value;
             if (next.Bottom < Y - 2)
             {
-                // 이웃 모니터가 더 높다 → 기어오르기
+                // 이웃 모니터가 더 높다 → 기어라르기
                 X = Dir <= 0 ? Area.Left + half * .2 : Area.Right - half * .2;
                 climbTo = next; climbDir = Dir; SetState(PetState.Climb, w);
                 return;

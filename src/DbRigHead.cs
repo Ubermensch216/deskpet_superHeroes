@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -118,7 +118,7 @@ namespace DragonBall
             float dy = headCy - 160, sx = headRx / 98f;
             Func<float, float> X = x => 200 + (x - 200) * sx;
             var shapes = new List<PointF[]>();
-            float swayL = p.EarL * 1.5f + (Side ? -2 : 0), swayR = p.EarR * 1.5f + (Side ? 9 : 0);
+            float swayL = p.EarL * 1.1f + (Side ? -2 : 0), swayR = p.EarR * 1.1f + (Side ? 9 : 0);
             if (who == Persona.Vegeta)
             {
                 PointF[] flame =
@@ -224,16 +224,10 @@ namespace DragonBall
                 return;
             }
             PointF[] eye = Geo.Ellipse(cx, cy, erx, ery, 26);
-            if (Math.Abs(tilt) > .02f)
-            {
-                float slope = tilt * .8f, y0 = cy - ery * .92f;
-                eye = Geo.ClipHalf(eye, -slope * -sgn * -1, 1, -y0 - slope * -sgn * cx * -1 * 0);
-            }
-            // 안쪽이 낮아지는 눈꼬리: 윗부분을 비스듬히 자른다(inner = 코 쪽)
+            // 안쪽(코 쪽)이 낮아지는 눈꼬리: 윗부분을 비스듬히 자른다
             if (Math.Abs(tilt) > .02f)
             {
                 float inner = -sgn;                                   // 안쪽 방향의 x 부호(왼쪽 눈은 +x)
-                eye = Geo.Ellipse(cx, cy, erx, ery, 26);
                 float slope = tilt * .62f;
                 // 선: y = y0 + slope*(x-cx)*inner   → 그 선 아래만 남긴다
                 float y0 = cy - ery * .9f;

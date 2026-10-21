@@ -410,7 +410,7 @@ namespace DragonBall
                 pet.Demonstrate(w, "dizzy"); check(pet.State == PetState.Dizzy && FriendData.Current.Discoveries.Contains("dizzy"), "어질어질"); run(5);
                 pet.SetState(PetState.Pause, w); pet.FallAsleep(w); check(pet.State == PetState.Sleep, "낮잠"); pet.WakeUp(w); check(pet.State == PetState.Waking, "깨어남");
                 for (int i = 0; i < 3; i++) { pet.BeginDrag(w, pet.X, pet.Y - 20); for (int k = 0; k < 6; k++) { w.Now += .016; pet.DragTo(w, pet.X + pet.DragPx + 30, pet.Y + pet.DragPy - 4); } pet.EndDrag(w); run(.6); }
-                check(seen.Contains(PetState.PilotRise) && FriendData.Current.Discoveries.Contains("pilot"), "비밀 조종사: 10초 안 3번 던지기");
+                check(seen.Contains(PetState.PowerRise) && FriendData.Current.Discoveries.Contains("power"), "비밀 조종사: 10초 안 3번 던지기");
                 run(20); check(pet.State == PetState.Ceiling || seen.Contains(PetState.Ceiling), "조종사가 천장까지 올라감");
 
                 // 오래 돌려서 벽·천장·쉬기가 모두 나오는지

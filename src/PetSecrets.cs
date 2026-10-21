@@ -5,34 +5,34 @@ using System.Linq;
 
 namespace DragonBall
 {
-    /// <summary>숨겨진 반응(어질어질·몰래 군무·비밀 조종사), 꽃다발, 친구끼리 부딪힘.</summary>
+    /// <summary>숨겨진 반응(어질어질·몰래 군무·기 폭발), 꽃다발, 친구끼리 부딪힘.</summary>
     internal sealed partial class Pet
     {
         private double flowerUntil, flowerStarted, orbitAngle, orbitTotal, orbitAt, orbitStarted, dizzyCooldown;
         private double orbitCenterX, orbitCenterY, orbitMotionAngle, orbitCurveTotal;
         private Point orbitMouse;
-        private bool orbitMotionSeen, orbitSeen, pilotFlight;
+        private bool orbitMotionSeen, orbitSeen, powerFlight;
         private int orbitDirection, throwCount;
         private double throwSequenceStarted, danceStarted, contactReactionUntil;
 
         internal bool IsCompanionFloorPose
         { get { return State == PetState.Walk || State == PetState.Pause || State == PetState.Resting || State == PetState.IdleCry || State == PetState.Squish; } }
-        internal bool IsPilotFlight { get { return pilotFlight && State == PetState.PilotRise; } }
+        internal bool IsPowerFlight { get { return powerFlight && State == PetState.PowerRise; } }
 
         internal bool CanDance(double now)
         { return !PlayOptions.Current.PositionFixed && !Hidden && !InputHeld && now >= flowerUntil && (IsCompanionFloorPose || State == PetState.Sliding); }
 
-        private void ResetSecretThrows() { throwCount = 0; throwSequenceStarted = 0; pilotFlight = false; }
+        private void ResetSecretThrows() { throwCount = 0; throwSequenceStarted = 0; powerFlight = false; }
 
-        /// <summary>10초 안에 같은 친구를 세 번 던지면 비밀 조종사.</summary>
+        /// <summary>10초 안에 같은 친구를 세 번 던지면 기 폭발(파워 업 비행).</summary>
         internal void RegisterSecretThrow(IWorld w)
         {
-            pilotFlight = false;
+            powerFlight = false;
             if (!PlayOptions.Current.Secrets) { ResetSecretThrows(); return; }
             if (throwCount == 0 || w.Now - throwSequenceStarted > 10) { throwCount = 0; throwSequenceStarted = w.Now; }
             throwCount++;
             if (throwCount >= 3)
-            { throwCount = 0; pilotFlight = true; FriendData.Current.Discover("pilot"); Bubble = "비밀 조종사! 천장으로 출발!"; BubbleUntil = w.Now + 4; }
+            { throwCount = 0; powerFlight = true; FriendData.Current.Discover("power"); Bubble = "기가 폭발한다! 천장까지 솟구쳐라!"; BubbleUntil = w.Now + 4; }
         }
 
         internal void StartFlower(IWorld w, long milestone)
@@ -58,18 +58,18 @@ namespace DragonBall
         private bool AdvanceSecrets(IWorld w, double dt)
         {
             if (!PlayOptions.Current.Secrets)
-            { ResetSecretThrows(); if (State == PetState.PilotRise) SetState(PetState.Falling, w); }
-            if (State == PetState.PilotRise)
+            { ResetSecretThrows(); if (State == PetState.PowerRise) SetState(PetState.Falling, w); }
+            if (State == PetState.PowerRise)
             {
                 orbitSeen = false; orbitTotal = 0; StateT += dt; animT += dt;
                 if (Bubble != null && w.Now > BubbleUntil) Bubble = null;
                 double half = HeliHalf;
-                X += helicopterDrift * dt; helicopterDrift *= Math.Exp(-4 * dt);
+                X += flightDrift * dt; flightDrift *= Math.Exp(-4 * dt);
                 X = Math.Max(Area.Left + half, Math.Min(Area.Right - half, X));
                 Y -= 185 * S * dt;
                 if (Y <= Area.Top + HeliH + 1)
                 {
-                    ClearAttachments(); pilotFlight = false; Vy = 0; helicopterDrift = 0;
+                    ClearAttachments(); powerFlight = false; Vy = 0; flightDrift = 0;
                     half = Art.Ceiling.W / 2.0;
                     X = Math.Max(Area.Left + half + 1, Math.Min(Area.Right - half - 1, X));
                     if (X > Area.Right - Art.Ceiling.W * 2) Dir = -1; else if (X < Area.Left + Art.Ceiling.W * 2) Dir = 1;
@@ -134,12 +134,12 @@ namespace DragonBall
             return false;
         }
 
-        /// <summary>친구끼리 부딪힘 판정에 쓰는 몸통 영역(프로펠러·장식 제외).</summary>
+        /// <summary>친구끼리 부딪힘 판정에 쓰는 몸통 영역(오라·장식 제외).</summary>
         internal RectangleF ContactBody(double now)
         {
             if (State == PetState.Wall) return WallBody(wallSide, wallDescending);
             if (State == PetState.WindowClimb) return WallBody(-approachSide, false);
-            if (State == PetState.Falling || State == PetState.PilotRise || State == PetState.Thrown)
+            if (State == PetState.Falling || State == PetState.PowerRise || State == PetState.Thrown)
                 return new RectangleF((float)X - Art.W * .43f, (float)Y - Art.H, Art.W * .86f, Art.H * .95f);
             Look look = GetLook(now);
             float bw = (float)(Art.Rig.BodyRefW * Art.K) * look.Sx, bh = Art.H * (look.Pose.Sit ? .92f : .98f) * look.Sy;
@@ -152,7 +152,7 @@ namespace DragonBall
             Dir = direction;
             if (State == PetState.Wall) { wallDescending = direction > 0; return; }
             if (State == PetState.Thrown) { throwVx = direction * Math.Max(110 * S, Math.Abs(throwVx) * .65); return; }
-            if (State == PetState.Falling) { helicopterDrift = direction * 70 * S; return; }
+            if (State == PetState.Falling) { flightDrift = direction * 70 * S; return; }
             if (!IsCompanionFloorPose && State != PetState.Sliding && State != PetState.TouchCry && State != PetState.Hop && State != PetState.Eating) return;
             if (w.Now < contactReactionUntil) return;
             contactReactionUntil = w.Now + .45;

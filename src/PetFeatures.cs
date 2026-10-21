@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace DragonBall
 {
-    /// <summary>던지기·헬리콥터 낙하·벽/천장/창 타기·도망·쉬기·클릭 반응·위치 고정.</summary>
+    /// <summary>던지기·기를 모으며 비행 하강·벽/천장/창 타기·도망·쉬기·클릭 반응·위치 고정.</summary>
     internal sealed partial class Pet
     {
         private double extraDuration = 6;
@@ -22,14 +22,14 @@ namespace DragonBall
 
         private struct DragSample { internal double Time, X, Y; internal DragSample(double t, double x, double y) { Time = t; X = x; Y = y; } }
         private readonly List<DragSample> dragSamples = new List<DragSample>();
-        private double throwVx, throwVy, throwDuration, helicopterDrift;
+        private double throwVx, throwVy, throwDuration, flightDrift;
 
         internal void InitializeFeatures(IWorld w)
         {
             nextIdle = w.Now + 15 + w.Rng.NextDouble() * 15;
             nextClimb = w.Now + 25 + w.Rng.NextDouble() * 20;
             mouseGrace = w.Now + 1;
-            Y = Math.Max(Y, Area.Top + HeliH + 5);   // 처음 낙하는 프로펠러까지 화면 안에서 보이게
+            Y = Math.Max(Y, Area.Top + HeliH + 5);   // 처음 낙하는 오라까지 화면 안에서 보이게
         }
 
         private void DelayIdle(IWorld w)
@@ -43,7 +43,7 @@ namespace DragonBall
         internal void ReleaseFeatures(IWorld w)
         {
             ClearAttachments(); hoverSince = -1; hadNearMouse = false; mouseGrace = w.Now + .8;
-            throwVx = throwVy = helicopterDrift = 0; pilotFlight = false;
+            throwVx = throwVy = flightDrift = 0; powerFlight = false;
         }
 
         private void BeginThrowTracking(double now, double x, double y) { dragSamples.Clear(); TrackDrag(now, x, y); }
@@ -79,14 +79,14 @@ namespace DragonBall
             DelayIdle(w); return true;
         }
 
-        private void OpenHelicopter(IWorld w)
+        private void OpenFlight(IWorld w)
         {
             double half = HeliHalf;
             X = Math.Max(Area.Left + half, Math.Min(Area.Right - half, X));
             Y = Math.Max(Area.Top + HeliH + 1, Math.Min(Area.Bottom - 1, Y));
             Vy = Math.Max(0, Math.Min(95 * S * PlayOptions.Current.FallSpeed, throwVy * .25));
-            helicopterDrift = throwVx * .45; throwVx = throwVy = 0;
-            if (pilotFlight) { Vy = 0; SetState(PetState.PilotRise, w); }
+            flightDrift = throwVx * .45; throwVx = throwVy = 0;
+            if (powerFlight) { Vy = 0; SetState(PetState.PowerRise, w); }
             else SetState(PetState.Falling, w);
         }
 
@@ -116,17 +116,17 @@ namespace DragonBall
             }
             if (edge) throwVx = -throwVx * .2;
             if (hitTop) throwVy = Math.Max(0, -throwVy * .2);
-            if (StateT >= throwDuration || edge || hitTop || nearFloor || nearWindow) OpenHelicopter(w);
+            if (StateT >= throwDuration || edge || hitTop || nearFloor || nearWindow) OpenFlight(w);
         }
 
         internal void ClickFeature(IWorld w)
         {
-            if (State == PetState.Drag || State == PetState.Falling || State == PetState.Thrown || State == PetState.PilotRise) return;
+            if (State == PetState.Drag || State == PetState.Falling || State == PetState.Thrown || State == PetState.PowerRise) return;
             mouseGrace = w.Now + .7; hoverSince = -1;
             if (State == PetState.Wall || State == PetState.Ceiling || State == PetState.WindowClimb || State == PetState.Climb)
             {
                 ReleaseFeatures(w); ResetSecretThrows(); queuedAfterLand = null; Vy = 0;
-                OpenHelicopter(w); DelayIdle(w); FriendData.Current.Like(1); return;
+                OpenFlight(w); DelayIdle(w); FriendData.Current.Like(1); return;
             }
             if (State == PetState.Sleep) { SetState(PetState.Waking, w); return; }
             if (State == PetState.Gather || State == PetState.WaitHome || State == PetState.Cheer) return;
@@ -152,7 +152,7 @@ namespace DragonBall
 
         internal void Feed(IWorld w)
         {
-            if (State == PetState.Drag || State == PetState.Falling || State == PetState.Thrown || State == PetState.PilotRise)
+            if (State == PetState.Drag || State == PetState.Falling || State == PetState.Thrown || State == PetState.PowerRise)
             { Bubble = "내려가면 간식 먹자!"; BubbleUntil = w.Now + 3; return; }
             if (State == PetState.Wall || State == PetState.Ceiling || State == PetState.WindowClimb)
             { ClearAttachments(); SetState(PetState.Falling, w); return; }
@@ -191,13 +191,23 @@ namespace DragonBall
             }
             if (State == PetState.Falling || State == PetState.Drag || State == PetState.Thrown) return;
             if (kind == "dizzy") { ClearAttachments(); SnapToFloor(w); StartDizzy(w); return; }
+            if (kind.StartsWith("sig"))
+            {
+                if (State == PetState.Wall || State == PetState.Ceiling || State == PetState.WindowClimb)
+                { ClearAttachments(); Vy = 0; SetState(PetState.Falling, w); Bubble = "내려가서 보여줄게!"; BubbleUntil = w.Now + 3; return; }
+                StartSignature(w, Math.Max(0, Math.Min(2, kind[3] - '0'))); return;
+            }
             AfterReaction = PetState.Walk;
             if (kind == "cry") { extraDuration = 3; SetState(PetState.TouchCry, w); }
             if (kind == "sit") BeginRestPose(w, RestPose.Sit, PlayOptions.Current.ShortRest ? 8 : 25);
             if (kind == "sleep") BeginRestPose(w, RestPose.Sleep, 8);
             if (kind == "daydream") BeginRestPose(w, RestPose.Daydream, 8);
             if (kind == "stretch") BeginRestPose(w, RestPose.Stretch, 0);
-            if (kind == "special") BeginRestPose(w, RestPose.Special, 0);
+            if (kind == "scratch") { SetState(PetState.Pause, w); pauseAct = 1; stateDur = 3.4; }
+            if (kind == "cross") { SetState(PetState.Pause, w); pauseAct = 2; stateDur = 3.4; }
+            if (kind == "wave") { SetState(PetState.Pause, w); pauseAct = 3; stateDur = 3.4; }
+            if (kind == "flex") { SetState(PetState.Pause, w); pauseAct = 4; stateDur = 3.4; }
+            if (kind == "beard") { SetState(PetState.Pause, w); pauseAct = 5; stateDur = 3.4; }
             if (kind == "weep") { extraDuration = 3; previewIdleCry = true; SetState(PetState.IdleCry, w); }
             if (kind == "hop") { extraDuration = .7; SetState(PetState.Hop, w); }
             if (kind == "slide") { extraDuration = .85; SetState(PetState.Sliding, w); }
@@ -251,7 +261,11 @@ namespace DragonBall
                 {
                     extraDuration = opts.ShortRest ? (focus ? 4 : 6 + w.Rng.NextDouble() * 5) : 20 + w.Rng.NextDouble() * 10;
                     if (!focus && FriendData.Current.Hungry) { extraDuration = 2.4 + w.Rng.NextDouble(); SetState(PetState.IdleCry, w); }
-                    else BeginRestPose(w, ChooseRestPose(w), extraDuration);
+                    else
+                    {
+                        RestPose chosen = ChooseRestPose(w, focus);
+                        if (chosen == RestPose.Sig) StartSignature(w, w.Rng.Next(3)); else BeginRestPose(w, chosen, extraDuration);
+                    }
                     DelayIdle(w);
                 }
                 if (!focus && opts.Windows && State == PetState.Walk && SupportWindow == IntPtr.Zero && w.Now > nextClimb)
@@ -286,7 +300,8 @@ namespace DragonBall
                 case PetState.Thrown: AdvanceThrow(w, dt); break;
                 case PetState.Resting:
                 case PetState.IdleCry:
-                    if (StateT >= extraDuration) { SetState(PetState.Walk, w); DelayIdle(w); }
+                    if (State == PetState.Resting && restPose == RestPose.Sig) AdvanceSignature(w, dt);
+                    if (StateT >= extraDuration) { EndSignature(w); SetState(PetState.Walk, w); DelayIdle(w); }
                     break;
                 case PetState.TouchCry:
                 case PetState.Hop:
@@ -377,15 +392,15 @@ namespace DragonBall
             Y = r.Top; return true;
         }
 
-        /// <summary>헬리콥터로 천천히 내려와 바닥이나 열린 창 윗면에 착지.</summary>
-        internal void HelicopterDrop(IWorld w, double dt)
+        /// <summary>기를 모아 천천히 내려와 바닥이나 열린 창 윗면에 착지.</summary>
+        internal void FlightDrop(IWorld w, double dt)
         {
             double oldY = Y;
-            if (Math.Abs(helicopterDrift) > .1)
+            if (Math.Abs(flightDrift) > .1)
             {
                 double half = HeliHalf;
-                X = Math.Max(Area.Left + half, Math.Min(Area.Right - half, X + helicopterDrift * dt));
-                helicopterDrift *= Math.Exp(-4 * dt);
+                X = Math.Max(Area.Left + half, Math.Min(Area.Right - half, X + flightDrift * dt));
+                flightDrift *= Math.Exp(-4 * dt);
             }
             double speed = PlayOptions.Current.FallSpeed;
             Vy = Math.Min(95 * S * speed, Math.Max(35 * S * speed, Vy + 55 * S * speed * dt));
@@ -404,12 +419,12 @@ namespace DragonBall
             }
             if (land != null)
             {
-                SupportWindow = land.Handle; SupportBounds = land.Bounds; Y = land.Bounds.Top; Vy = 0; helicopterDrift = 0;
+                SupportWindow = land.Handle; SupportBounds = land.Bounds; Y = land.Bounds.Top; Vy = 0; flightDrift = 0;
                 StartSquish(w, .3, .15, queuedAfterLand ?? PetState.Walk, false); queuedAfterLand = null; DelayIdle(w); mouseGrace = w.Now + .8;
             }
             else if (Y >= Area.Bottom)
             {
-                Y = Area.Bottom; Vy = 0; helicopterDrift = 0; ClearAttachments();
+                Y = Area.Bottom; Vy = 0; flightDrift = 0; ClearAttachments();
                 StartSquish(w, .3, .15, queuedAfterLand ?? PetState.Walk, false); queuedAfterLand = null; DelayIdle(w); mouseGrace = w.Now + .8;
             }
         }
@@ -417,17 +432,20 @@ namespace DragonBall
         internal double FeatureJitterX { get { return lookJitterX; } }
 
         // ───── 쉬는 자세: 앉기 · 잠자기 · 멍때리기 · 기지개 ─────
-        internal enum RestPose { Sit, Sleep, Daydream, Stretch, Special }
+        internal enum RestPose { Sit, Sleep, Daydream, Stretch, Sig }
         internal RestPose restPose = RestPose.Sit;
         private RestPose lastRestPose = RestPose.Sit;
 
-        /// <summary>자세는 무작위로 뽑되, 직전과 같으면 한 번 다시 뽑는다(같은 동작이 반복되면 멈춘 것처럼 보인다).</summary>
-        private RestPose ChooseRestPose(IWorld w)
+        /// <summary>자세는 무작위로 뽑되, 직전과 같으면 한 번 다시 뽑는다(같은 동작이 반복되면 멈춘 것처럼 보인다).
+        /// 시그니처(★)는 설정의 빈도에 따라 끼어든다.</summary>
+        private RestPose ChooseRestPose(IWorld w, bool focus)
         {
+            double sigP = focus ? 0 : PlayOptions.SigChance(PlayOptions.Current.SigFreq);
+            if (w.Rng.NextDouble() < sigP) return RestPose.Sig;
             Func<RestPose> roll = () =>
             {
                 double r = w.Rng.NextDouble();
-                return r < .30 ? RestPose.Sit : r < .50 ? RestPose.Daydream : r < .64 ? RestPose.Stretch : r < .76 ? RestPose.Sleep : RestPose.Special;
+                return r < .38 ? RestPose.Sit : r < .62 ? RestPose.Daydream : r < .82 ? RestPose.Stretch : RestPose.Sleep;
             };
             RestPose pose = roll();
             if (pose == lastRestPose) pose = roll();
@@ -442,7 +460,6 @@ namespace DragonBall
                 case RestPose.Sleep: extraDuration = baseSeconds * 1.4; break;
                 case RestPose.Daydream: extraDuration = baseSeconds * .75; break;
                 case RestPose.Stretch: extraDuration = 4.2; break;
-                case RestPose.Special: extraDuration = Who == Persona.Bono ? 11 : 7; break;
                 default: extraDuration = baseSeconds; break;
             }
             SetState(PetState.Resting, w);
@@ -517,7 +534,7 @@ namespace DragonBall
                 || State == PetState.Waking && StateT > stateDur
                 || State == PetState.Cheer && Bubble == null && world.Now > cheerHopUntil)
                 SetState(PetState.Pause, world);
-            if (State == PetState.Gather || State == PetState.Walk || State == PetState.Falling || State == PetState.Thrown || State == PetState.PilotRise
+            if (State == PetState.Gather || State == PetState.Walk || State == PetState.Falling || State == PetState.Thrown || State == PetState.PowerRise
                 || State == PetState.Wall || State == PetState.Ceiling || State == PetState.WindowClimb || State == PetState.Climb || State == PetState.SecretDance || State == PetState.Dizzy)
                 SyncPinned(world);
             return true;

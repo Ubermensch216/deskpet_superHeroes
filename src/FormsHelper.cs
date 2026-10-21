@@ -55,7 +55,7 @@ namespace DragonBall
             lifeDetails.Text = "포만감 " + (int)Math.Floor(d.Satiety) + " / 100\n다음 꽃다발: 친밀도 " + ((d.Affinity / 100 + 1) * 100).ToString("N0")
                 + "\n" + (d.CanSnack ? "지금 간식을 줄 수 있어." : "지금은 배가 꽉 찼어");
             snackButton.Enabled = d.CanSnack;
-            var names = new[] { new[] { "dance", "몰래 하는 군무" }, new[] { "dizzy", "어질어질" }, new[] { "pilot", "비밀 조종사" } };
+            var names = new[] { new[] { "dance", "몰래 하는 군무" }, new[] { "dizzy", "어질어질" }, new[] { "power", "비밀 조종사" } };
             discoverySummary.Text = "발견한 비밀 " + d.Discoveries.Count + " / 3\n" + string.Join("  ·  ", names.Where(p => d.Discoveries.Contains(p[0])).Select(p => p[1]).ToArray());
         }
     }
