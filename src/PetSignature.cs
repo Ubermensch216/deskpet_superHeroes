@@ -104,6 +104,26 @@ namespace DragonBall
 
         private void EndSignature(IWorld w) { sigTeleported = false; }
 
+        internal int PendingSig = -1;
+
+        /// <summary>시그니처를 보여달라는 요청. 지금 가능하면 바로, 낙하·드래그 중이면 땅에 내려온 뒤에 시작한다.</summary>
+        internal void RequestSignature(IWorld w, int idx)
+        {
+            if (State == PetState.Drag || State == PetState.Falling || State == PetState.Thrown || State == PetState.PowerRise
+                || State == PetState.Wall || State == PetState.Ceiling || State == PetState.WindowClimb || State == PetState.Climb)
+            {
+                PendingSig = idx; Bubble = "내려가서 보여줄게!"; BubbleUntil = w.Now + 3; return;
+            }
+            Demonstrate(w, "sig" + idx);
+        }
+
+        /// <summary>대기 중인 시그니처 요청 처리(땅에 서 있을 때).</summary>
+        private bool ConsumePendingSig(IWorld w)
+        {
+            if (PendingSig < 0 || (State != PetState.Walk && State != PetState.Pause)) return false;
+            int idx = PendingSig; PendingSig = -1; StartSignature(w, idx); return true;
+        }
+
         /// <summary>시그니처 도중의 이동(순간이동 · 근두운 비행).</summary>
         private void AdvanceSignature(IWorld w, double dt)
         {

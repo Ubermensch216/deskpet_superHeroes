@@ -218,6 +218,7 @@ namespace DragonBall
         internal bool AdvanceFeatures(IWorld w, double dt)
         {
             var opts = PlayOptions.Current;
+            if (ConsumePendingSig(w)) return false;
             if (AdvancePinned(w, dt)) return true;
             if (AdvanceSecrets(w, dt)) return true;
             bool focus = PlayOptions.IsFocus(DateTime.Now);

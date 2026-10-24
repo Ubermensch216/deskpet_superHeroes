@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -31,7 +31,7 @@ namespace DragonBall
             using (var path = new GraphicsPath())
             {
                 path.AddEllipse(200 - 170, 330 - 290, 340, 580);
-                using (var pg = new PathGradient(path) { CenterColor = Al(c2, 120 * a), SurroundColors = new[] { Al(c1, 0) } }) g.FillPath(pg, path);
+                using (var pg = new PathGradientBrush(path) { CenterColor = Al(c2, 120 * a), SurroundColors = new[] { Al(c1, 0) } }) g.FillPath(pg, path);
             }
             const int N = 9;
             for (int i = 0; i < N; i++)
@@ -185,7 +185,7 @@ namespace DragonBall
             using (var path = new GraphicsPath())
             {
                 path.AddEllipse(c.X - r * 2.2f, c.Y - r * 2.2f, r * 4.4f, r * 4.4f);
-                using (var pg = new PathGradient(path) { CenterColor = Al(mid, 210), SurroundColors = new[] { Al(edge, 0) } }) g.FillPath(pg, path);
+                using (var pg = new PathGradientBrush(path) { CenterColor = Al(mid, 210), SurroundColors = new[] { Al(edge, 0) } }) g.FillPath(pg, path);
             }
             // 빛 줄기
             for (int i = 0; i < 9; i++)
@@ -208,15 +208,15 @@ namespace DragonBall
                 Positions = new[] { 0f, .22f, .5f, .78f, 1f },
                 Colors = new[] { Al(edge, 0), Al(edge, 190), core, Al(edge, 190), Al(edge, 0) }
             };
-            using (var br = new LinearGradientBrush(new PointF(0, c.Y - hw * 1.5f), new PointF(0, c.Y + hw * 1.5f), Color.White, Color.White) { InterpolationColors = blend, WrapMode = WrapMode.Clamp })
+            using (var br = new LinearGradientBrush(new PointF(0, c.Y - hw * 1.5f), new PointF(0, c.Y + hw * 1.5f), Color.White, Color.White) { InterpolationColors = blend })
                 g.FillRectangle(br, x1, c.Y - hw * 1.5f, len, hw * 3);
-            using (var br = new LinearGradientBrush(new PointF(0, c.Y - hw * .62f), new PointF(0, c.Y + hw * .62f), Color.White, Color.White) { InterpolationColors = new ColorBlend { Positions = new[] { 0f, .5f, 1f }, Colors = new[] { Al(mid, 230), Color.White, Al(mid, 230) } }, WrapMode = WrapMode.Clamp })
+            using (var br = new LinearGradientBrush(new PointF(0, c.Y - hw * .62f), new PointF(0, c.Y + hw * .62f), Color.White, Color.White) { InterpolationColors = new ColorBlend { Positions = new[] { 0f, .5f, 1f }, Colors = new[] { Al(mid, 230), Color.White, Al(mid, 230) } } })
                 g.FillRectangle(br, x1, c.Y - hw * .62f, len, hw * 1.24f);
             // 머리 부분의 둥근 빛
             using (var path = new GraphicsPath())
             {
                 path.AddEllipse(x1 - hw * 1.1f, c.Y - hw * 1.3f, hw * 2.2f, hw * 2.6f);
-                using (var pg = new PathGradient(path) { CenterColor = Al(core, 255), SurroundColors = new[] { Al(edge, 0) } }) g.FillPath(pg, path);
+                using (var pg = new PathGradientBrush(path) { CenterColor = Al(core, 255), SurroundColors = new[] { Al(edge, 0) } }) g.FillPath(pg, path);
             }
             // 일렁이는 마디
             for (int i = 0; i < 10; i++)
@@ -313,7 +313,7 @@ namespace DragonBall
                 using (var path = new GraphicsPath())
                 {
                     path.AddEllipse(200 - r * .8f, 320 - r * 1.3f, r * 1.6f, r * 2.6f);
-                    using (var pg = new PathGradient(path) { CenterColor = Color.FromArgb((int)(255 * f), 255, 255, 255), SurroundColors = new[] { Color.FromArgb(0, 255, 255, 255) } }) g.FillPath(pg, path);
+                    using (var pg = new PathGradientBrush(path) { CenterColor = Color.FromArgb((int)(255 * f), 255, 255, 255), SurroundColors = new[] { Color.FromArgb(0, 255, 255, 255) } }) g.FillPath(pg, path);
                 }
             }
         }

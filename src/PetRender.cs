@@ -407,8 +407,10 @@ namespace DragonBall
             using (GraphicsPath path = RoundRect(r, 8 * scale))
             {
                 var tri = new[] { new PointF(-5 * scale, r.Bottom - 1), new PointF(1 * scale, r.Bottom + tail), new PointF(6 * scale, r.Bottom - 1) };
-                using (var pen = new Pen(Color.FromArgb(255, 30, 30, 30), 2 * scale) { LineJoin = LineJoin.Round })
-                using (var fill = new SolidBrush(Color.White))
+                bool gold = L.Bubble != null && L.Bubble.StartsWith("★");
+                Color border = gold ? Color.FromArgb(255, 176, 108, 14) : Color.FromArgb(255, 30, 30, 30);
+                using (var pen = new Pen(border, (gold ? 2.6f : 2f) * scale) { LineJoin = LineJoin.Round })
+                using (var fill = new SolidBrush(gold ? Color.FromArgb(255, 255, 244, 196) : Color.White))
                 {
                     g.FillPath(fill, path); g.DrawPath(pen, path);
                     g.FillPolygon(fill, tri); g.DrawLine(pen, tri[0], tri[1]); g.DrawLine(pen, tri[1], tri[2]);
@@ -574,7 +576,7 @@ namespace DragonBall
             using (var path = new GraphicsPath())
             {
                 path.AddEllipse(c.X - r * 1.7f, c.Y - r * 1.7f, r * 3.4f, r * 3.4f);
-                using (var pg = new PathGradient(path) { CenterColor = Color.FromArgb(al * 150 / 255, 255, 248, 190), SurroundColors = new[] { Color.FromArgb(0, 255, 248, 190) } }) g.FillPath(pg, path);
+                using (var pg = new PathGradientBrush(path) { CenterColor = Color.FromArgb(al * 150 / 255, 255, 248, 190), SurroundColors = new[] { Color.FromArgb(0, 255, 248, 190) } }) g.FillPath(pg, path);
             }
             using (var body = new SolidBrush(Color.FromArgb(al, 255, 247, 205)))
             using (var rim = new Pen(Color.FromArgb(al, 214, 190, 110), Math.Max(1.5f, r * .06f)))

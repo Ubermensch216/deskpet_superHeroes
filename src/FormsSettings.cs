@@ -36,7 +36,7 @@ namespace DragonBall
     internal sealed class SettingsForm : Form
     {
         internal static readonly string[] PageNames = { "캐릭터", "움직임", "반응", "생활", "알림", "화면 · 시스템" };
-        internal static readonly string[] PageHints = { "친구 부르기 · 도감 · ★ 시그니처", "이동 범위 · 속도 · 얌전 모드", "클릭 · 커서 · 숨은 반응", "친밀도 · 간식 · 배고픔", "정각 · 점심 · 퇴근 · 낮잠", "크기 · 투명도 · 자동 시작" };
+        internal static readonly string[] PageHints = { "친구 · 도감 · ★ 기술", "이동 범위 · 속도 · 얌전 모드", "클릭 · 커서 · 숨은 반응", "친밀도 · 간식 · 배고픔", "정각 · 점심 · 퇴근 · 낮잠", "크기 · 투명도 · 자동 시작" };
         private static int lastPage;
 
         private readonly App app;
@@ -396,7 +396,6 @@ namespace DragonBall
         {
             if (lifeSummary == null) return;
             var d = FriendData.Current;
-            if (lifeSummary.Visible || pages[3].Visible)
             {
                 lifeSummary.Text = "♥ 친밀도 " + d.Affinity.ToString("N0") + "   ·   함께 " + FriendData.FormatTogether(d.TogetherSeconds);
                 satietyBar.Value = Math.Max(0, Math.Min(100, (int)Math.Floor(d.Satiety)));

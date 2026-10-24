@@ -28,11 +28,11 @@ namespace DragonBall
             if (args.Length >= 2 && args[0] == "--selftest") { Environment.Exit(DevTools.SelfTest(args[1])); return; }
             if (args.Length >= 2 && args[0] == "--ui-test") { Environment.Exit(DevTools.UiTest(args[1])); return; }
             bool created;
-            using (var mutex = new Mutex(true, "Neoburi_DeskFriend_single_instance", out created))
+            using (var mutex = new Mutex(true, "DragonBall_DeskFriend_single_instance", out created))
             {
                 if (!created)
                 {
-                    MessageBox.Show("드래곤볼가 이미 실행 중이야.\n작업표시줄 알림 영역의 친구 아이콘을 우클릭해서 ‘화면 가운데로 다시 부르기’를 눌러줘.", "드래곤볼", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("드래곤볼이 이미 실행 중이야.\n작업표시줄 알림 영역의 친구 아이콘을 우클릭해서 ‘화면 가운데로 다시 부르기’를 눌러줘.", "드래곤볼", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
@@ -40,7 +40,7 @@ namespace DragonBall
                 try
                 {
                     PlayOptions.Load(); FriendData.Load();
-                    CharacterArt.Reset(Native.SystemDpiScale());
+                    CharacterArt.Reset(Native.SystemDpiScale() * PlayOptions.Current.SizeScale);
                     var app = new App();
                     Application.Run(app);
                 }
@@ -137,14 +137,15 @@ namespace DragonBall
                 K("폴짝", (p, w) => { p.Demonstrate(w, "hop"); p.Update(w, .25, null, 0); }),
                 K("슬라이딩", (p, w) => { p.Y = 720; p.Demonstrate(w, "slide"); Adv(p, w, .3); }),
                 K("어질어질", (p, w) => p.Demonstrate(w, "dizzy")),
-                K("헬리콥터", (p, w) => p.Demonstrate(w, "fall")),
+                K("비행하강", (p, w) => p.Demonstrate(w, "fall")),
                 K("벽타기", (p, w) => p.Demonstrate(w, "wall")),
                 K("천장", (p, w) => p.Demonstrate(w, "ceiling")),
                 K("먹는중", (p, w) => { FriendData.Current.Satiety = 40; p.Feed(w); }),
                 K("꽃다발", (p, w) => p.StartFlower(w, 100)),
                 K("말풍선", (p, w) => p.Cheer(w, "점심 먹으러 가자!", 8)),
-                K("특기1", (p, w) => { p.Y = 720; p.Demonstrate(w, "special"); Adv(p, w, 2.0); }),
-                K("특기2", (p, w) => { p.Y = 720; p.Demonstrate(w, "special"); Adv(p, w, 2.9); }),
+                K("★기술1", (p, w) => { p.Y = 720; p.Demonstrate(w, "sig0"); Adv(p, w, 3.9); }),
+                K("★기술2", (p, w) => { p.Y = 720; p.Demonstrate(w, "sig1"); Adv(p, w, 3.8); }),
+                K("★기술3", (p, w) => { p.Y = 720; p.Demonstrate(w, "sig2"); Adv(p, w, 3.6); }),
                 K("우는중2", (p, w) => { p.Y = 720; p.Demonstrate(w, "cry"); Adv(p, w, .7); }),
                 K("눌림2", (p, w) => { p.Y = 720; p.StartSquish(w, .42, .24, PetState.Walk, false); Adv(p, w, .2); }),
                 K("앉기2", (p, w) => { p.Y = 720; p.Demonstrate(w, "sit"); Adv(p, w, 5); }),
@@ -194,7 +195,9 @@ namespace DragonBall
                     Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("기지개", (p, w) => { p.Y = 720; p.Demonstrate(w, "stretch"); }, 4.2, 0),
                     Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("멍때리기", (p, w) => { p.Y = 720; p.Demonstrate(w, "daydream"); }, 3.6, 0),
                     Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("잠자기", (p, w) => { p.Y = 720; p.Demonstrate(w, "sleep"); }, 3.6, 0),
-                    Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("특기", (p, w) => { p.Y = 720; p.Demonstrate(w, "special"); }, 7.2, 0),
+                    Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("★1 " + Signatures.All[c][0].Name, (p, w) => { p.Y = 720; p.Demonstrate(w, "sig0"); }, Signatures.All[c][0].Dur, 0),
+                    Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("★2 " + Signatures.All[c][1].Name, (p, w) => { p.Y = 720; p.Demonstrate(w, "sig1"); }, Signatures.All[c][1].Dur, 0),
+                    Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("★3 " + Signatures.All[c][2].Name, (p, w) => { p.Y = 720; p.Demonstrate(w, "sig2"); }, Signatures.All[c][2].Dur, 0),
                     Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("슬라이딩", (p, w) => { p.Y = 720; p.Demonstrate(w, "slide"); }, .84, 0),
                     Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("눌림(클릭)", (p, w) => { p.Y = 720; p.StartSquish(w, .42, .24, PetState.Walk, false); }, .42, 0),
                     Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("우는중", (p, w) => { p.Y = 720; p.Demonstrate(w, "cry"); }, 2.4, 0),
@@ -247,12 +250,10 @@ namespace DragonBall
                 Rectangle r = Screen.PrimaryScreen.Bounds;
                 using (var b = new Bitmap(r.Width, r.Height)) using (var g = Graphics.FromImage(b)) { g.CopyFromScreen(r.Location, Point.Empty, r.Size); b.Save(Path.Combine(dir, name + ".png"), ImageFormat.Png); }
             };
-            PlayOptions.Load(); FriendData.Load(); CharacterArt.Reset(Native.SystemDpiScale());
+            PlayOptions.Load(); FriendData.Load(); CharacterArt.Reset(Native.SystemDpiScale() * PlayOptions.Current.SizeScale);
             App app = null;
-            step("앱 생성(펫 4마리)", () => { app = new App(true); app.Spawn(0); app.Spawn(1); app.Spawn(2); app.Spawn(3); pump(1); });
-            step("알림 설정 창", () => { var f = new SettingsForm(app); shot(f, "ui_settings"); f.Close(); });
-            step("움직임 설정 창", () => { var f = new PlaySettingsForm(app); shot(f, "ui_play"); f.Close(); });
-            step("친구 기록 창", () => { var f = new FriendRecordForm(app); shot(f, "ui_record"); f.Close(); });
+            step("앱 생성(펫 5마리)", () => { app = new App(true); app.Spawn(0); app.Spawn(1); app.Spawn(2); app.Spawn(3); app.Spawn(4); pump(1); });
+            for (int pg = 0; pg < SettingsForm.PageNames.Length; pg++) { int page = pg; step("설정 창 - " + SettingsForm.PageNames[pg], () => { var f = new SettingsForm(app, page); shot(f, "ui_settings_" + page); f.Close(); }); }
             step("도우미 창", () => { FriendData.Current.Todos.Add(new TodoItem { Text = "첫 할 일", Done = true }); FriendData.Current.Todos.Add(new TodoItem { Text = "둘째 할 일" }); var f = new FriendPanel(app); shot(f, "ui_helper"); f.Close(); });
             step("정각 카드 + 가장자리 빛", () =>
             {
@@ -393,25 +394,26 @@ namespace DragonBall
                 }
 
                 // 상태 전이
-                PlayOptions.Current = new PlayOptions { Escape = false, Idle = false, Windows = false };
+                PlayOptions.Current = new PlayOptions { Escape = false, Idle = false, Windows = false, Walls = false, Ceiling = false };
                 var w = new FakeWorld(); var pet = new Pet(w, 1, 640, 40);
                 var all = new List<Pet> { pet }; var seen = new HashSet<PetState>();
                 Action<double> run = secs => { for (double t = 0; t < secs; t += .03) { w.Now += .03; pet.Update(w, .03, all, 0); seen.Add(pet.State); } };
-                run(.3); check(pet.State == PetState.Falling, "시작은 헬리콥터 낙하");
+                run(.3); check(pet.State == PetState.Falling, "시작은 비행 하강");
                 run(25); check(pet.Y == w.Areas[0].Bottom && pet.State != PetState.Falling, "바닥에 착지");
                 pet.Poke(w); check(pet.State == PetState.Squish, "첫 클릭 = 눌리기"); run(1);
                 pet.Poke(w); check(pet.State == PetState.TouchCry, "둘째 클릭 = 달달 떨며 울기"); run(3);
-                pet.Poke(w); check(pet.State == PetState.Hop, "셋째 클릭 = 폴짝"); run(1.5);
-                FriendData.Current.Satiety = 50; pet.Feed(w); check(pet.State == PetState.Eating && FriendData.Current.Satiety == 75, "간식 먹기"); run(4);
+                pet.Poke(w); check(pet.State == PetState.Hop, "셋째 클릭 = 폴짝 (" + pet.State + ")"); run(1.5);
+                FriendData.Current.Satiety = 50; pet.Feed(w); check(pet.State == PetState.Eating && FriendData.Current.Satiety == 75, "간식 먹기 (" + pet.State + " " + FriendData.Current.Satiety + ")"); run(4);
                 pet.BeginDrag(w, pet.X, pet.Y - 20); check(pet.State == PetState.Drag, "드래그 시작");
                 for (int i = 0; i < 6; i++) { w.Now += .016; pet.DragTo(w, pet.X + pet.DragPx + 30, pet.Y + pet.DragPy - 4); }
                 pet.EndDrag(w); check(pet.State == PetState.Thrown, "빠르게 놓으면 던지기"); run(.8); run(25);
-                check(seen.Contains(PetState.Thrown) && pet.State != PetState.Thrown && pet.Y <= w.Areas[0].Bottom + .1, "던진 뒤 헬리콥터로 착지");
+                check(seen.Contains(PetState.Thrown) && pet.State != PetState.Thrown && pet.Y <= w.Areas[0].Bottom + .1, "던진 뒤 둥실 내려와 착지");
                 pet.Demonstrate(w, "dizzy"); check(pet.State == PetState.Dizzy && FriendData.Current.Discoveries.Contains("dizzy"), "어질어질"); run(5);
                 pet.SetState(PetState.Pause, w); pet.FallAsleep(w); check(pet.State == PetState.Sleep, "낮잠"); pet.WakeUp(w); check(pet.State == PetState.Waking, "깨어남");
                 for (int i = 0; i < 3; i++) { pet.BeginDrag(w, pet.X, pet.Y - 20); for (int k = 0; k < 6; k++) { w.Now += .016; pet.DragTo(w, pet.X + pet.DragPx + 30, pet.Y + pet.DragPy - 4); } pet.EndDrag(w); run(.6); }
-                check(seen.Contains(PetState.PowerRise) && FriendData.Current.Discoveries.Contains("power"), "비밀 조종사: 10초 안 3번 던지기");
-                run(20); check(pet.State == PetState.Ceiling || seen.Contains(PetState.Ceiling), "조종사가 천장까지 올라감");
+                PlayOptions.Current.Walls = true; PlayOptions.Current.Ceiling = true;
+                check(seen.Contains(PetState.PowerRise) && FriendData.Current.Discoveries.Contains("power"), "기 폭발: 10초 안 3번 던지기");
+                run(20); check(pet.State == PetState.Ceiling || seen.Contains(PetState.Ceiling), "변신하며 천장까지 올라감");
 
                 // 오래 돌려서 벽·천장·쉬기가 모두 나오는지
                 PlayOptions.Current = new PlayOptions { Escape = false, Idle = true };

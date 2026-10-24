@@ -76,9 +76,7 @@ namespace DragonBall
         private NotifyIcon tray;
         private ToolStripMenuItem trayHideItem;
         private SettingsForm settingsForm;
-        private PlaySettingsForm playSettingsForm;
         private FriendPanel friendPanel;
-        private FriendRecordForm friendRecordForm;
         private double surfaceRefreshAt, forceVisibleUntil = 12;
         public Settings Settings;
         public Icon TrayIconImage;
@@ -200,7 +198,7 @@ namespace DragonBall
         private void UpdateMenus()
         { if (trayHideItem != null) trayHideItem.Text = hidden ? "모두 보이기" : "모두 숨기기"; }
 
-        /// <summary>화면 가운데 위에서 다시 헬리콥터로 내려오게 한다 (숨은 친구 구조).</summary>
+        /// <summary>화면 가운데 위에서 다시 둥실 내려오게 한다 (숨은 친구 구조).</summary>
         internal void RecoverVisible()
         {
             hidden = false; autoHidden = false; forceVisibleUntil = Now + 15;
@@ -219,84 +217,130 @@ namespace DragonBall
         }
 
         // ───────── 메뉴 ─────────
+        // 우클릭 메뉴와 트레이 메뉴는 같은 구조:
+        //   ♥ 친밀도 (표시) / 간식 주기 / ★ 시그니처 기술 ▶ / 동작 보기 ▶ / 친구 ▶ / 빠른 설정 ▶ / 도우미 / 설정 / 종료
+        private ContextMenuStrip BuildMenu(PetWindow w)
+        {
+            Pet pet = w != null ? w.Pet : null;
+            var menu = new ContextMenuStrip();
+            menu.Items.Add(new ToolStripMenuItem("♥ 친밀도 " + FriendData.Current.Affinity.ToString("N0") + "  ·  함께 " + FriendData.FormatTogether(FriendData.Current.TogetherSeconds)) { Enabled = false });
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add(new ToolStripMenuItem("간식 주기  ·  포만감 " + (int)Math.Floor(FriendData.Current.Satiety) + "/100", null, delegate { FeedFirst(pet); }));
+            menu.Items.Add(SignatureMenu(pet));
+            menu.Items.Add(DemoMenu(pet));
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add(FriendsMenu(w));
+            menu.Items.Add(QuickMenu());
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("도우미  (할 일 · 메모 · 타이머)...", null, delegate { ShowFriendPanel(); });
+            menu.Items.Add("설정...", null, delegate { OpenSettings(); });
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("종료", null, delegate { Quit(); });
+            return menu;
+        }
+
+        /// <summary>★ 표시가 붙은 시그니처 기술. 우클릭한 친구의 기술 3가지(트레이에서는 캐릭터별).</summary>
+        private ToolStripMenuItem SignatureMenu(Pet pet)
+        {
+            var root = new ToolStripMenuItem("★ 시그니처 기술");
+            if (pet != null)
+            {
+                var sigs = Signatures.All[pet.Art.Id];
+                root.DropDownItems.Add(new ToolStripMenuItem(pet.Art.Info.Name + "의 기술") { Enabled = false });
+                for (int i = 0; i < 3; i++) { int idx = i; root.DropDownItems.Add(sigs[i].Label, null, delegate { pet.RequestSignature(this, idx); }); }
+                var others = new ToolStripMenuItem("다른 캐릭터 기술 보기");
+                AddAllSignatures(others, pet.Art.Id); root.DropDownItems.Add(new ToolStripSeparator()); root.DropDownItems.Add(others);
+            }
+            else AddAllSignatures(root, -1);
+            return root;
+        }
+
+        private void AddAllSignatures(ToolStripMenuItem parent, int skip)
+        {
+            for (int c = 0; c < CharacterArt.Count; c++)
+            {
+                if (c == skip) continue;
+                int id = c; var sub = new ToolStripMenuItem(CharacterArt.Infos[c].Name);
+                for (int i = 0; i < 3; i++) { int idx = i; sub.DropDownItems.Add(Signatures.All[c][i].Label, null, delegate { PreviewSignature(id, idx); }); }
+                parent.DropDownItems.Add(sub);
+            }
+        }
+
+        private ToolStripMenuItem DemoMenu(Pet pet)
+        {
+            var demo = new ToolStripMenuItem("동작 보기");
+            Action<ToolStripMenuItem, string[][]> fill = (menu, items) =>
+            {
+                foreach (var pair in items)
+                { string key = pair[1]; menu.DropDownItems.Add(pair[0], null, delegate { Pet p = pet ?? windows.Select(a => a.Pet).FirstOrDefault(); if (p != null) p.Demonstrate(this, key); }); }
+            };
+            var rest = new ToolStripMenuItem("쉬는 모습"); fill(rest, new[] { new[] { "앉아서 쉬기", "sit" }, new[] { "잠자기", "sleep" }, new[] { "멍때리기", "daydream" }, new[] { "기지개", "stretch" } });
+            var idle = new ToolStripMenuItem("멈춰 섰을 때 몸짓"); fill(idle, new[] { new[] { "머리 긁적", "scratch" }, new[] { "팔짱", "cross" }, new[] { "손 흔들기", "wave" }, new[] { "주먹 불끈", "flex" }, new[] { "수염 쓰다듬기", "beard" } });
+            var react = new ToolStripMenuItem("반응"); fill(react, new[] { new[] { "클릭할 때 달달 떨며 우는 모습", "cry" }, new[] { "배고플 때 우는 모습", "weep" }, new[] { "폴짝 뛰기", "hop" }, new[] { "질주 (커서 피해 도망)", "slide" } });
+            var move = new ToolStripMenuItem("이동"); fill(move, new[] { new[] { "비행 하강", "fall" }, new[] { "벽 타기", "wall" }, new[] { "천장 타기", "ceiling" }, new[] { "창 타기", "window" } });
+            var secret = new ToolStripMenuItem("숨은 반응");
+            secret.DropDownItems.Add("어질어질", null, delegate { Pet p = pet ?? windows.Select(a => a.Pet).FirstOrDefault(); if (p != null) p.Demonstrate(this, "dizzy"); });
+            secret.DropDownItems.Add("몰래 하는 군무", null, delegate { DemonstrateSecretDance(pet); });
+            demo.DropDownItems.AddRange(new ToolStripItem[] { rest, idle, react, move, secret });
+            return demo;
+        }
+
+        private ToolStripMenuItem FriendsMenu(PetWindow w)
+        {
+            var friends = new ToolStripMenuItem("친구");
+            friends.DropDownItems.Add(SpawnMenu("한 마리 더 부르기"));
+            if (w != null) friends.DropDownItems.Add("이 친구 보내기", null, delegate { Remove(w); });
+            friends.DropDownItems.Add(hidden ? "모두 보이기" : "모두 숨기기", null, delegate { ToggleHidden(); });
+            friends.DropDownItems.Add("화면 가운데로 다시 부르기", null, delegate { RecoverVisible(); });
+            return friends;
+        }
+
+        private ToolStripMenuItem QuickMenu()
+        {
+            var quick = new ToolStripMenuItem("빠른 설정");
+            var o = PlayOptions.Current;
+            Func<string, Func<bool>, Action<bool>, ToolStripMenuItem> toggle = (text, get, set) =>
+            {
+                var item = new ToolStripMenuItem(text) { Checked = get(), CheckOnClick = false };
+                item.Click += delegate { set(!get()); item.Checked = get(); };
+                return item;
+            };
+            quick.DropDownItems.Add(toggle("친구 위치 고정 (자동 이동 멈추기)", () => o.PositionFixed, v => SetPositionFixed(v)));
+            quick.DropDownItems.Add(toggle("얌전 모드 (바닥에서만)", () => o.Focus, v => { o.Focus = v; o.Save(); }));
+            quick.DropDownItems.Add(toggle("★ 시그니처 자동 재생", () => o.SigFreq > 0, v => { o.SigFreq = v ? 2 : 0; o.Save(); }));
+            quick.DropDownItems.Add(toggle("친밀도 숫자 표시", () => o.ShowAffinity, v => { o.ShowAffinity = v; o.Save(); ApplyCharacterSettings(); }));
+            return quick;
+        }
+
         private ToolStripMenuItem SpawnMenu(string text)
         {
             var item = new ToolStripMenuItem(text) { Enabled = windows.Count < MaxPets };
-            item.DropDownItems.Add("무작위", null, delegate { if (hidden) ToggleHidden(); Spawn(); });
+            item.DropDownItems.Add("무작위", null, delegate { SpawnFromUi(-1); });
             for (int i = 0; i < CharacterArt.Count; i++)
-            { int id = i; item.DropDownItems.Add(CharacterArt.Infos[i].Name, null, delegate { if (hidden) ToggleHidden(); Spawn(id); }); }
+            { int id = i; item.DropDownItems.Add(CharacterArt.Infos[i].Name, null, delegate { SpawnFromUi(id); }); }
             return item;
         }
 
         private void BuildTray()
         {
-            var menu = new ContextMenuStrip();
-            menu.Items.Add(SpawnMenu("친구 한 마리 더 부르기"));
-            trayHideItem = new ToolStripMenuItem("모두 숨기기", null, delegate { ToggleHidden(); });
-            menu.Items.Add(trayHideItem);
-            menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("알림 설정...", null, delegate { OpenSettings(); });
-            menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("종료", null, delegate { Quit(); });
-            AddFeatureMenu(menu, null);
-            menu.Opening += delegate { foreach (ToolStripItem i in menu.Items) if (i.Tag as string == "spawn") i.Enabled = windows.Count < MaxPets; };
-            menu.Items[1].Tag = "spawn";
+            var menu = BuildMenu(null);
+            menu.Opening += delegate
+            {
+                var fresh = BuildMenu(null);
+                menu.Items.Clear();
+                foreach (ToolStripItem i in fresh.Items.Cast<ToolStripItem>().ToList()) menu.Items.Add(i);
+                trayHideItem = null;
+            };
             tray = new NotifyIcon { Icon = TrayIconImage, Text = "드래곤볼", ContextMenuStrip = menu, Visible = true };
             tray.DoubleClick += delegate { ToggleHidden(); };
         }
 
         public void ShowPetMenu(PetWindow w, Point at)
         {
-            var menu = new ContextMenuStrip();
-            var spawn = SpawnMenu("한 마리 더 부르기"); menu.Items.Add(spawn);
-            menu.Items.Add("이 친구 보내기", null, delegate { Remove(w); });
-            menu.Items.Add("모두 숨기기", null, delegate { if (!hidden) ToggleHidden(); });
-            menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("알림 설정...", null, delegate { OpenSettings(); });
-            menu.Items.Add("종료", null, delegate { Quit(); });
-            AddFeatureMenu(menu, w.Pet);
+            var menu = BuildMenu(w);
             menu.Closed += delegate { BeginInvokeSafe(delegate { menu.Dispose(); }); };
             try { Native.SetForegroundWindow(w.Handle); } catch { }
             menu.Show(at);
-        }
-
-        internal void AddFeatureMenu(ContextMenuStrip menu, Pet pet)
-        {
-            menu.Items.Insert(0, new ToolStripMenuItem("♥ 친밀도 " + FriendData.Current.Affinity.ToString("N0") + "  ·  함께 " + FriendData.FormatTogether(FriendData.Current.TogetherSeconds)) { Enabled = false });
-            int at = Math.Max(0, menu.Items.Count - 1);
-            menu.Items.Insert(at++, new ToolStripMenuItem("화면 가운데로 다시 부르기", null, delegate { RecoverVisible(); }));
-            menu.Items.Insert(at++, new ToolStripMenuItem("움직임 · 반응 설정...", null, delegate { ShowPlaySettings(); }));
-            var pinned = new ToolStripMenuItem("친구 위치 고정 (자동 이동 멈추기)") { Checked = PlayOptions.Current.PositionFixed };
-            pinned.Click += delegate { SetPositionFixed(!PlayOptions.Current.PositionFixed); pinned.Checked = PlayOptions.Current.PositionFixed; };
-            menu.Items.Insert(at++, pinned);
-            menu.Items.Insert(at++, new ToolStripMenuItem("친구 기록 · 생활 설정...", null, delegate { ShowFriendRecords(); }));
-            menu.Items.Insert(at++, new ToolStripMenuItem("도우미 · 할 일 · 메모 · 타이머...", null, delegate { ShowFriendPanel(); }));
-            menu.Items.Insert(at++, new ToolStripMenuItem("간식 주기  ·  포만감 " + (int)Math.Floor(FriendData.Current.Satiety) + "/100", null, delegate
-            { Pet p = pet ?? windows.Select(a => a.Pet).FirstOrDefault(); if (p != null) p.Feed(this); }));
-            var demo = new ToolStripMenuItem("동작 바로 보기");
-            var items = new[] { new[] { "앉아서 쉬기", "sit" }, new[] { "잠자기", "sleep" }, new[] { "멍때리기", "daydream" }, new[] { "기지개", "stretch" }, new[] { SpecialLabel(pet), "special" }, new[] { "클릭할 때 달달 떨며 우는 모습", "cry" }, new[] { "배고플 때 우는 모습", "weep" }, new[] { "폴짝 뛰기", "hop" },
-                new[] { "슬라이딩", "slide" }, new[] { "어질어질", "dizzy" }, new[] { "헬리콥터 낙하", "fall" }, new[] { "벽 타기", "wall" }, new[] { "천장 타기", "ceiling" }, new[] { "창 타기", "window" } };
-            foreach (var pair in items)
-            { string key = pair[1]; demo.DropDownItems.Add(pair[0], null, delegate { Pet p = pet ?? windows.Select(a => a.Pet).FirstOrDefault(); if (p != null) p.Demonstrate(this, key); }); }
-            demo.DropDownItems.Add("몰래 하는 군무", null, delegate { DemonstrateSecretDance(pet); });
-            menu.Items.Insert(at++, demo);
-            var focus = new ToolStripMenuItem("얌전 모드 (바닥에서만)") { Checked = PlayOptions.Current.Focus };
-            focus.Click += delegate { PlayOptions.Current.Focus = !PlayOptions.Current.Focus; PlayOptions.Current.Save(); focus.Checked = PlayOptions.Current.Focus; };
-            menu.Items.Insert(at++, focus);
-            menu.Items.Insert(at++, new ToolStripSeparator());
-        }
-
-        /// <summary>캐릭터마다 다른 '특기' 동작의 이름.</summary>
-        private string SpecialLabel(Pet pet)
-        {
-            Pet p = pet ?? windows.Select(w => w.Pet).FirstOrDefault();
-            if (p == null) return "특기";
-            switch (p.Art.Persona)
-            {
-                case Persona.Bono: return "조개 깨기 (누워서 탁탁)";
-                case Persona.Squirrel: return "얼굴 쓱쓱 닦기";
-                default: return "손 씻기";
-            }
         }
 
         private void BeginInvokeSafe(Action a)
@@ -306,17 +350,50 @@ namespace DragonBall
             t.Start();
         }
 
-        // ───────── 창 열기 ─────────
-        private void OpenSettings()
+        // ───────── 설정창에서 쓰는 동작 ─────────
+        internal void SpawnFromUi(int character) { if (hidden) ToggleHidden(); Spawn(character); }
+        internal void RemoveByIndex(int index) { if (index >= 0 && index < windows.Count) Remove(windows[index]); }
+        internal void FeedFirst(Pet pet = null) { Pet p = pet ?? windows.Select(a => a.Pet).FirstOrDefault(); if (p != null) p.Feed(this); }
+
+        /// <summary>그 캐릭터의 ★ 시그니처를 바로 보여준다(없으면 불러 와서, 내려오면 시작).</summary>
+        internal void PreviewSignature(int character, int idx)
         {
-            if (settingsForm != null && !settingsForm.IsDisposed) { settingsForm.Activate(); return; }
-            settingsForm = new SettingsForm(this); settingsForm.FormClosed += delegate { settingsForm = null; };
-            settingsForm.Show(); settingsForm.Activate();
+            if (hidden) ToggleHidden();
+            Pet p = windows.Select(a => a.Pet).FirstOrDefault(a => a.Art.Id == character && !a.Hidden);
+            if (p == null) { Spawn(character); p = windows.Select(a => a.Pet).LastOrDefault(a => a.Art.Id == character); }
+            if (p != null) p.RequestSignature(this, idx);
         }
-        internal void ShowPlaySettings()
+
+        internal void ApplyHelperOptions() { if (friendPanel != null && !friendPanel.IsDisposed) friendPanel.ApplyOptions(); }
+
+        /// <summary>캐릭터 크기를 바꾸면 지금 구성 그대로 다시 등장시킨다.</summary>
+        internal void RebuildForSize()
         {
-            if (playSettingsForm != null && !playSettingsForm.IsDisposed) { playSettingsForm.Activate(); return; }
-            playSettingsForm = new PlaySettingsForm(this); playSettingsForm.FormClosed += delegate { playSettingsForm = null; }; playSettingsForm.Show();
+            var roster = windows.Select(w => w.Pet.Art.Id).ToList();
+            loadingRoster = true;
+            foreach (PetWindow w in windows.ToArray()) { try { w.Close(); w.Dispose(); } catch { } }
+            windows.Clear();
+            CharacterArt.Reset(Native.SystemDpiScale() * PlayOptions.Current.SizeScale);
+            foreach (int c in roster) Spawn(c);
+            loadingRoster = false; SaveRoster();
+        }
+
+        internal void ResetAllSettings()
+        {
+            bool wasFixed = PlayOptions.Current.PositionFixed;
+            PlayOptions.Current = new PlayOptions(); PlayOptions.Current.Save();
+            string roster = Settings.Roster; Settings = new Settings { Roster = roster }; Settings.Save();
+            try { StartupOption.SetEnabled(false); } catch { }
+            ApplyCharacterSettings(); ApplyHelperOptions(); RebuildForSize();
+        }
+
+        // ───────── 창 열기 ─────────
+        internal void OpenSettings() { OpenSettingsPage(-1); }
+        internal void OpenSettingsPage(int page)
+        {
+            if (settingsForm != null && !settingsForm.IsDisposed) { if (page >= 0) settingsForm.SelectPage(page); settingsForm.Activate(); return; }
+            settingsForm = new SettingsForm(this, page); settingsForm.FormClosed += delegate { settingsForm = null; };
+            settingsForm.Show(); settingsForm.Activate();
         }
         internal void ShowFriendPanel()
         {
@@ -324,18 +401,10 @@ namespace DragonBall
             { if (friendPanel.WindowState == FormWindowState.Minimized) friendPanel.WindowState = FormWindowState.Normal; friendPanel.Show(); friendPanel.Activate(); return; }
             friendPanel = new FriendPanel(this); friendPanel.FormClosed += delegate { friendPanel = null; }; friendPanel.Show();
         }
-        internal void ShowFriendRecords()
-        {
-            if (friendRecordForm != null && !friendRecordForm.IsDisposed)
-            { if (friendRecordForm.WindowState == FormWindowState.Minimized) friendRecordForm.WindowState = FormWindowState.Normal; friendRecordForm.Show(); friendRecordForm.Activate(); return; }
-            friendRecordForm = new FriendRecordForm(this); friendRecordForm.FormClosed += delegate { friendRecordForm = null; }; friendRecordForm.Show();
-        }
         internal void CloseFeatureWindows()
         {
             FriendData.Current.Save();
-            if (playSettingsForm != null) playSettingsForm.Close();
             if (friendPanel != null) friendPanel.Close();
-            if (friendRecordForm != null) friendRecordForm.Close();
             if (settingsForm != null) settingsForm.Close();
         }
 
@@ -354,7 +423,6 @@ namespace DragonBall
             if (!PlayOptions.Current.PositionFixed || windows.Count == 0) return;
             PlayOptions.Current.FixedX = windows[0].Pet.X; PlayOptions.Current.FixedY = windows[0].Pet.Y; PlayOptions.Current.Save();
         }
-
         // ───────── 알림 ─────────
         public void OnSettingsChanged()
         {
