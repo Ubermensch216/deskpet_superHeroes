@@ -77,9 +77,12 @@ namespace DragonBall
             var bSave = new Button { Text = "저장", Width = 92, Height = 32, Anchor = AnchorStyles.Right | AnchorStyles.Top };
             var bApply = new Button { Text = "적용", Width = 92, Height = 32, Anchor = AnchorStyles.Right | AnchorStyles.Top };
             var bCancel = new Button { Text = "닫기", Width = 92, Height = 32, Anchor = AnchorStyles.Right | AnchorStyles.Top };
-            status = new Label { AutoSize = false, Left = 14, Top = 8, Width = 330, Height = 36, ForeColor = Color.DimGray, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left | AnchorStyles.Top };
-            bar.Controls.AddRange(new Control[] { status, bSave, bApply, bCancel });
-            bar.Resize += delegate { bCancel.Left = bar.Width - 14 - bCancel.Width; bApply.Left = bCancel.Left - 8 - bApply.Width; bSave.Left = bApply.Left - 8 - bSave.Width; bSave.Top = bApply.Top = bCancel.Top = 10; };
+            // 단추는 오른쪽 묶음, 상태 글은 남는 칸만 써서 서로 겹치지 않게 한다 (창 크기·화면 배율과 무관)
+            var btns = new FlowLayoutPanel { Dock = DockStyle.Right, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(0, 10, 14, 0), BackColor = Color.Transparent };
+            foreach (var b in new[] { bSave, bApply, bCancel }) { b.Anchor = AnchorStyles.None; b.Margin = new Padding(0, 0, 8, 0); btns.Controls.Add(b); }
+            bCancel.Margin = new Padding(0);
+            status = new Label { AutoSize = false, Dock = DockStyle.Fill, Padding = new Padding(14, 0, 0, 0), ForeColor = Color.DimGray, TextAlign = ContentAlignment.MiddleLeft };
+            bar.Controls.Add(status); bar.Controls.Add(btns);
             Controls.Add(bar);
             bSave.Click += delegate { if (Apply()) Close(); };
             bApply.Click += delegate { Apply(); };
