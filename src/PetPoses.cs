@@ -193,6 +193,14 @@ namespace DragonBall
             // 기를 모아 둥실 떠 내려온다: 오라(어린 오공은 근두운)
             int aura = Who == Persona.Vegeta ? 3 : Who == Persona.Piccolo ? 5 : 1;
             if (Who == Persona.Kid) P.Nimbus = F(Math.Min(1, t * 4));
+            else if (Who == Persona.Roshi && !IsPowerFlight)
+            {
+                // 무천도사: 거북 등껍질을 우산처럼 머리 위로 들고 두 손으로 꼭 잡은 채 살랑살랑 떨어진다
+                P.Umbrella = true; P.UmbrellaTilt = F(sway * 4); P.Reach = Reach.Umbrella; P.ArmsFront = false;
+                P.ArmLenL = P.ArmLenR = 1.6f; P.HandL = P.HandR = HandStyle.Fist;
+                P.Gy = -1f; P.Cross = 0; P.Mouth = MouthStyle.Smile;
+                P.BodyY = F(Math.Sin(t * 2.4 + 1.2) * 3);
+            }
             else { P.Aura = F(.55 + .1 * Math.Sin(t * 5)); P.AuraKind = aura; P.AuraT = F(t); }
             if (IsPowerFlight)
             {

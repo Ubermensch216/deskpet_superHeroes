@@ -201,6 +201,7 @@ namespace DragonBall
                 case Reach.Front: L = Pt(46, shY + 52); R = Pt(86, shY + 48); break;
                 case Reach.Flex: L = Pt(shL.X - 70, shY - 52); R = Pt(shR.X + 70, shY - 52); break;
                 case Reach.Guard: L = Pt(shL.X - 24, shY + 46); R = Pt(shL.X + 6, shY + 6); break;
+                case Reach.Umbrella: L = UmbrellaGrip(-1); R = UmbrellaGrip(1); break;
             }
             if (L.HasValue) p.HandLTo = Pt(L.Value.X + ox, L.Value.Y + oy);
             if (R.HasValue) p.HandRTo = Pt(R.Value.X - ox, R.Value.Y - oy);
@@ -216,7 +217,7 @@ namespace DragonBall
                     if (sup < .5f) DrawCape();
                     break;
                 case Persona.Roshi:
-                    DrawShell();
+                    if (p.Umbrella) DrawUmbrellaShell(); else DrawShell();
                     break;
                 case Persona.Kid:
                     DrawKidBack();
@@ -270,6 +271,50 @@ namespace DragonBall
                 g.Restore(st);
             }
             g.DrawPolygon(ink, shell);
+        }
+
+        // 낙하할 때는 등에 멘 등껍질을 벗어 우산처럼 머리 위로 치켜들고 두 손으로 테두리를 잡는다
+        private const float UmbRx = 128, UmbRy = 92, UmbRim = 22, UmbGripX = 112;
+        private static readonly PointF UmbPivot = new PointF(200, 128);
+
+        private PointF UmbrellaGrip(int side)
+        {
+            double a = p.UmbrellaTilt * Math.PI / 180, c = Math.Cos(a), s = Math.Sin(a); float x = side * UmbGripX, y = 4;
+            return Pt(UmbPivot.X + (float)(x * c - y * s), UmbPivot.Y + (float)(x * s + y * c));
+        }
+
+        private void DrawUmbrellaShell()
+        {
+            Color a = Color.FromArgb(104, 140, 76), b = Color.FromArgb(70, 100, 52), rim = Color.FromArgb(236, 220, 164), rimSh = Color.FromArgb(206, 182, 120);
+            var st = g.Save(); g.TranslateTransform(UmbPivot.X, UmbPivot.Y); g.RotateTransform(p.UmbrellaTilt);
+            const int n = 28;
+            var dome = new List<PointF>();
+            for (int i = 0; i <= n; i++) { double an = Math.PI * i / n; dome.Add(Pt((float)Math.Cos(an) * UmbRx, -(float)Math.Sin(an) * UmbRy)); }
+            for (int i = 1; i < n; i++) { double an = Math.PI * i / n; dome.Add(Pt(-(float)Math.Cos(an) * UmbRx, (float)Math.Sin(an) * UmbRim)); }
+            PointF[] shell = Geo.Smooth(dome.ToArray(), true, 3);
+            Fill(shell, a, false);
+            using (var gp = new GraphicsPath())
+            {
+                gp.AddPolygon(shell); var clip = g.Save(); g.SetClip(gp, CombineMode.Intersect);
+                var pen = Pn(b, ow * .9f);
+                for (int row = -1; row <= 1; row++)
+                    for (int col = -3; col <= 3; col++)
+                    {
+                        float hx = col * 52 + (row % 2 != 0 ? 26 : 0), hy = -44 + row * 44; var hex = new PointF[6];
+                        for (int i = 0; i < 6; i++) { double an = Math.PI / 3 * i + Math.PI / 6; hex[i] = Pt(hx + (float)Math.Cos(an) * 30, hy + (float)Math.Sin(an) * 30); }
+                        g.DrawPolygon(pen, hex);
+                    }
+                // 테두리 띠(아랫면에 보이는 배딱지 색)
+                var band = new List<PointF>();
+                for (int i = 0; i <= n; i++) { double an = Math.PI * i / n; band.Add(Pt(-(float)Math.Cos(an) * UmbRx, (float)Math.Sin(an) * UmbRim)); }
+                for (int i = n; i >= 0; i--) { double an = Math.PI * i / n; band.Add(Pt(-(float)Math.Cos(an) * UmbRx, (float)Math.Sin(an) * UmbRim * .35f)); }
+                g.FillPolygon(B(rim), band.ToArray());
+                g.DrawLine(Pn(rimSh, ow * .8f), Pt(-UmbRx * .9f, UmbRim * .5f), Pt(UmbRx * .9f, UmbRim * .5f));
+                g.DrawArc(Pn(Color.FromArgb(110, 255, 255, 255), 7), -96, -UmbRy + 6, 120, UmbRy * .8f, 200, 70);
+                g.Restore(clip);
+            }
+            g.DrawPolygon(ink, shell);
+            g.Restore(st);
         }
 
         private PointF[] Chain(PointF origin, float[] len, float[] baseDeg, float tail, float curl, float wave, float phase)

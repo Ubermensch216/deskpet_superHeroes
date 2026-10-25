@@ -152,6 +152,12 @@ namespace DragonBall
                 K("먹는중2", (p, w) => { p.Y = 720; FriendData.Current.Satiety = 40; p.Feed(w); Adv(p, w, 2.2); }),
                 K("멍때리기", (p, w) => { p.Y = 720; p.Demonstrate(w, "daydream"); Adv(p, w, 2.5); }),
                 K("기지개", (p, w) => { p.Y = 720; p.Demonstrate(w, "stretch"); Adv(p, w, 1.9); }),
+                K("★1-휘청", (p, w) => { p.Y = 720; p.Demonstrate(w, "sig0"); Adv(p, w, 7.5); }),
+                K("★1-헉헉", (p, w) => { p.Y = 720; p.Demonstrate(w, "sig0"); Adv(p, w, 9.0); }),
+                K("★1-지팡이", (p, w) => { p.Y = 720; p.Demonstrate(w, "sig0"); Adv(p, w, 11.0); }),
+                K("★2-휘청", (p, w) => { p.Y = 720; p.Demonstrate(w, "sig1"); Adv(p, w, 6.7); }),
+                K("★2-헉헉", (p, w) => { p.Y = 720; p.Demonstrate(w, "sig1"); Adv(p, w, 8.2); }),
+                K("★2-지팡이", (p, w) => { p.Y = 720; p.Demonstrate(w, "sig1"); Adv(p, w, 10.4); }),
             };
             int cell = (int)Math.Round(150 * scale), cols = 8, rows = (int)Math.Ceiling(states.Count / (double)cols);
             for (int c = 0; c < CharacterArt.Count; c++)

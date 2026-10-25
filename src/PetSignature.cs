@@ -32,8 +32,8 @@ namespace DragonBall
             },
             new[] // 무천도사
             {
-                new SigDef("원조 가메하메파", 8.0, "가메하메파의 원조! 큰 광선을 쏘고 허리를 부여잡음"),
-                new SigDef("MAX 파워", 7.0, "숨을 들이마셔 온몸의 근육을 부풀리는 전성기 모습"),
+                new SigDef("원조 가메하메파", 11.5, "가메하메파의 원조! 큰 광선을 쏘고 나면 기력이 달려 헉헉"),
+                new SigDef("MAX 파워", 11.0, "온몸의 근육을 부풀리는 전성기 모습 — 끝나면 노인답게 지쳐 헉헉"),
                 new SigDef("봉마파 (전기밥솥)", 8.5, "전기밥솥을 꺼내 사악한 기운을 빨아들여 봉인"),
             },
             new[] // 베지터
@@ -65,8 +65,8 @@ namespace DragonBall
                 case 3: line = new[] { S(0, "이얍!"), S(1.1, "근두운~!"), S(2.4, "야호~!"), S(5.5, "신난다~!"), S(6.8, "안녕~!") }; break;
                 case 4: line = new[] { S(0, "여의봉!"), S(1.0, "얍! 얍!"), S(3.0, "늘어나라~!"), S(4.6, "에잇!!"), S(6.0, "원위치~") }; break;
                 case 5: line = new[] { S(0, "어? 보름달이다…"), S(1.2, "우… 우오오…!"), S(3.2, "우오오오오!!"), S(7.4, "어라? 돌아왔네…") }; break;
-                case 6: line = new[] { S(0, "카~"), S(1.2, "카~메~"), S(2.2, "카~메~하~메~…"), S(3.4, "파~~~!!!"), S(6.2, "허리야…") }; break;
-                case 7: line = new[] { S(0, "허리야…"), S(1.0, "으으으…"), S(3.0, "MAX 파워!!"), S(5.4, "…"), S(6.2, "콜록콜록") }; break;
+                case 6: line = new[] { S(0, "카~"), S(1.2, "카~메~"), S(2.2, "카~메~하~메~…"), S(3.4, "파~~~!!!"), S(6.8, "허, 허리야…"), S(8.0, "헉… 헉…"), S(10.2, "나이는 못 속여…"), S(11.0, "휴~") }; break;
+                case 7: line = new[] { S(0, "허리야…"), S(1.0, "으으으…"), S(3.0, "MAX 파워!!"), S(5.4, "…"), S(6.2, "허, 허리야…"), S(7.2, "헉… 헉…"), S(9.6, "이제 나이가 들어서…"), S(10.6, "휴~") }; break;
                 case 8: line = new[] { S(0, "봉마파~"), S(2.2, "봉마파!!"), S(5.2, "탁!"), S(5.8, "휴…"), S(7.0, "헉헉…") }; break;
                 case 9: line = new[] { S(0, "흥…"), S(0.8, "빅~뱅~"), S(2.8, "어택!!"), S(4.5, "흥, 별거 아니군.") }; break;
                 case 10: line = new[] { S(0, "파이널~"), S(2.2, "파이널~ 플래시!!"), S(3.4, "하아아아!!!"), S(6.2, "하아… 하아…") }; break;
@@ -267,9 +267,8 @@ namespace DragonBall
             switch (c.Recover)
             {
                 case 1:
-                    // 허리를 부여잡고 콜록
-                    P.BodyY = 24; P.Knee = 10; P.Lean = F(-14 + pant * 1.2); P.Reach = Reach.None; P.ArmLA = 78; P.ArmRA = 70; P.ArmLB = 70; P.ArmRB = 60;
-                    P.Eyes = EyeStyle.Sleep; P.OpenL = P.OpenR = 0; P.Mouth = MouthStyle.Open; P.MouthOpen = F(.25 + .2 * Math.Abs(pant)); P.Sweat = F(t); P.HeadTilt = F(-6 + pant);
+                    // 노인의 기력이 바닥남: 휘청 → 무릎을 짚고 헉헉 → 지팡이에 기대어 숨 고르기
+                    RoshiTired(P, t, t - c.EndAt);
                     break;
                 case 2:
                     P.Reach = Reach.Cross; P.ArmsFront = true; P.Mouth = MouthStyle.Smile; P.Brow = .45f; P.Eyes = EyeStyle.Open; P.OpenL = P.OpenR = .6f; P.Cross = .7f; P.Gy = .1f;
@@ -279,6 +278,46 @@ namespace DragonBall
                     P.Reach = Reach.Lap; P.BodyY = 20; P.Knee = 12; P.Lean = F(-12 + pant * 1.5); P.Eyes = EyeStyle.Open; P.OpenL = P.OpenR = .6f;
                     P.Mouth = MouthStyle.Open; P.MouthOpen = F(.25 + .2 * Math.Abs(pant)); P.Sweat = F(t); P.HeadTilt = F(-5); P.Gy = .7f; P.Cross = .3f;
                     break;
+            }
+        }
+
+        /// <summary>
+        /// 무천도사가 큰 기술을 쓰고 난 뒤 기력이 달리는 모습(q: 기술이 끝난 뒤 흐른 시간).
+        /// 휘청거리며 허리를 짚고(~1.1초) → 무릎을 짚고 헉헉(~3.4초) → 지팡이에 기대어 숨을 고르고 한숨 돌린다.
+        /// </summary>
+        private void RoshiTired(Pose P, double t, double q)
+        {
+            double pant = Math.Sin(t * 8), slow = Math.Sin(t * 2.6);
+            P.Turn = F(P.Turn * (1 - ESeg(q, 0, .5))); P.View = P.Turn > .25f ? 1 : 0;
+            P.Reach = Reach.None; P.HandL = P.HandR = HandStyle.Open; P.Staff = 0;
+            P.Eyes = EyeStyle.Sleep; P.OpenL = P.OpenR = 0; P.Sweat = F(t);
+            if (q < 1.1)
+            {
+                // 휘청: 다리가 후들후들 떨리고 몸이 앞뒤로 흔들리며 허리를 부여잡는다
+                double k = ESeg(q, 0, .5), sway = 1 - ESeg(q, .6, 1.1);
+                P.BodyY = F(10 + 16 * k); P.Knee = F(8 + 8 * k + Math.Sin(t * 34) * 2.5);
+                P.Lean = F(-4 - 10 * k + Math.Sin(q * 7) * 6 * sway); P.BodyX = F(Math.Sin(q * 9) * 5 * sway);
+                P.FootLX = F(-6 * k); P.FootRX = F(6 * k);
+                if (k > .3) P.Reach = Reach.Hips;
+                P.Brow = F(-.4 * k); P.Mouth = MouthStyle.Open; P.MouthOpen = F(.35 + .25 * Math.Abs(pant)); P.HeadTilt = F(-5 * k);
+            }
+            else if (q < 3.4)
+            {
+                // 무릎을 짚고 깊이 숙여 헉헉
+                P.Reach = Reach.Lap; P.BodyY = 30; P.Knee = F(14 + Math.Sin(t * 30) * 1.6); P.Lean = F(-22 + pant * 1.6); P.HeadTilt = F(-8 + pant * 1.2); P.HeadY = 6;
+                P.FootLX = -8; P.FootRX = 8; P.Breath = F(pant); P.Brow = -.4f;
+                P.Mouth = MouthStyle.Open; P.MouthOpen = F(.35 + .3 * Math.Abs(pant)); P.BodyX = F(pant * .8);
+            }
+            else
+            {
+                // 천천히 몸을 펴고 지팡이에 의지해 숨 고르기(오른손은 지팡이, 왼손은 허리)
+                double total = extraDuration - (t - q), r = ESeg(q, 3.4, 4.4), end = ESeg(q, total - 1.2, total - .4);
+                P.BodyY = F(30 * (1 - r) + 12 * r); P.Lean = F(-22 * (1 - r) - 9 * r + slow * 1.2); P.Knee = F(14 * (1 - r) + 6 * r); P.HeadTilt = F(-8 * (1 - r) - 4 * r); P.HeadY = F(6 * (1 - r) + 3 * r);
+                P.ArmRA = 56; P.ArmRB = 40; P.ArmLA = 76; P.ArmLB = 66;
+                P.Breath = F(slow); P.Brow = F(-.3 * (1 - end));
+                P.Eyes = EyeStyle.Open; P.OpenL = P.OpenR = F(.5 + .3 * end); P.Gy = .7f; P.Cross = .3f;
+                P.Mouth = end > .5 ? MouthStyle.Smile : MouthStyle.Open; P.MouthOpen = F(.2 + .12 * Math.Abs(slow));
+                if (end > .5) P.Sweat = -1f;
             }
         }
 
@@ -461,12 +500,10 @@ namespace DragonBall
             P.Muscle = F(m);
             if (t < 1.0 || t >= 6.1)
             {
-                // 허리가 굽은 노인
-                bool end = t >= 6.1; double cough = Math.Sin(t * 14);
-                P.BodyY = 14; P.Lean = F(-10 + (end ? cough * 1.4 : 0)); P.HeadTilt = F(-6); P.Knee = 6; P.HeadY = 4;
-                P.Eyes = end ? EyeStyle.Sleep : EyeStyle.Open; P.OpenL = P.OpenR = end ? 0 : 1; P.Mouth = end ? MouthStyle.Open : MouthStyle.Frown; P.MouthOpen = end ? F(.3 + .25 * Math.Abs(cough)) : 0;
-                P.Sweat = end ? F(t) : -1f;
-                if (end) { P.ArmRA = 56; P.ArmRB = 40; P.ArmLA = 76; P.ArmLB = 66; P.Reach = Reach.None; P.Breath = F(cough); }
+                // 허리가 굽은 노인 — 근육을 다 빼고 나면 기력이 달려 휘청거린다
+                if (t >= 6.1) { RoshiTired(P, t, t - 6.1); return; }
+                P.BodyY = 14; P.Lean = -10; P.HeadTilt = -6; P.Knee = 6; P.HeadY = 4;
+                P.Eyes = EyeStyle.Open; P.OpenL = P.OpenR = 1; P.Mouth = MouthStyle.Frown; P.MouthOpen = 0; P.Sweat = -1f;
             }
             else if (t < 3.0)
             {

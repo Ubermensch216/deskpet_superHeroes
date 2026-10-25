@@ -9,7 +9,7 @@ namespace DragonBall
     internal enum MouthStyle { Neutral, Smile, Open, Scared, Frown, Pout }
     internal enum HandStyle { Open, Fist, Point }
     /// <summary>손이 모이는 곳(캐릭터마다 몸 크기가 달라서 이름으로 지정하고, 리그가 좌표로 바꾼다).</summary>
-    internal enum Reach { None, Lap, Belly, Mouth, Chest, Scratch, Chin, Cross, Overhead, Forehead, Hips, Cup, Front, Flex, Guard }
+    internal enum Reach { None, Lap, Belly, Mouth, Chest, Scratch, Chin, Cross, Overhead, Forehead, Hips, Cup, Front, Flex, Guard, Umbrella }
     /// <summary>캐릭터 성격(행동·몸짓·시그니처 기술이 캐릭터마다 다르다).</summary>
     internal enum Persona { Goku, Kid, Roshi, Vegeta, Piccolo }
     /// <summary>기(氣) 에너지의 종류 — 구슬과 광선의 색·모양을 정한다.</summary>
@@ -77,6 +77,7 @@ namespace DragonBall
         public float Staff; public float StaffAngle, StaffLen = 1;   // 여의봉: 0 없음 · 1 들고 있음(무천도사 지팡이) · 2 자유롭게
         public int Prop;                       // 1 전기밥솥(닫힘) 2 전기밥솥(열림)
         public float Nimbus;                   // 근두운(0..1)
+        public bool Umbrella; public float UmbrellaTilt;   // 무천도사: 등껍질을 우산처럼 머리 위로 들기(기울기 각도) — Reach.Umbrella 와 함께 쓴다
 
         public static float Lerp(float a, float b, float t) { return a + (b - a) * t; }
 
@@ -101,7 +102,7 @@ namespace DragonBall
                 add(Aura, 10); add(AuraKind, 1); add(AuraT, 10); add(Super, 12); add(Muscle, 12); add(Ape, 12);
                 add(Ki, 14); add(KiKind, 1); add(KiAt.HasValue ? KiAt.Value.X : -999, 2); add(KiAt.HasValue ? KiAt.Value.Y : -999, 2);
                 add(BeamLen, 1); add(BeamW, 12); add(BeamT, 12); add(Shot, 40); add(Flash, 12); add(Spark, 10);
-                add(Staff, 2); add(StaffAngle, 4); add(StaffLen, 20); add(Prop, 1); add(Nimbus, 12);
+                add(Staff, 2); add(StaffAngle, 4); add(StaffLen, 20); add(Prop, 1); add(Nimbus, 12); add(Umbrella ? 1 : 0, 1); add(UmbrellaTilt, 4);
                 return h;
             }
         }
