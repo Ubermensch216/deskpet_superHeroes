@@ -687,6 +687,7 @@ namespace DragonBall
             if (err == null) { chatSetupText.ForeColor = Color.FromArgb(30, 130, 70); chatSetupText.Text = "준비 끝! 'AI 대화 사용'을 켜고 저장하세요."; }
             else if (err == OllamaSetup.Cancelled) { chatSetupText.ForeColor = Color.DimGray; chatSetupText.Text = "취소했어요. 다시 누르면 이어서 받아요."; }
             else { chatSetupText.ForeColor = Color.Firebrick; chatSetupText.Text = err; }
+        }
 
 // ───────── 저장 ─────────
         private static string Norm(string v) { TimeSpan t = Settings.ParseTime(v).Value; return string.Format("{0:00}:{1:00}", t.Hours, t.Minutes); }
