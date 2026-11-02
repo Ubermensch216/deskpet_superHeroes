@@ -809,6 +809,14 @@ namespace DragonBall
                             else if (b.State == PetState.Drag || wallB) a.X = b.X + sign * needed;
                             else { a.X = mid + sign * needed / 2; b.X = mid - sign * needed / 2; }
                             a.ClampContact(); b.ClampContact();
+                            // 한쪽이 화면 끝에 막혀 못 밀려났으면 남은 간격을 반대쪽이 마저 물러난다(끝에 낀 채 계속 엉키는 것 방지)
+                            Pet left = sign < 0 ? a : b, right = sign < 0 ? b : a;
+                            double shortfall = needed - (right.X - left.X);
+                            if (shortfall > .5)
+                            {
+                                if (right.CanBeShoved) { right.X += shortfall; right.ClampContact(); shortfall = needed - (right.X - left.X); }
+                                if (shortfall > .5 && left.CanBeShoved) { left.X -= shortfall; left.ClampContact(); }
+                            }
                         }
                         if (pass == 0) { if (a.State != PetState.Drag) a.Bump(world, sign); if (b.State != PetState.Drag) b.Bump(world, -sign); }
                         moved = true;

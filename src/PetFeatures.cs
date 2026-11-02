@@ -379,8 +379,10 @@ namespace DragonBall
             double nx = X + Dir * speed * dt;
             if (nx <= r.Left + HalfW || nx >= r.Right - HalfW)
             {
-                Dir = -Dir; nx = Math.Max(r.Left + HalfW + 2, Math.Min(r.Right - HalfW - 2, nx));
-                if (State == PetState.Walk && w.Rng.NextDouble() < .35) SetState(PetState.Pause, w);
+                bool stayPut = AvoidingPartner(w) && Dir == avoidDir;   // 상대를 피해 끝까지 왔다: 돌아서지 않고 쉰다
+                if (!stayPut) Dir = -Dir;
+                nx = Math.Max(r.Left + HalfW + 2, Math.Min(r.Right - HalfW - 2, nx));
+                if (State == PetState.Walk && (stayPut || w.Rng.NextDouble() < .35)) SetState(PetState.Pause, w);
             }
             X = nx; Y = r.Top; return true;
         }
