@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Runtime.InteropServices;
@@ -17,6 +17,8 @@ namespace DragonBall
         private bool mouseDown, dragging, firstPresented;
         private Point downPos;
         internal bool HasPresented { get { return firstPresented; } }
+        internal bool Suppressed;
+        protected override void SetVisibleCore(bool value) { base.SetVisibleCore(value && !Suppressed); }
 
         protected override bool ShowWithoutActivation { get { return true; } }
         protected override CreateParams CreateParams
@@ -40,7 +42,7 @@ namespace DragonBall
 
         public void Present(double now)
         {
-            if (!IsHandleCreated) return;
+            if (!IsHandleCreated || Suppressed) return;
             Pet.Look look = Pet.GetLook(now);
             string key = look.Key() + "|opacity:" + PlayOptions.Current.PetOpacityPercent;
             Bitmap bitmap = null;
@@ -127,6 +129,12 @@ namespace DragonBall
                 else Pet.Poke(app);
             }
             else if (e.Button == MouseButtons.Right) app.ShowPetMenu(this, Cursor.Position);
+        }
+
+        protected override void OnMouseDoubleClick(MouseEventArgs e)
+        {
+            base.OnMouseDoubleClick(e);
+            if (e.Button == MouseButtons.Left) app.StartChat(Pet);
         }
 
         protected override void OnMouseCaptureChanged(EventArgs e)

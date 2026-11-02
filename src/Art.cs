@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -62,18 +62,27 @@ namespace DragonBall
         public readonly CharInfo Info;
         public readonly CharRig Rig;
         public Persona Persona { get { return Info.Persona; } }
+        public readonly float Zoom;       // 걷는 캐릭터 대비 확대 배율
         public readonly float K;          // 기준 그림 1픽셀 = 화면 K 픽셀
         public readonly int W, H;         // 서 있는 모습의 상자(걷기 기준) — 이동·충돌 기준
+        public float Unit { get { return Scale * Zoom; } }
         public readonly int RotorH;       // 오라(기)가 머리 위로 올라오는 높이
         public readonly Dim Ceiling;
         public int CeilingTopInset { get { return 0; } }
         public int CeilingContactHeight { get { return Ceiling.H; } }
 
-        private CharacterArt(int id)
+        internal static CharacterArt Zoomed(int id, float zoom)
+        {
+            id = ((id % Count) + Count) % Count;
+            return new CharacterArt(id, zoom);
+        }
+
+        private CharacterArt(int id, float zoom = 1f)
         {
             Id = id; Info = Infos[id];
             Rig = Info.Rig;
-            H = (int)Math.Round(BaseHeight * Scale * Info.HeightFactor);
+            Zoom = zoom;
+            H = (int)Math.Round(BaseHeight * Scale * Info.HeightFactor * zoom);
             K = H / Rig.RefH;
             W = (int)Math.Round(Rig.NominalW * K);
             RotorH = (int)Math.Round(H * .16f);

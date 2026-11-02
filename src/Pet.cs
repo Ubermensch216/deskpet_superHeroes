@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -8,7 +8,7 @@ namespace DragonBall
     internal enum PetState
     {
         Falling, Walk, Pause, Squish, Drag, Climb, Sleep, Waking, Gather, WaitHome, Cheer,
-        Resting, IdleCry, TouchCry, Hop, Sliding, Wall, Ceiling, WindowClimb, Eating, Thrown, Dizzy, SecretDance, PowerRise
+        Resting, IdleCry, TouchCry, Hop, Sliding, Wall, Ceiling, WindowClimb, Eating, Thrown, Dizzy, SecretDance, PowerRise, Chat
     }
 
     internal interface IWorld
@@ -185,9 +185,10 @@ namespace DragonBall
             if (AdvanceFeatures(w, dt)) return;
             StateT += dt; animT += dt;
             if (collideCooldown > 0) collideCooldown -= dt;
-            if (Bubble != null && w.Now > BubbleUntil) Bubble = null;
+            if (Bubble != null && w.Now > BubbleUntil) Bubble = null; UpdateChat(w, dt);
             switch (State)
             {
+                case PetState.Chat: SnapToFloor(w); break;
                 case PetState.Falling: FlightDrop(w, dt); break;
                 case PetState.Walk: UpdateWalk(w, dt); break;
                 case PetState.Pause:

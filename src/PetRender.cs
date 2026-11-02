@@ -27,12 +27,18 @@ namespace DragonBall
             public int ZPhase; public float ZTime;
             public Decor Decor; public float DecorPhase;
             public string AffinityLabel; public bool AffinityOnLeft;
+            public int BubbleReveal;
+            public bool Ai;
+            public Font BubbleFont;
+            public float BubbleWidth;
+            public bool CloseMark;
+            public Color Neon; public float NeonPulse;
 
             public string Key()
             {
-                return string.Format("{0}|{1}|{2}|{3:0.00}|{4:0.00}|{5:0.0}|{6:0}|{7:0}|{8}|{9}|{10}|{11}|{12}|{13}|{14:0.00}|{15:0.00}",
+                return string.Format("{0}|{1}|{2}|{3:0.00}|{4:0.00}|{5:0.0}|{6:0}|{7:0}|{8}|{9}|{10}|{11}|{12}|{13}|{14:0.00}|{15:0.00}|{16}|{17}",
                     Pose.Hash(), FaceRight ? 1 : 0, Upside ? 1 : 0, Sx, Sy, Angle, Px, Py, Bubble ?? "", ZPhase, (int)Decor,
-                    Decor == Decor.None ? 0 : (int)(DecorPhase * 24), AffinityLabel, AffinityOnLeft, Alpha, Moon);
+                    Decor == Decor.None ? 0 : (int)(DecorPhase * 24), AffinityLabel, AffinityOnLeft, Alpha, Moon, BubbleReveal, Ai);
             }
         }
 
@@ -145,10 +151,13 @@ namespace DragonBall
                     L.Decor |= Decor.Notes; L.DecorPhase = (float)phase;
                     break;
                 }
+                case PetState.Chat: ChatPose(P, ref L, now); break;
             }
             L.Bubble = PersistentBubble(hourlyBubble, Bubble);
             CompanionLook(ref L, now);
             ApplyPersona(ref L, now);
+            L.BubbleReveal = ChatRevealCount;
+            L.Ai = chatPresence > .005;
             return L;
         }
 
@@ -341,12 +350,18 @@ namespace DragonBall
                 using (var g = Graphics.FromImage(tmp))
                 {
                     g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-                    textSize = g.MeasureString(L.Bubble, bubbleFont, (int)(170 * scale), StringFormat.GenericTypographic);
+                    textSize = g.MeasureString(L.Bubble, L.BubbleFont ?? bubbleFont, (int)(L.BubbleWidth > 0 ? L.BubbleWidth : 170 * scale), StringFormat.GenericTypographic);
                 }
                 float pad = 7 * scale;
                 float bw = (float)Math.Ceiling(textSize.Width + pad * 2 + 2 * scale), bh = (float)Math.Ceiling(textSize.Height + pad * 1.4f + 2 * scale);
                 bubble = new RectangleF(-bw / 2, spriteTop - 3 * scale - tail - bh, bw, bh);
-                minX = Math.Min(minX, bubble.Left); maxX = Math.Max(maxX, bubble.Right); minY = Math.Min(minY, bubble.Top);
+                minX = Math.Min(minX, bubble.Left); maxX = Math.Max(maxX, bubble.Right); minY = Math.Min(minY, bubble.Top - (L.Ai ? 6 * scale : 0));
+                if (L.CloseMark) { maxX = Math.Max(maxX, bubble.Right + CloseRadius * scale); minY = Math.Min(minY, bubble.Top - CloseRadius * scale); }
+            }
+            if (L.Neon.A != 0)
+            {
+                float glow = NeonGlow.Margin * scale;
+                minX -= glow; maxX += glow; minY -= glow; maxY += glow;
             }
             if (L.ZPhase >= 0) { minY = Math.Min(minY, spriteTop - 44 * scale); maxX = Math.Max(maxX, w / 2 + 22 * scale); minX = Math.Min(minX, -w / 2 - 22 * scale); }
             RectangleF badge = AffinityBadgeBounds(L, w, h, scale);
@@ -361,38 +376,62 @@ namespace DragonBall
                 g.Clear(Color.Transparent);
                 CharacterArt.Quality(g);
                 var full = new Matrix(); full.Translate(origin.X, origin.Y); full.Multiply(matrix);
-                g.Transform = full;
-                if (L.Alpha < .995f)
+                Action<Graphics> paintBody = bg =>
                 {
-                    // 순간이동: 몸만 투명하게(장식·말풍선은 그대로)
-                    var gtr = g.Transform;
-                    using (var layer = new Bitmap(result.Width, result.Height, PixelFormat.Format32bppArgb))
+                    bg.Transform = full;
+                    if (L.Upside) { bg.TranslateTransform(0, -h / 2); bg.RotateTransform(180); bg.TranslateTransform(0, h / 2); }
+                    art.Rig.Draw(bg, L.Pose, art.K, L.FaceRight);
+                    bg.Transform = full;
+                    DrawDecor(bg, L, art, w, h, scale, rotorH);
+                };
+                if (L.Neon.A != 0)
+                {
+                    using (var body = new Bitmap(result.Width, result.Height, PixelFormat.Format32bppArgb))
                     {
-                        using (var lg = Graphics.FromImage(layer))
+                        using (var bg = Graphics.FromImage(body)) { bg.Clear(Color.Transparent); CharacterArt.Quality(bg); paintBody(bg); }
+                        using (Bitmap lit = NeonGlow.Compose(body, L.Neon, L.NeonPulse, scale))
                         {
-                            lg.Clear(Color.Transparent); CharacterArt.Quality(lg); lg.Transform = gtr;
-                            if (L.Upside) { lg.TranslateTransform(0, -h / 2); lg.RotateTransform(180); lg.TranslateTransform(0, h / 2); }
-                            art.Rig.Draw(lg, L.Pose, art.K, L.FaceRight);
+                            g.CompositingMode = CompositingMode.SourceCopy; g.InterpolationMode = InterpolationMode.NearestNeighbor; g.PixelOffsetMode = PixelOffsetMode.Half;
+                            g.DrawImage(lit, 0, 0, lit.Width, lit.Height);
+                            g.CompositingMode = CompositingMode.SourceOver; CharacterArt.Quality(g);
                         }
-                        if (L.Alpha > .01f)
-                            using (var ia = new ImageAttributes())
-                            {
-                                ia.SetColorMatrix(new ColorMatrix { Matrix33 = Math.Max(0, Math.Min(1, L.Alpha)) });
-                                g.ResetTransform();
-                                g.DrawImage(layer, new Rectangle(0, 0, layer.Width, layer.Height), 0, 0, layer.Width, layer.Height, GraphicsUnit.Pixel, ia);
-                                g.Transform = gtr;
-                            }
                     }
                 }
                 else
                 {
-                    if (L.Upside) { g.TranslateTransform(0, -h / 2); g.RotateTransform(180); g.TranslateTransform(0, h / 2); }
-                    art.Rig.Draw(g, L.Pose, art.K, L.FaceRight);
-                }
+                    g.Transform = full;
+                    if (L.Alpha < .995f)
+                    {
+                        // 순간이동: 몸만 투명하게(장식·말풍선은 그대로)
+                        var gtr = g.Transform;
+                        using (var layer = new Bitmap(result.Width, result.Height, PixelFormat.Format32bppArgb))
+                        {
+                            using (var lg = Graphics.FromImage(layer))
+                            {
+                                lg.Clear(Color.Transparent); CharacterArt.Quality(lg); lg.Transform = gtr;
+                                if (L.Upside) { lg.TranslateTransform(0, -h / 2); lg.RotateTransform(180); lg.TranslateTransform(0, h / 2); }
+                                art.Rig.Draw(lg, L.Pose, art.K, L.FaceRight);
+                            }
+                            if (L.Alpha > .01f)
+                                using (var ia = new ImageAttributes())
+                                {
+                                    ia.SetColorMatrix(new ColorMatrix { Matrix33 = Math.Max(0, Math.Min(1, L.Alpha)) });
+                                    g.ResetTransform();
+                                    g.DrawImage(layer, new Rectangle(0, 0, layer.Width, layer.Height), 0, 0, layer.Width, layer.Height, GraphicsUnit.Pixel, ia);
+                                    g.Transform = gtr;
+                                }
+                        }
+                    }
+                    else
+                    {
+                        if (L.Upside) { g.TranslateTransform(0, -h / 2); g.RotateTransform(180); g.TranslateTransform(0, h / 2); }
+                        art.Rig.Draw(g, L.Pose, art.K, L.FaceRight);
+                    }
 
-                // 몸에 붙어 따라 움직이는 장식
-                g.Transform = full;
-                DrawDecor(g, L, art, w, h, scale, rotorH);
+                    // 몸에 붙어 따라 움직이는 장식
+                    g.Transform = full;
+                    DrawDecor(g, L, art, w, h, scale, rotorH);
+                }
                 g.ResetTransform(); g.TranslateTransform(origin.X, origin.Y);
                 if ((L.Decor & Decor.Moon) != 0) DrawMoon(g, moonC, moonR, L.Moon);
                 DrawAffinityBadge(g, L, badge, scale);
@@ -418,13 +457,48 @@ namespace DragonBall
                         g.DrawLine(cover, tri[0].X + 2.2f * scale, r.Bottom - .5f * scale, tri[2].X - 2.2f * scale, r.Bottom - .5f * scale);
                 }
             }
+            if (L.Ai) DrawAiMark(g, r, scale);
+            if (L.CloseMark) DrawCloseMark(g, r, scale);
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+            string textToShow = L.Bubble;
+            if (L.BubbleReveal >= 0 && textToShow != null && L.BubbleReveal < textToShow.Length)
+                textToShow = textToShow.Substring(0, L.BubbleReveal);
             using (var text = new SolidBrush(L.Bubble != null && L.Bubble.StartsWith("★") ? Color.FromArgb(255, 96, 52, 8) : Color.FromArgb(255, 40, 40, 40)))
             using (var fmt = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Center })
             {
                 var box = new RectangleF(r.Left + (r.Width - textSize.Width) / 2, r.Top + (r.Height - textSize.Height) / 2, textSize.Width + 2, textSize.Height + 2);
-                g.DrawString(L.Bubble, bubbleFont, text, box, fmt);
+                g.DrawString(textToShow, L.BubbleFont ?? bubbleFont, text, box, fmt);
             }
+        }
+
+        internal const float CloseRadius = 8.5f;
+
+        private static void DrawCloseMark(Graphics g, RectangleF r, float scale)
+        {
+            float rad = CloseRadius * scale, cx = r.Right - 2 * scale, cy = r.Top + 2 * scale, a = rad * .36f;
+            using (var fill = new SolidBrush(Color.FromArgb(255, 40, 40, 40)))
+            using (var cross = new Pen(Color.White, 2.2f * scale) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+            {
+                g.FillEllipse(fill, cx - rad, cy - rad, rad * 2, rad * 2);
+                g.DrawLine(cross, cx - a, cy - a, cx + a, cy + a); g.DrawLine(cross, cx - a, cy + a, cx + a, cy - a);
+            }
+        }
+
+        private static void DrawAiMark(Graphics g, RectangleF r, float s)
+        {
+            var tag = new RectangleF(r.Left + 7 * s, r.Top - 5.5f * s, 17 * s, 10 * s);
+            using (var path = RoundRect(tag, 5 * s))
+            {
+                using (var fill = new LinearGradientBrush(new PointF(tag.Left, tag.Top), new PointF(tag.Right, tag.Bottom), Color.FromArgb(70, 140, 255), Color.FromArgb(150, 90, 255))) g.FillPath(fill, path);
+                using (var pen = new Pen(Color.FromArgb(30, 30, 30), 1.4f * s)) g.DrawPath(pen, path);
+            }
+            try
+            {
+                using (var f = new Font("Segoe UI", 7.2f * s, FontStyle.Bold, GraphicsUnit.Pixel))
+                using (var fmt = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                { g.TextRenderingHint = TextRenderingHint.AntiAlias; g.DrawString("AI", f, Brushes.White, tag, fmt); }
+            }
+            catch { }
         }
 
         // 잠: Z 세 개가 시차를 두고(0 / 0.9 / 1.8초) 떠올라 흩어진다.
