@@ -97,12 +97,12 @@ namespace DragonBall
         private void Begin()
         {
             if (capturing) return;
-            capturing = true; pending = 0; order.Clear(); Show(); Notify("키를 하나씩 누르세요. 보조키(Ctrl · Alt · Shift) 2개 이상 + 글쇠 1개");
+            capturing = true; pending = 0; order.Clear(); ShowPending(); Notify("키를 하나씩 누르세요. 보조키(Ctrl · Alt · Shift) 2개 이상 + 글쇠 1개");
         }
 
         private void Cancel() { if (!capturing) return; capturing = false; ForeColor = SystemColors.WindowText; Text = ChatHotkey.Text(mods, key); Notify(null); }
 
-        private void Show()
+        private void ShowPending()
         {
             ForeColor = Color.FromArgb(54, 96, 190);
             Text = pending == 0 ? "키를 누르세요..." : string.Join(" + ", ChatHotkey.ModNames(pending).ToArray()) + " + ";
@@ -122,20 +122,20 @@ namespace DragonBall
             if (!capturing) return base.ProcessCmdKey(ref msg, keyData);
             Keys k = keyData & Keys.KeyCode;
             if (k == Keys.Escape) { Cancel(); return true; }
-            if (k == Keys.Back) { if (order.Count > 0) { pending &= ~order[order.Count - 1]; order.RemoveAt(order.Count - 1); } Show(); Notify(null); return true; }
+            if (k == Keys.Back) { if (order.Count > 0) { pending &= ~order[order.Count - 1]; order.RemoveAt(order.Count - 1); } ShowPending(); Notify(null); return true; }
             uint bit = k == Keys.ControlKey || k == Keys.LControlKey || k == Keys.RControlKey ? ChatHotkey.Ctrl
                      : k == Keys.Menu || k == Keys.LMenu || k == Keys.RMenu ? ChatHotkey.Alt
                      : k == Keys.ShiftKey || k == Keys.LShiftKey || k == Keys.RShiftKey ? ChatHotkey.Shift : 0;
             if (bit != 0)
             {
                 if ((pending & bit) == 0) { pending |= bit; order.Add(bit); }
-                Show(); Notify(null);
+                ShowPending(); Notify(null);
                 return true;
             }
             string reason;
             if (!ChatHotkey.Valid(pending, (uint)k, out reason))
             {
-                pending = 0; order.Clear(); Show();
+                pending = 0; order.Clear(); ShowPending();
                 Notify(reason);
                 return true;
             }

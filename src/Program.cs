@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -41,7 +41,7 @@ namespace DragonBall
                 {
                     PlayOptions.Load(); FriendData.Load();
                     CharacterArt.Reset(Native.SystemDpiScale() * PlayOptions.Current.SizeScale);
-                    var app = new App();
+                    var app = new App(); app.Notes = new NoteManager(app); app.Notes.Start();
                     Application.Run(app);
                 }
                 catch (Exception error)

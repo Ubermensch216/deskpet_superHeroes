@@ -92,10 +92,18 @@ namespace DragonBall
         public Random Rng { get { return rng; } }
         public double Now { get { return clock.Elapsed.TotalSeconds; } }
         internal List<PetWindow> LiveWindows { get { return windows; } }
+        internal NoteManager Notes;
+        internal readonly ChatController Chat;
+        private AlertPetWindow alert;
+        private PetWindow alertHidden;
+        private ChatDiaryForm diaryForm;
+        internal bool AllHidden { get { return hidden || autoHidden; } }
+        internal bool Paused { get { return paused; } }
 
         public App(bool testMode = false)
         {
             Settings = Settings.Load();
+            Chat = new ChatController(this);
             RefreshAreas();
             int[] roster = ParseRoster(Settings.Roster);
             TrayIconImage = CharacterArt.MakeIcon(roster.Length > 0 ? roster[0] : rng.Next(CharacterArt.Count));
@@ -225,6 +233,13 @@ namespace DragonBall
             var menu = new ContextMenuStrip();
             menu.Items.Add(new ToolStripMenuItem("♥ 친밀도 " + FriendData.Current.Affinity.ToString("N0") + "  ·  함께 " + FriendData.FormatTogether(FriendData.Current.TogetherSeconds)) { Enabled = false });
             menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add(new ToolStripMenuItem("말 걸기  (AI 대화)", null, delegate { BeginInvokeSafe(delegate { StartChat(pet); }); }) { Font = new Font(menu.Font, FontStyle.Bold), Enabled = ChatOptions.Current.Enabled, ShortcutKeyDisplayString = ChatOptions.Current.Hotkey ? ChatOptions.Current.HotkeyText : null });
+            menu.Items.Add(ModeMenu());
+            menu.Items.Add(new ToolStripMenuItem("일기장", null, delegate { ShowDiary(); }));
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add(NewNoteItem());
+            menu.Items.Add(new ToolStripMenuItem("메모 라이브러리", null, delegate { if (Notes != null) Notes.ShowLibrary(); }) { ShortcutKeyDisplayString = "Ctrl+Shift+F" });
+            menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(new ToolStripMenuItem("간식 주기  ·  포만감 " + (int)Math.Floor(FriendData.Current.Satiety) + "/100", null, delegate { FeedFirst(pet); }));
             menu.Items.Add(SignatureMenu(pet));
             menu.Items.Add(DemoMenu(pet));
@@ -350,6 +365,73 @@ namespace DragonBall
             t.Start();
         }
 
+        // ───────── AI 대화 ─────────
+        internal void StartChat(Pet pet)
+        {
+            if (hidden) ToggleHidden();
+            Pet p = pet ?? (Chat.Pet != null ? Chat.Pet : windows.Select(w => w.Pet).FirstOrDefault(x => !x.Hidden) ?? windows.Select(w => w.Pet).FirstOrDefault());
+            if (p != null) Chat.Begin(p);
+        }
+
+        internal void StartChatFromHotkey() { StartChat(null); }
+
+        private ToolStripMenuItem ModeMenu()
+        {
+            var root = new ToolStripMenuItem("대화 모드  ·  " + ChatMode.Current.Name) { Enabled = ChatOptions.Current.Enabled };
+            for (int i = 0; i < ChatMode.All.Length; i++)
+            {
+                int index = i; var mode = ChatMode.All[i];
+                root.DropDownItems.Add(new ToolStripMenuItem(mode.Name + "  —  " + mode.Desc, null, delegate { SetChatMode(index); }) { Checked = index == ChatOptions.Current.Mode });
+            }
+            return root;
+        }
+
+        internal void SetChatMode(int index)
+        {
+            var o = ChatOptions.Current; o.Mode = index; o.Save(); Chat.ModeChanged();
+            Pet p = Chat.Pet ?? windows.Select(w => w.Pet).FirstOrDefault(x => !x.Hidden);
+            if (p != null) { p.Bubble = ChatMode.At(index).Name + " 모드로 얘기할게!"; p.BubbleUntil = Now + 3.5; }
+        }
+
+        internal void ShowDiary()
+        {
+            if (diaryForm != null && !diaryForm.IsDisposed) { diaryForm.Show(); diaryForm.Activate(); return; }
+            diaryForm = new ChatDiaryForm(TrayIconImage); diaryForm.FormClosed += delegate { diaryForm = null; }; diaryForm.Show();
+        }
+
+        private ToolStripMenuItem NewNoteItem()
+        {
+            return new ToolStripMenuItem("새 메모", null, delegate { if (Notes != null) Notes.CreateNote(); }) { ShortcutKeyDisplayString = "Ctrl+Alt+N" };
+        }
+
+        internal AlertPetWindow ShowAlert(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message)) return alert;
+            bool fresh = alert == null || alert.IsDisposed;
+            if (fresh)
+            {
+                alert = new AlertPetWindow(this, windows.Count > 0 ? windows[0].Pet.Art.Id : 0);
+                alertHidden = windows.FirstOrDefault();
+                alert.FormClosed += OnAlertClosed;
+            }
+            alert.AddMessage(message);
+            if (fresh)
+            {
+                if (alertHidden != null) { alertHidden.Suppressed = true; alertHidden.Hide(); }
+                alert.Begin();
+            }
+            return alert;
+        }
+
+        private void OnAlertClosed(object sender, FormClosedEventArgs e)
+        {
+            if (ReferenceEquals(sender, alert)) alert = null;
+            PetWindow back = alertHidden; alertHidden = null;
+            if (back == null) return;
+            back.Suppressed = false;
+            if (windows.Contains(back) && !hidden && !autoHidden) { back.Show(); back.Invalidate2(); back.Present(Now); back.KeepOnTop(); }
+        }
+
         // ───────── 설정창에서 쓰는 동작 ─────────
         internal void SpawnFromUi(int character) { if (hidden) ToggleHidden(); Spawn(character); }
         internal void RemoveByIndex(int index) { if (index >= 0 && index < windows.Count) Remove(windows[index]); }
@@ -382,6 +464,7 @@ namespace DragonBall
         {
             bool wasFixed = PlayOptions.Current.PositionFixed;
             PlayOptions.Current = new PlayOptions(); PlayOptions.Current.Save();
+            ChatOptions.Current = new ChatOptions(); ChatOptions.Current.Save(); Chat.ApplyOptions();
             string roster = Settings.Roster; Settings = new Settings { Roster = roster }; Settings.Save();
             try { StartupOption.SetEnabled(false); } catch { }
             ApplyCharacterSettings(); ApplyHelperOptions(); RebuildForSize();
@@ -470,7 +553,7 @@ namespace DragonBall
             if (Settings.LunchOn && lunchDone != date)
             {
                 TimeSpan? t = Settings.ParseTime(Settings.LunchTime);
-                if (t.HasValue && tod >= t.Value && tod < t.Value + TimeSpan.FromSeconds(60)) { lunchDone = date; napping = false; CheerAll(Settings.LunchMsg); }
+                if (t.HasValue && tod >= t.Value && tod < t.Value + TimeSpan.FromSeconds(60)) { lunchDone = date; napping = false; if (Settings.AlertPet && !string.IsNullOrWhiteSpace(Settings.LunchMsg)) ShowAlert(Settings.LunchMsg); else CheerAll(Settings.LunchMsg); }
             }
             if (Settings.LeaveOn)
             {
@@ -481,7 +564,7 @@ namespace DragonBall
                     if (leaveGatherDone != date && tod >= gather && tod < t.Value)
                     { leaveGatherDone = date; napping = false; StartGather(now + (t.Value - tod).TotalSeconds); }
                     if (leaveDone != date && tod >= t.Value && tod < t.Value + TimeSpan.FromSeconds(60))
-                    { leaveDone = date; leaveGatherDone = date; napping = false; CheerAll(Settings.LeaveMsg); }
+                    { leaveDone = date; leaveGatherDone = date; napping = false; if (Settings.AlertPet && !string.IsNullOrWhiteSpace(Settings.LeaveMsg)) ShowAlert(Settings.LeaveMsg); else CheerAll(Settings.LeaveMsg); }
                 }
             }
             if (OptionsHourlyDue(dt))
@@ -523,6 +606,7 @@ namespace DragonBall
         internal void ShowHourWindow(string message)
         {
             ClearBubbleHourly();
+            if (Settings.AlertPet) { ShowAlert(message); return; }
             if (hourlyNotice == null || hourlyNotice.IsDisposed)
             {
                 hourlyNotice = new HourlyNotice(TrayIconImage);
@@ -594,6 +678,7 @@ namespace DragonBall
             if (paused || hidden) return;
             CheckAlarms(now);
             MaintainHourly(now);
+            if (Chat != null) Chat.Tick(now);
             if (!FeatureTick(now)) return;
             var all = windows.Select(w => w.Pet).ToList();
             double mouseX = DesktopSurfaces.Mouse.X;
@@ -734,6 +819,9 @@ namespace DragonBall
 
         public void Quit()
         {
+            if (Chat != null) Chat.Dispose();
+            if (Notes != null) Notes.Suspend();
+            if (alert != null) { alert.Close(); alert = null; }
             CloseFeatureWindows(); ClearHourly(); ActivityInput.Stop();
             SaveRoster();
             timer.Stop();
