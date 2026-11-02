@@ -1,0 +1,12 @@
+<friend schema="1" affinity="0" togetherSeconds="17.3338033" satiety="99.61480437111112" celebratedHundreds="0">
+  <notes>
+  </notes>
+  <tasks>
+    <task done="1">첫 할 일</task>
+    <task done="0">둘째 할 일</task>
+  </tasks>
+  <timer until="0001-01-01T00:00:00.0000000">잠깐 쉬어가자!</timer>
+  <discoveries>
+    <egg>dance</egg>
+  </discoveries>
+</friend>

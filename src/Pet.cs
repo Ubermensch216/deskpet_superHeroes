@@ -58,9 +58,11 @@ namespace DragonBall
         internal double HeliHalf { get { return Art.W * .66; } }
         public bool CanReact { get { return State != PetState.Drag; } }
 
-        public Pet(IWorld w, int character, double x, double y)
+        public Pet(IWorld w, int character, double x, double y) : this(w, CharacterArt.Get(character), x, y) { }
+
+        public Pet(IWorld w, CharacterArt art, double x, double y)
         {
-            Art = CharacterArt.Get(character);
+            Art = art ?? CharacterArt.Get(0);
             X = x; Y = y;
             Dir = w.Rng.Next(2) != 0 ? 1 : -1;
             Area = FindArea(w, x, y);

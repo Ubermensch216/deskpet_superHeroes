@@ -1,0 +1,12 @@
+<friend schema="1" affinity="250" togetherSeconds="60" satiety="100" celebratedHundreds="2">
+  <notes>메모
+두 줄</notes>
+  <tasks>
+    <task done="1">첫 할 일</task>
+    <task done="0">둘째</task>
+  </tasks>
+  <timer until="2026-11-02T14:27:43.9184648Z">쉬자</timer>
+  <discoveries>
+    <egg>dizzy</egg>
+  </discoveries>
+</friend>

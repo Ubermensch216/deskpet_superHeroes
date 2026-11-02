@@ -11,6 +11,7 @@ namespace DragonBall
     {
         internal static readonly Color Paper = Color.FromArgb(255, 252, 249), Ink = Color.FromArgb(68, 50, 50);
         internal static readonly Color Orange = Color.FromArgb(244, 124, 30), OrangeDark = Color.FromArgb(206, 92, 10), Gold = Color.FromArgb(255, 214, 60);
+        internal static readonly Color Blue = Color.FromArgb(54, 96, 190), BlueDark = Color.FromArgb(20, 54, 122), Navy = Color.FromArgb(15, 36, 84), Sheet = Color.FromArgb(248, 250, 255);
         internal static void Setup(Form f, Icon icon)
         {
             f.Font = new Font("Malgun Gothic", 9f); f.BackColor = Paper;

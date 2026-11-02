@@ -1,0 +1,7 @@
+<friend schema="1" affinity="250" togetherSeconds="60" satiety="100" celebratedHundreds="2">
+  <notes>
+  </notes>
+  <tasks />
+  <timer until="0001-01-01T00:00:00.0000000">잠깐 쉬어가자!</timer>
+  <discoveries />
+</friend>
