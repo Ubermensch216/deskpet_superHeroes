@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -323,14 +323,12 @@ namespace SuperHeroes
                 foreach (PointF p in ep) { minX = Math.Min(minX, p.X); maxX = Math.Max(maxX, p.X); minY = Math.Min(minY, p.Y); }
                 spriteTop = Math.Min(spriteTop, minY);
             }
-            // 수퍼히어로 시그니처 이펙트 확장
+            // 광선·기탄·늘어난 팔·여의봉은 몸 밖으로 멀리 뻗는다(앞쪽 = 바라보는 쪽)
+            float fwd = 0, up = 0;
             if (ps.HeatLaser > 0 || ps.FreezeMist > 0 || ps.Batarang > 0 || ps.WebSwing > 0 || ps.WebNet > 0 || ps.HammerThrow > 0) fwd = Math.Max(fwd, 280 * K);
             if (ps.Grapnel > 0 || ps.Lightning > 0 || ps.SonicGlow > 0) up = Math.Max(up, 220 * K);
             if (ps.CapeWing > 0) fwd = Math.Max(fwd, 160 * K);
             if (ps.SmokeBomb > 0) { fwd = Math.Max(fwd, 160 * K); }
-
-            // 광선·기탄·늘어난 팔·여의봉은 몸 밖으로 멀리 뻗는다(앞쪽 = 바라보는 쪽)
-            float fwd = 0, up = 0;
             if (ps.BeamLen > 1) fwd = Math.Max(fwd, (ps.BeamLen + 280) * K);
             if (ps.Shot >= 0) fwd = Math.Max(fwd, (1000 + 260 + 200) * K);
             if (ps.Staff >= 1.5f) { fwd = Math.Max(fwd, (250 * ps.StaffLen + 140) * K); up = Math.Max(up, (250 * ps.StaffLen + 160) * K); }
