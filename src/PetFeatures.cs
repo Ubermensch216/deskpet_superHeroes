@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -300,9 +300,18 @@ namespace SuperHeroes
             {
                 case PetState.Thrown: AdvanceThrow(w, dt); break;
                 case PetState.Resting:
+                    if (restPose == RestPose.Sig)
+                    {
+                        AdvanceSignature(w, dt);
+                    }
+                    else if (StateT >= extraDuration)
+                    {
+                        SetState(PetState.Walk, w);
+                        DelayIdle(w);
+                    }
+                    break;
                 case PetState.IdleCry:
-                    if (State == PetState.Resting && restPose == RestPose.Sig) AdvanceSignature(w, dt);
-                    if (StateT >= extraDuration) { EndSignature(w); SetState(PetState.Walk, w); DelayIdle(w); }
+                    if (StateT >= extraDuration) { SetState(PetState.Walk, w); DelayIdle(w); }
                     break;
                 case PetState.TouchCry:
                 case PetState.Hop:

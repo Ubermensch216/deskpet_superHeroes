@@ -64,7 +64,7 @@ namespace SuperHeroes
                         + "① Ollama 설치 파일(공식 ollama.com)을 내려받아 설치하고\n② AI 모델 '" + o.Model + "' 을 받아요.\n\n"
                         + "용량이 커서(합쳐서 수 GB 일 수 있어요) 시간이 걸려요. 인터넷 연결이 필요하고, 사용자 폴더의 여유 공간은 약 " + FmtBytes(free) + " 이에요.\n계속할까요?")) return Cancelled;
                     agreed = true;
-                    string dir = Path.Combine(Path.GetTempPath(), "DragonBallOllamaSetup_" + Guid.NewGuid().ToString("N"));
+                    string dir = Path.Combine(Path.GetTempPath(), "SuperHeroesOllamaSetup_" + Guid.NewGuid().ToString("N"));
                     try
                     {
                         Directory.CreateDirectory(dir);
@@ -106,7 +106,7 @@ namespace SuperHeroes
             {
                 ServicePointManager.SecurityProtocol |= (SecurityProtocolType)3072;
                 var req = (HttpWebRequest)WebRequest.Create(url);
-                req.UserAgent = "DragonBall-DeskPet"; req.Timeout = 30000; req.ReadWriteTimeout = 30000;
+                req.UserAgent = "SuperHeroes-DeskPet"; req.Timeout = 30000; req.ReadWriteTimeout = 30000;
                 if (req.Proxy != null) req.Proxy.Credentials = CredentialCache.DefaultCredentials;
                 h.Attach(req);
                 using (var resp = (HttpWebResponse)req.GetResponse())
@@ -213,7 +213,7 @@ namespace SuperHeroes
             try
             {
                 var req = (HttpWebRequest)WebRequest.Create(o.Endpoint.TrimEnd('/') + "/api/pull");
-                req.Method = "POST"; req.Timeout = 30000; req.ReadWriteTimeout = 180000; req.Proxy = null; req.UserAgent = "DragonBall-DeskPet";
+                req.Method = "POST"; req.Timeout = 30000; req.ReadWriteTimeout = 180000; req.Proxy = null; req.UserAgent = "SuperHeroes-DeskPet";
                 byte[] body = new UTF8Encoding(false).GetBytes("{\"model\":" + Json.Quote(o.Model) + ",\"stream\":true}");
                 req.ContentType = "application/json"; req.ContentLength = body.Length;
                 h.Attach(req);

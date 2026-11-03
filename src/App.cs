@@ -30,7 +30,7 @@ namespace SuperHeroes
     /// <summary>Windows 로그인 시 자동 시작 등록(HKCU Run).</summary>
     internal static class StartupOption
     {
-        private const string KeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run", ValueName = "DragonBallPet";
+        private const string KeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run", ValueName = "SuperHeroesDeskPet";
         internal static string Command() { return "\"" + Application.ExecutablePath + "\""; }
         internal static bool IsEnabled()
         {

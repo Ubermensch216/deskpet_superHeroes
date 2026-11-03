@@ -29,7 +29,7 @@ namespace SuperHeroes
         private static HttpWebRequest Make(ChatOptions o, string path, string method, int timeoutMs)
         {
             var r = (HttpWebRequest)WebRequest.Create(o.Endpoint.TrimEnd('/') + path);
-            r.Method = method; r.Timeout = timeoutMs; r.ReadWriteTimeout = 45000; r.Proxy = null; r.UserAgent = "DragonBall-DeskPet";
+            r.Method = method; r.Timeout = timeoutMs; r.ReadWriteTimeout = 45000; r.Proxy = null; r.UserAgent = "SuperHeroes-DeskPet";
             return r;
         }
 
@@ -79,7 +79,7 @@ namespace SuperHeroes
         {
             var b = new StringBuilder("{\"model\":" + Json.Quote(o.Model) + ",\"stream\":" + (stream ? "true" : "false") + ",\"think\":false,\"keep_alive\":" + Json.Quote(o.KeepAlive));
             b.Append(",\"options\":{\"num_predict\":" + numPredict + ",\"temperature\":" + temperature.ToString("0.0#", System.Globalization.CultureInfo.InvariantCulture)
-                + ",\"top_p\":0.9,\"repeat_penalty\":1.12,\"num_ctx\":3072,\"stop\":[\"\\n\",\"사용자:\",\"손오공:\",\"어린 오공:\",\"무천도사:\",\"베지터:\",\"피콜로:\",\"오공:\"]}");
+                + ",\"top_p\":0.9,\"repeat_penalty\":1.12,\"num_ctx\":3072,\"stop\":[\"\\n\",\"사용자:\",\"수퍼맨:\",\"배트맨:\",\"스파이더맨:\",\"토르:\"]}");
             b.Append(",\"messages\":[");
             for (int i = 0; i < msgs.Count; i++)
             { if (i > 0) b.Append(','); b.Append("{\"role\":" + Json.Quote(msgs[i].Role) + ",\"content\":" + Json.Quote(msgs[i].Content) + "}"); }
@@ -120,7 +120,7 @@ namespace SuperHeroes
             try
             {
                 var r = Make(o, "/api/chat", "POST", 60000);
-                WriteBody(r, Body(o, msgs, false, numPredict, temperature).Replace(",\"stop\":[\"\\n\",\"사용자:\",\"손오공:\",\"어린 오공:\",\"무천도사:\",\"베지터:\",\"피콜로:\",\"오공:\"]", ""));
+                WriteBody(r, Body(o, msgs, false, numPredict, temperature).Replace(",\"stop\":[\"\\n\",\"사용자:\",\"수퍼맨:\",\"배트맨:\",\"스파이더맨:\",\"토르:\"]", ""));
                 using (var resp = (HttpWebResponse)r.GetResponse())
                 using (var sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8))
                     return Json.Str(Json.Get(Json.Parse(sr.ReadToEnd()), "message"), "content");

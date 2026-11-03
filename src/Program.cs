@@ -17,6 +17,11 @@ namespace SuperHeroes
 {
     internal static class Program
     {
+                private static void Log(string msg)
+        {
+            try { File.AppendAllText(Path.Combine(Paths.Dir, "debug.log"), DateTime.Now.ToString("HH:mm:ss.fff") + " " + msg + Environment.NewLine); } catch { }
+        }
+
         [STAThread]
         private static void Main(string[] args)
         {
@@ -27,30 +32,47 @@ namespace SuperHeroes
             if (args.Length >= 2 && args[0] == "--render-test") { DevTools.RenderSheet(args[1], args.Length >= 3 ? float.Parse(args[2]) : Native.SystemDpiScale()); return; }
             if (args.Length >= 2 && args[0] == "--selftest") { Environment.Exit(DevTools.SelfTest(args[1])); return; }
             if (args.Length >= 2 && args[0] == "--ui-test") { Environment.Exit(DevTools.UiTest(args[1])); return; }
+            Log("Main start");
             bool created;
             using (var mutex = new Mutex(true, "SuperHeroes_DeskFriend_single_instance", out created))
             {
+                Log("Mutex created: " + created);
                 if (!created)
                 {
-                    MessageBox.Show("수퍼히어로이 이미 실행 중이야.\n작업표시줄 알림 영역의 친구 아이콘을 우클릭해서 ‘화면 가운데로 다시 부르기’를 눌러줘.", "수퍼히어로", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    Log("Exiting: mutex not created");
+                    MessageBox.Show("수퍼히어로가 이미 실행 중이야.\n작업표시줄 알림 영역의 친구 아이콘을 우클릭해서 ‘화면 가운데로 다시 부르기’를 눌러줘.", "수퍼히어로", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
-                Application.ThreadException += delegate (object s, ThreadExceptionEventArgs e) { FeatureLog.Write(e.Exception); };
+                Application.ThreadException += delegate (object s, ThreadExceptionEventArgs e) {
+                    Log("ThreadException: " + e.Exception);
+                    FeatureLog.Write(e.Exception);
+                };
+                AppDomain.CurrentDomain.UnhandledException += delegate (object s, UnhandledExceptionEventArgs e) {
+                    Log("Unhandled: " + e.ExceptionObject);
+                };
                 try
                 {
+                    Log("Loading options...");
                     PlayOptions.Load(); FriendData.Load();
                     CharacterArt.Reset(Native.SystemDpiScale() * PlayOptions.Current.SizeScale);
-                    var app = new App(); app.Notes = new NoteManager(app); app.Notes.Start();
+                    Log("Creating App...");
+                    var app = new App();
+                    Log("Starting Notes...");
+                    app.Notes = new NoteManager(app); app.Notes.Start();
+                    Log("Running Application.Run...");
                     Application.Run(app);
+                    Log("Application.Run returned.");
                 }
                 catch (Exception error)
                 {
+                    Log("Caught in Main: " + error);
                     FeatureLog.Write(error);
                     MessageBox.Show("친구를 화면에 표시하지 못했어.\n\n" + error.Message + "\n\n기록: " + Path.Combine(Paths.Dir, "수퍼히어로_오류기록.txt"), "수퍼히어로", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
                 GC.KeepAlive(mutex);
             }
+            Log("Main ended.");
         }
     }
 

@@ -130,14 +130,14 @@ namespace SuperHeroes
 
         private void SigPose(Pose P, ref Look L, double t)
         {
-            ApplySignature(ref L, 0);
+            ApplySignature(ref L, t);
         }
 
         private int sigIndex;
         private double sigTime, sigDuration;
         private bool sigTeleported;
 
-        public bool IsSignatureActive { get { return State == PetState.PowerRise; } }
+        public bool IsSignatureActive { get { return State == PetState.Resting && restPose == RestPose.Sig; } }
         public int CurrentSigIndex { get { return sigIndex; } }
 
         internal void StartSignature(IWorld w, int idx)
@@ -148,8 +148,10 @@ namespace SuperHeroes
             sigDuration = def.Dur;
             sigTime = 0;
             sigTeleported = false;
-            State = PetState.PowerRise;
+            State = PetState.Resting;
+            restPose = RestPose.Sig;
             StateT = 0;
+            extraDuration = sigDuration;
             stateDur = sigDuration;
             Bubble = def.Name;
             BubbleUntil = w.Now + sigDuration;
@@ -158,8 +160,7 @@ namespace SuperHeroes
         private void EndSignature(IWorld w)
         {
             sigTeleported = false;
-            State = PetState.Pause;
-            StateT = 0;
+            SetState(PetState.Pause, w);
             stateDur = 1.5;
             Bubble = null;
         }
@@ -193,7 +194,7 @@ namespace SuperHeroes
             if (!IsSignatureActive) return;
 
             Pose P = L.Pose;
-            double t = sigTime;
+            double t = sigTime > 0 ? sigTime : StateT;
             float phase = (float)(t / sigDuration);
             P.SigAct = sigIndex;
             P.SigPhase = phase;
