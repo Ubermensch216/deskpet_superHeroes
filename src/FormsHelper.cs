@@ -3,7 +3,7 @@ using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>체크하면 회색 취소선이 남는 할 일 목록.</summary>
     internal sealed class TodoCheckList : CheckedListBox
@@ -46,7 +46,7 @@ namespace DragonBall
 
         internal FriendPanel(App app)
         {
-            FriendUI.Setup(this, app.TrayIconImage); Text = "드래곤볼 · 오늘의 작은 도우미"; ClientSize = new Size(550, 540);
+            FriendUI.Setup(this, app.TrayIconImage); Text = "수퍼히어로 · 오늘의 작은 도우미"; ClientSize = new Size(550, 540);
             MinimizeBox = true; ShowInTaskbar = true;
             var tabs = new TabControl { Name = "friendTabs", Dock = DockStyle.Fill, Padding = new Point(12, 7) }; Controls.Add(tabs);
 
@@ -118,7 +118,7 @@ namespace DragonBall
             else { int s = Math.Max(0, (int)Math.Ceiling((d - DateTime.UtcNow).TotalSeconds)); remaining.Text = string.Format("{0:00}:{1:00} 남았어", s / 60, s % 60); }
         }
         private void SaveOrWarn()
-        { if (!FriendData.Current.Save()) MessageBox.Show(this, "파일에 저장하지 못했어. 저장 위치의 쓰기 권한을 확인해 줘.", "드래곤볼"); }
+        { if (!FriendData.Current.Save()) MessageBox.Show(this, "파일에 저장하지 못했어. 저장 위치의 쓰기 권한을 확인해 줘.", "수퍼히어로"); }
 
         // ───── 도우미 창 설정은 통합 설정창(화면 · 시스템)으로 옮겼다 ─────
         private void StyleTabs(TabControl tabs)

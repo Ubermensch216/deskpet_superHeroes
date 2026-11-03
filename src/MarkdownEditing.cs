@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     internal enum LineStyle { None = 0, Bullet = 1, Checklist = 2, Heading1 = 3, Heading2 = 4, Heading3 = 5 }
 

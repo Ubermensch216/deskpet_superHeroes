@@ -1,13 +1,13 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace DragonBall
+namespace SuperHeroes
 {
-    /// <summary>AI 대화 설정 (드래곤볼_대화.ini). 로컬 Ollama 와만 이야기하는 것이 기본이다.</summary>
+    /// <summary>AI 대화 설정 (수퍼히어로_대화.ini). 로컬 Ollama 와만 이야기하는 것이 기본이다.</summary>
     internal sealed class ChatOptions
     {
         internal bool Enabled = true;
@@ -28,7 +28,7 @@ namespace DragonBall
         internal string HotkeyText { get { return ChatHotkey.Text(HotkeyMods, HotkeyKey, "+"); } }
 
         internal static ChatOptions Current = new ChatOptions();
-        internal const string Name = "드래곤볼_대화.ini";
+        internal const string Name = "수퍼히어로_대화.ini";
         internal static string FilePath { get { return Path.Combine(Paths.Dir, Name); } }
 
         internal static void Load()
@@ -55,7 +55,7 @@ namespace DragonBall
         internal bool Save()
         {
             Func<bool, string> b = x => x ? "1" : "0";
-            var t = new StringBuilder("; 드래곤볼 AI 대화 설정 (로컬 Ollama)\r\n");
+            var t = new StringBuilder("; 수퍼히어로 AI 대화 설정 (로컬 Ollama)\r\n");
             t.Append("Enabled=" + b(Enabled) + "\r\nEndpoint=" + Endpoint + "\r\nModel=" + Model + "\r\nKeepAlive=" + KeepAlive + "\r\n");
             t.Append("Mode=" + Mode + "\r\nHotkey=" + b(Hotkey) + "\r\nHotkeyMods=" + HotkeyMods + "\r\nHotkeyKey=" + HotkeyKey + "\r\nSound=" + b(Sound) + "\r\nMemory=" + b(Memory) + "\r\nChips=" + b(Chips) + "\r\nDiary=" + b(Diary) + "\r\n");
             t.Append("Proactive=" + b(Proactive) + "\r\nProactiveMinutes=" + ProactiveMinutes + "\r\n");
@@ -64,11 +64,11 @@ namespace DragonBall
         }
     }
 
-    /// <summary>대화에서 알게 된 사용자 이야기(드래곤볼_기억.txt, 한 줄에 하나). 사용자가 보고 지울 수 있다.</summary>
+    /// <summary>대화에서 알게 된 사용자 이야기(수퍼히어로_기억.txt, 한 줄에 하나). 사용자가 보고 지울 수 있다.</summary>
     internal static class ChatMemory
     {
         internal const int MaxFacts = 30;
-        internal const string Name = "드래곤볼_기억.txt";
+        internal const string Name = "수퍼히어로_기억.txt";
         private static List<string> facts;
         internal static string FilePath { get { return Path.Combine(Paths.Dir, Name); } }
 
@@ -112,13 +112,13 @@ namespace DragonBall
         internal static void Clear() { Facts.Clear(); Save(); }
     }
 
-    /// <summary>일기장(드래곤볼_일기.txt, 한 줄에 "날짜 시각 [탭] 문장"). 대화가 끝날 때 한 줄 쓰고, 사용자가 보고 지울 수 있다.</summary>
+    /// <summary>일기장(수퍼히어로_일기.txt, 한 줄에 "날짜 시각 [탭] 문장"). 대화가 끝날 때 한 줄 쓰고, 사용자가 보고 지울 수 있다.</summary>
     internal static class ChatDiary
     {
         internal struct Entry { internal DateTime When; internal string Text; }
 
         internal const int MaxEntries = 200;
-        internal const string Name = "드래곤볼_일기.txt";
+        internal const string Name = "수퍼히어로_일기.txt";
         private static List<Entry> entries;
         internal static string FilePath { get { return Path.Combine(Paths.Dir, Name); } }
 

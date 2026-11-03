@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -6,16 +6,16 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Xml;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     internal enum NoteSort { UpdatedDescending, CreatedDescending, TitleAscending }
 
     /// <summary>
     /// 메모 저장소.
-    ///   %AppData%\드래곤볼\메모\notes\{id}.xml        메모 본문 · 모양 · 위치 · 첨부 목록
-    ///   %AppData%\드래곤볼\메모\revisions\{id}.xml    덮어쓰기 전 본문(메모당 50개)
-    ///   %AppData%\드래곤볼\메모\attachments\{id}\     복사해 둔 이미지
-    ///   %AppData%\드래곤볼\메모\library.xml           노트북 · 알림 · 기본 설정
+    ///   %AppData%\수퍼히어로\메모\notes\{id}.xml        메모 본문 · 모양 · 위치 · 첨부 목록
+    ///   %AppData%\수퍼히어로\메모\revisions\{id}.xml    덮어쓰기 전 본문(메모당 50개)
+    ///   %AppData%\수퍼히어로\메모\attachments\{id}\     복사해 둔 이미지
+    ///   %AppData%\수퍼히어로\메모\library.xml           노트북 · 알림 · 기본 설정
     /// 파일은 임시 파일에 쓴 뒤 바꿔치기(원자적)하므로 쓰는 도중에 꺼져도 이전 글이 그대로 남는다.
     /// 목록 · 검색 · 태그는 시작할 때 메모리에 올려 둔 색인으로 처리한다. 백업은 폴더 통째로 복사하면 된다.
     /// </summary>

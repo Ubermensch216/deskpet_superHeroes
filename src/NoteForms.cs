@@ -1,11 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>한 줄 입력 창(노트북 이름 등).</summary>
     internal sealed class PromptForm : Form
@@ -108,7 +108,7 @@ namespace DragonBall
 
         internal NoteLibraryForm(NoteManager mgr)
         {
-            this.mgr = mgr; FriendUI.Setup(this, mgr.AppIcon); Text = "드래곤볼 · 메모 라이브러리"; ClientSize = new Size(920, 620); MinimumSize = new Size(700, 440);
+            this.mgr = mgr; FriendUI.Setup(this, mgr.AppIcon); Text = "수퍼히어로 · 메모 라이브러리"; ClientSize = new Size(920, 620); MinimumSize = new Size(700, 440);
             FormBorderStyle = FormBorderStyle.Sizable; MaximizeBox = true; ShowInTaskbar = true; StartPosition = FormStartPosition.CenterScreen;
 
             var left = new Panel { Dock = DockStyle.Left, Width = 256, Padding = new Padding(12, 14, 6, 10) };
@@ -242,7 +242,7 @@ namespace DragonBall
 
         internal NoteHistoryForm(NoteManager mgr, Guid noteId)
         {
-            this.mgr = mgr; this.noteId = noteId; FriendUI.Setup(this, mgr.AppIcon); Text = "드래곤볼 · 메모 기록"; ClientSize = new Size(740, 500); MinimumSize = new Size(560, 360);
+            this.mgr = mgr; this.noteId = noteId; FriendUI.Setup(this, mgr.AppIcon); Text = "수퍼히어로 · 메모 기록"; ClientSize = new Size(740, 500); MinimumSize = new Size(560, 360);
             FormBorderStyle = FormBorderStyle.Sizable; MaximizeBox = false; ShowInTaskbar = false; StartPosition = FormStartPosition.CenterParent;
             var bottom = new Panel { Dock = DockStyle.Bottom, Height = 50 };
             restore = new Button { Text = "이 모습으로 복원", Width = 140, Height = 32, Enabled = false, Anchor = AnchorStyles.Right | AnchorStyles.Top };
@@ -280,7 +280,7 @@ namespace DragonBall
 
         internal ReminderForm(Action<DateTime, string> create)
         {
-            this.create = create; FriendUI.Setup(this, null); Text = "드래곤볼 · 알림 만들기"; ClientSize = new Size(380, 230); ShowInTaskbar = false; StartPosition = FormStartPosition.Manual; TopMost = true;
+            this.create = create; FriendUI.Setup(this, null); Text = "수퍼히어로 · 알림 만들기"; ClientSize = new Size(380, 230); ShowInTaskbar = false; StartPosition = FormStartPosition.Manual; TopMost = true;
             Controls.Add(new Label { Text = "언제 알려 줄까?", AutoSize = true, Left = 14, Top = 14, ForeColor = FriendUI.Ink });
             var first = DateTime.Now.AddHours(1); first = new DateTime(first.Year, first.Month, first.Day, first.Hour, first.Minute, 0);
             date = new DateTimePicker { Left = 14, Top = 40, Width = 150, Format = DateTimePickerFormat.Short, Value = first };

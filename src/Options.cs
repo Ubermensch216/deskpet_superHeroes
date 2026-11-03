@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Globalization;
@@ -7,12 +7,12 @@ using System.Linq;
 using System.Text;
 using System.Xml;
 
-namespace DragonBall
+namespace SuperHeroes
 {
-    /// <summary>알림·낮잠·정각 알림 설정 (드래곤볼_설정.ini).</summary>
+    /// <summary>알림·낮잠·정각 알림 설정 (수퍼히어로_설정.ini).</summary>
     internal sealed class Settings
     {
-        internal const string FileName = "드래곤볼_설정.ini";
+        internal const string FileName = "수퍼히어로_설정.ini";
         public bool LunchOn = true; public string LunchTime = "12:00"; public string LunchMsg = "점심 먹으러 가자!";
         public bool LeaveOn = true; public string LeaveTime = "18:00"; public string LeaveMsg = "퇴근이다! 오늘도 수고했어";
         public bool NapOn = true; public int NapMinutes = 10;
@@ -70,7 +70,7 @@ namespace DragonBall
         public bool Save()
         {
             var b = new StringBuilder();
-            b.AppendLine("; 드래곤볼 설정 파일. 지우면 처음 설정으로 돌아가요.");
+            b.AppendLine("; 수퍼히어로 설정 파일. 지우면 처음 설정으로 돌아가요.");
             b.AppendLine("[알림]");
             b.AppendLine("LunchOn=" + (LunchOn ? "1" : "0")); b.AppendLine("LunchTime=" + LunchTime); b.AppendLine("LunchMsg=" + OneLine(LunchMsg));
             b.AppendLine("LeaveOn=" + (LeaveOn ? "1" : "0")); b.AppendLine("LeaveTime=" + LeaveTime); b.AppendLine("LeaveMsg=" + OneLine(LeaveMsg));
@@ -106,7 +106,7 @@ namespace DragonBall
 
     internal enum ClickReaction { Cycle, Random, Squash, Cry, Hop, None }
 
-    /// <summary>움직임·반응·도우미 창 설정 (드래곤볼_움직임.ini).</summary>
+    /// <summary>움직임·반응·도우미 창 설정 (수퍼히어로_움직임.ini).</summary>
     internal sealed class PlayOptions
     {
         internal bool Walls = true, Ceiling = true, Windows = true, Idle = true;
@@ -124,7 +124,7 @@ namespace DragonBall
         internal double FixedX = double.NaN, FixedY = double.NaN;
 
         internal static PlayOptions Current = new PlayOptions();
-        internal const string Name = "드래곤볼_움직임.ini";
+        internal const string Name = "수퍼히어로_움직임.ini";
         internal static string FilePath { get { return Path.Combine(Paths.Dir, Name); } }
         internal static double SigChance(int freq) { return freq <= 0 ? 0 : freq == 1 ? .08 : freq == 2 ? .20 : .38; }
         internal float SizeScale { get { return Math.Max(.6f, Math.Min(2f, SizePercent / 100f)); } }
@@ -187,7 +187,7 @@ namespace DragonBall
         {
             Func<bool, string> b = x => x ? "1" : "0";
             Func<double, string> f = x => x.ToString("0.00", CultureInfo.InvariantCulture);
-            var t = new StringBuilder("; 드래곤볼 움직임 설정\r\n");
+            var t = new StringBuilder("; 수퍼히어로 움직임 설정\r\n");
             t.Append("Walls=" + b(Walls) + "\r\nCeiling=" + b(Ceiling) + "\r\nWindows=" + b(Windows) + "\r\nIdle=" + b(Idle) + "\r\n");
             t.Append("Escape=" + b(Escape) + "\r\nFollow=" + b(Follow) + "\r\nFocus=" + b(Focus) + "\r\nWorkFocus=" + b(WorkFocus) + "\r\nFullscreen=" + b(Fullscreen) + "\r\n");
             t.Append("HungerCry=" + b(HungerCry) + "\r\nSecrets=" + b(Secrets) + "\r\nShortRest=" + b(ShortRest) + "\r\nShowAffinity=" + b(ShowAffinity) + "\r\n");
@@ -210,11 +210,11 @@ namespace DragonBall
         public override string ToString() { return Text; }
     }
 
-    /// <summary>친구 기록: 친밀도·함께한 시간·포만감·메모·할 일·타이머·발견한 비밀 (드래곤볼_기록.xml).</summary>
+    /// <summary>친구 기록: 친밀도·함께한 시간·포만감·메모·할 일·타이머·발견한 비밀 (수퍼히어로_기록.xml).</summary>
     internal sealed class FriendData
     {
         internal const double SnackPortion = 25;
-        internal static string Name = "드래곤볼_기록.xml";
+        internal static string Name = "수퍼히어로_기록.xml";
         internal static FriendData Current = new FriendData();
         internal static string DataPath { get { return Path.Combine(Paths.Dir, Name); } }
 
@@ -344,7 +344,7 @@ namespace DragonBall
         {
             if (TimerUtc == DateTime.MinValue || DateTime.UtcNow < TimerUtc) return;
             TimerUtc = DateTime.MinValue; Save();
-            var notice = new HourlyNotice(app.TrayIconImage) { Text = "드래곤볼 · 타이머" };
+            var notice = new HourlyNotice(app.TrayIconImage) { Text = "수퍼히어로 · 타이머" };
             notice.SetMessage(string.IsNullOrWhiteSpace(TimerText) ? "설정한 시간이 됐어!" : TimerText); notice.Show();
             app.Announce(string.IsNullOrWhiteSpace(TimerText) ? "설정한 시간이 됐어!" : TimerText);
         }

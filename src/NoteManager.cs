@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -7,7 +7,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>
     /// 바탕화면의 메모 창들을 거느리고 저장소와 맞춘다(deskNote 의 NoteWindowManager).

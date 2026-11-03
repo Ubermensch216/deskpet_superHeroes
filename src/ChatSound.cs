@@ -1,8 +1,8 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Media;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>말할 때 글자마다 나는 짧은 "뽁" 소리(동물의 숲 같은 말소리). 파일 없이 코드로 만들어 낸다.</summary>
     internal static class ChatSound

@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     internal enum PetState
     {

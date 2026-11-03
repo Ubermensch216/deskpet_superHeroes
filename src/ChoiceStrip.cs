@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>
     /// 그림 카드 여러 장 중 하나를 고르는 가로 선택줄(콤보박스 대신). 카드마다 그림(painter)과 글자가 들어간다.

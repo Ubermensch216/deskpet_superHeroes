@@ -1,7 +1,7 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>
     /// 대화 모드: 챗봇에서 흔히 쓰는 말투·길이 설정 다섯 가지. 캐릭터의 기본 성격은 지키되 말하는 방식만 바꾼다.

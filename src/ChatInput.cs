@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -7,7 +7,7 @@ using System.Drawing.Text;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>
     /// 캐릭터에게 말을 거는 입력칸. 채팅창이 아니라 캐릭터 발치에 놓이는 얇은 알약 하나다.
@@ -303,7 +303,7 @@ namespace DragonBall
             internal Frame()
             {
                 FormBorderStyle = FormBorderStyle.None; ShowInTaskbar = false; StartPosition = FormStartPosition.Manual; TopMost = true;
-                Text = "드래곤볼 · 말 걸기"; Size = new Size(1, 1); Location = new Point(-32000, -32000);
+                Text = "수퍼히어로 · 말 걸기"; Size = new Size(1, 1); Location = new Point(-32000, -32000);
             }
             protected override void OnPaintBackground(PaintEventArgs e) { }
 

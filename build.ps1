@@ -1,6 +1,6 @@
-# 드래곤볼 데스크톱 펫 빌드 스크립트
+# 수퍼히어로 데스크톱 펫 빌드 스크립트
 # .NET SDK 의 Roslyn(csc.dll)로 .NET Framework 4.8 대상 단일 EXE 를 만든다. (설치 없이 EXE 한 개로 실행)
-param([string]$Out = "$PSScriptRoot\output\dragonball.exe")
+param([string]$Out = "$PSScriptRoot\output\superheroes.exe")
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot
 $dotnet = (Get-Command dotnet).Source
@@ -25,8 +25,8 @@ function Invoke-Csc([string]$target, [string]$icon) {
     if ($LASTEXITCODE -ne 0) { throw "빌드 실패 (exit $LASTEXITCODE)" }
 }
 
-# 아이콘이 없으면: 아이콘 없이 한 번 빌드해 실행 파일이 그린 얼굴로 .ico 를 만든 뒤, 다시 빌드한다.
-$icon = "$root\assets\dragonball.ico"
+# 아이콘이 없으면, 아이콘 없이 한 번 빌드한 실행 파일이 그린 얼굴로 .ico 를 만든 뒤 다시 빌드한다.
+$icon = "$root\assets\superheroes.ico"
 if (-not (Test-Path $icon)) {
     $tmp = "$root\obj\icon-maker.exe"
     Invoke-Csc $tmp $null

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -6,7 +6,7 @@ using System.Drawing.Imaging;
 using System.Drawing.Text;
 using System.Windows.Forms;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>알림: 알림 창 안에서만 움직이는 캐릭터의 자세 제어(걷기·낙하 같은 물리는 쓰지 않는다).</summary>
     internal sealed partial class Pet
@@ -213,7 +213,7 @@ namespace DragonBall
         {
             this.app = app;
             AutoScaleMode = AutoScaleMode.None; FormBorderStyle = FormBorderStyle.None; ShowInTaskbar = false; StartPosition = FormStartPosition.Manual; TopMost = true;
-            Text = "드래곤볼 · 알림"; Size = new Size(1, 1); Location = new Point(-32000, -32000);
+            Text = "수퍼히어로 · 알림"; Size = new Size(1, 1); Location = new Point(-32000, -32000);
             area = Screen.FromPoint(Cursor.Position).WorkingArea;
             art = CharacterArt.Zoomed(character, Zoom);
             // 발바닥 위치: 몸통의 한가운데가 화면 한가운데에 오도록

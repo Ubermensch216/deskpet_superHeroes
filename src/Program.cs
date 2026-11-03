@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -8,12 +8,12 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
-[assembly: System.Reflection.AssemblyTitle("드래곤볼")]
-[assembly: System.Reflection.AssemblyProduct("드래곤볼")]
+[assembly: System.Reflection.AssemblyTitle("수퍼히어로")]
+[assembly: System.Reflection.AssemblyProduct("수퍼히어로")]
 [assembly: System.Reflection.AssemblyFileVersion("1.0.0.0")]
 [assembly: System.Reflection.AssemblyVersion("1.0.0.0")]
 
-namespace DragonBall
+namespace SuperHeroes
 {
     internal static class Program
     {
@@ -28,11 +28,11 @@ namespace DragonBall
             if (args.Length >= 2 && args[0] == "--selftest") { Environment.Exit(DevTools.SelfTest(args[1])); return; }
             if (args.Length >= 2 && args[0] == "--ui-test") { Environment.Exit(DevTools.UiTest(args[1])); return; }
             bool created;
-            using (var mutex = new Mutex(true, "DragonBall_DeskFriend_single_instance", out created))
+            using (var mutex = new Mutex(true, "SuperHeroes_DeskFriend_single_instance", out created))
             {
                 if (!created)
                 {
-                    MessageBox.Show("드래곤볼이 이미 실행 중이야.\n작업표시줄 알림 영역의 친구 아이콘을 우클릭해서 ‘화면 가운데로 다시 부르기’를 눌러줘.", "드래곤볼", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("수퍼히어로이 이미 실행 중이야.\n작업표시줄 알림 영역의 친구 아이콘을 우클릭해서 ‘화면 가운데로 다시 부르기’를 눌러줘.", "수퍼히어로", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
@@ -47,7 +47,7 @@ namespace DragonBall
                 catch (Exception error)
                 {
                     FeatureLog.Write(error);
-                    MessageBox.Show("친구를 화면에 표시하지 못했어.\n\n" + error.Message + "\n\n기록: " + Path.Combine(Paths.Dir, "드래곤볼_오류기록.txt"), "드래곤볼", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("친구를 화면에 표시하지 못했어.\n\n" + error.Message + "\n\n기록: " + Path.Combine(Paths.Dir, "수퍼히어로_오류기록.txt"), "수퍼히어로", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
                 GC.KeepAlive(mutex);
             }
@@ -92,7 +92,7 @@ namespace DragonBall
             File.WriteAllText(Path.Combine(dir, "perf.txt"), sb.ToString());
         }
 
-        /// <summary>드래곤볼 얼굴로 PNG 압축 .ico 를 만든다(빌드할 때 한 번 쓰임).</summary>
+        /// <summary>수퍼히어로 얼굴로 PNG 압축 .ico 를 만든다(빌드할 때 한 번 쓰임).</summary>
         internal static void MakeIcon(string path)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path)));
@@ -146,6 +146,7 @@ namespace DragonBall
                 K("★기술1", (p, w) => { p.Y = 720; p.Demonstrate(w, "sig0"); Adv(p, w, 3.9); }),
                 K("★기술2", (p, w) => { p.Y = 720; p.Demonstrate(w, "sig1"); Adv(p, w, 3.8); }),
                 K("★기술3", (p, w) => { p.Y = 720; p.Demonstrate(w, "sig2"); Adv(p, w, 3.6); }),
+                K("★기술4", (p, w) => { p.Y = 720; p.Demonstrate(w, "sig3"); Adv(p, w, 3.5); }),
                 K("우는중2", (p, w) => { p.Y = 720; p.Demonstrate(w, "cry"); Adv(p, w, .7); }),
                 K("눌림2", (p, w) => { p.Y = 720; p.StartSquish(w, .42, .24, PetState.Walk, false); Adv(p, w, .2); }),
                 K("앉기2", (p, w) => { p.Y = 720; p.Demonstrate(w, "sit"); Adv(p, w, 5); }),
@@ -204,6 +205,7 @@ namespace DragonBall
                     Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("★1 " + Signatures.All[c][0].Name, (p, w) => { p.Y = 720; p.Demonstrate(w, "sig0"); }, Signatures.All[c][0].Dur, 0),
                     Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("★2 " + Signatures.All[c][1].Name, (p, w) => { p.Y = 720; p.Demonstrate(w, "sig1"); }, Signatures.All[c][1].Dur, 0),
                     Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("★3 " + Signatures.All[c][2].Name, (p, w) => { p.Y = 720; p.Demonstrate(w, "sig2"); }, Signatures.All[c][2].Dur, 0),
+                    Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("★4 " + Signatures.All[c][3].Name, (p, w) => { p.Y = 720; p.Demonstrate(w, "sig3"); }, Signatures.All[c][3].Dur, 0),
                     Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("슬라이딩", (p, w) => { p.Y = 720; p.Demonstrate(w, "slide"); }, .84, 0),
                     Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("눌림(클릭)", (p, w) => { p.Y = 720; p.StartSquish(w, .42, .24, PetState.Walk, false); }, .42, 0),
                     Tuple.Create<string, Action<Pet, FakeWorld>, double, double>("우는중", (p, w) => { p.Y = 720; p.Demonstrate(w, "cry"); }, 2.4, 0),

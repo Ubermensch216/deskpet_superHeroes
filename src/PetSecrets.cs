@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>숨겨진 반응(어질어질·몰래 군무·기 폭발), 꽃다발, 친구끼리 부딪힘.</summary>
     internal sealed partial class Pet

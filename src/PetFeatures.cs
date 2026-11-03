@@ -1,9 +1,9 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>던지기·기를 모으며 비행 하강·벽/천장/창 타기·도망·쉬기·클릭 반응·위치 고정.</summary>
     internal sealed partial class Pet
@@ -195,7 +195,7 @@ namespace DragonBall
             {
                 if (State == PetState.Wall || State == PetState.Ceiling || State == PetState.WindowClimb)
                 { ClearAttachments(); Vy = 0; SetState(PetState.Falling, w); Bubble = "내려가서 보여줄게!"; BubbleUntil = w.Now + 3; return; }
-                StartSignature(w, Math.Max(0, Math.Min(2, kind[3] - '0'))); return;
+                StartSignature(w, Math.Max(0, Math.Min(3, kind[3] - '0'))); return;
             }
             AfterReaction = PetState.Walk;
             if (kind == "cry") { extraDuration = 3; SetState(PetState.TouchCry, w); }
@@ -265,7 +265,7 @@ namespace DragonBall
                     else
                     {
                         RestPose chosen = ChooseRestPose(w, focus);
-                        if (chosen == RestPose.Sig) StartSignature(w, w.Rng.Next(3)); else BeginRestPose(w, chosen, extraDuration);
+                        if (chosen == RestPose.Sig) StartSignature(w, w.Rng.Next(4)); else BeginRestPose(w, chosen, extraDuration);
                     }
                     DelayIdle(w);
                 }

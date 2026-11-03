@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Drawing.Text;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     [Flags]
     internal enum Decor
@@ -24,6 +24,7 @@ namespace DragonBall
             public float Sx, Sy, Angle, Px, Py, HopY;
             public float Alpha, Moon;            // 몸의 투명도(순간이동)·보름달 밝기
             public string Bubble;
+            public string BubbleTitle;
             public int ZPhase; public float ZTime;
             public Decor Decor; public float DecorPhase;
             public string AffinityLabel; public bool AffinityOnLeft;

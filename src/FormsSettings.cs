@@ -1,11 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     internal static class FriendUI
     {
@@ -80,7 +80,7 @@ namespace DragonBall
         {
             this.app = app;
             FriendUI.Setup(this, app.TrayIconImage);
-            Text = "드래곤볼 · 설정"; ClientSize = new Size(760, 640); MinimumSize = new Size(700, 560);
+            Text = "수퍼히어로 · 설정"; ClientSize = new Size(760, 640); MinimumSize = new Size(700, 560);
             FormBorderStyle = FormBorderStyle.Sizable; MaximizeBox = false; ShowInTaskbar = true; BackColor = SystemColors.Control;
 
             // 아래 단추줄
@@ -328,7 +328,7 @@ namespace DragonBall
             var g1 = Group(f, "마우스로 클릭했을 때"); var a = In(g1);
             clickMode = Combo(new[] { "순서대로: 놀람(발끈) → 달달 떨며 울기 → 폴짝", "무작위 반응", "놀람(발끈)만", "달달 떨며 울기만", "폴짝 뛰기만", "클릭 반응 끄기" }, (int)o.ClickMode, 400);
             a.Controls.Add(clickMode);
-            Note(a, "베지터·피콜로는 발끈(💢), 다른 친구들은 깜짝 놀라요. 살짝 놓으면 둥실 내려오고, 휙 던지면 날아간 뒤 내려와요.");
+            Note(a, "배트맨은 경계하며 날카로운 눈빛, 다른 친구들은 당당하게 반응해요. 살짝 놓으면 망토/웹으로 천천히 착지하고, 휙 던지면 히어로 랜딩으로 착지해요.");
             var g2 = Group(f, "커서가 가까이 왔을 때"); var b = In(g2);
             rEscape = new RadioButton { Text = "슉! 질주하며 도망가기", AutoSize = true, Checked = o.Escape && !o.Follow, Margin = new Padding(3) };
             rFollow = new RadioButton { Text = "커서를 졸졸 따라오기", AutoSize = true, Checked = o.Follow && !o.Escape, Margin = new Padding(3) };
@@ -510,7 +510,7 @@ namespace DragonBall
             var g4 = Group(f, "정리"); var d = In(g4);
             d.Controls.Add(FriendUI.Button("설정을 처음 상태로 되돌리기 (기록은 그대로)", delegate
             {
-                if (MessageBox.Show(this, "모든 설정을 처음 값으로 되돌릴까요?\n친밀도·할 일·메모 같은 기록은 지워지지 않아요.", "드래곤볼", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                if (MessageBox.Show(this, "모든 설정을 처음 값으로 되돌릴까요?\n친밀도·할 일·메모 같은 기록은 지워지지 않아요.", "수퍼히어로", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
                 string roster = app.Settings.Roster;
                 app.ResetAllSettings(); status.Text = "처음 설정으로 되돌렸어요."; Close(); app.OpenSettingsPage(lastPage);
             }));
@@ -614,8 +614,8 @@ namespace DragonBall
             var g3 = Group(f, "기억"); var c = In(g3);
             cChatMemory = Check(c, "대화에서 알게 된 이야기를 기억하기", o.Memory, "대화가 끝날 때 사실만 한두 줄로 적어 둬요. 이 PC 의 파일에만 저장돼요.");
             c.Controls.Add(FriendUI.Button("기억 보기 · 지우기...", delegate { new ChatMemoryForm(app.TrayIconImage).ShowDialog(this); }));
-            var g4 = Group(f, "드래곤볼 일기장"); var d = In(g4);
-            cChatDiary = Check(d, "대화가 끝나면 캐릭터가 일기 한 줄 쓰기", o.Diary, "오늘 나눈 이야기를 캐릭터의 시점에서 한두 문장으로 적어 둬요. 이 PC 의 파일(드래곤볼_일기.txt)에만 저장돼요.");
+            var g4 = Group(f, "수퍼히어로 일기장"); var d = In(g4);
+            cChatDiary = Check(d, "대화가 끝나면 캐릭터가 일기 한 줄 쓰기", o.Diary, "오늘 나눈 이야기를 캐릭터의 시점에서 한두 문장으로 적어 둬요. 이 PC 의 파일(수퍼히어로_일기.txt)에만 저장돼요.");
             d.Controls.Add(FriendUI.Button("일기장 열기...", delegate { new ChatDiaryForm(app.TrayIconImage).ShowDialog(this); }));
             return page;
         }
@@ -661,7 +661,7 @@ namespace DragonBall
                         msg =>
                         {
                             bool yes = false;
-                            try { Invoke(new Action(delegate { yes = MessageBox.Show(this, msg, "드래곤볼 · AI 자동 설치", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes; })); } catch { }
+                            try { Invoke(new Action(delegate { yes = MessageBox.Show(this, msg, "수퍼히어로 · AI 자동 설치", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes; })); } catch { }
                             return yes;
                         });
                 }
@@ -692,7 +692,7 @@ namespace DragonBall
 
 // ───────── 저장 ─────────
         private static string Norm(string v) { TimeSpan t = Settings.ParseTime(v).Value; return string.Format("{0:00}:{1:00}", t.Hours, t.Minutes); }
-        private void Warn(string m) { MessageBox.Show(this, m, "드래곤볼", MessageBoxButtons.OK, MessageBoxIcon.Asterisk); }
+        private void Warn(string m) { MessageBox.Show(this, m, "수퍼히어로", MessageBoxButtons.OK, MessageBoxIcon.Asterisk); }
 
         private bool Apply()
         {

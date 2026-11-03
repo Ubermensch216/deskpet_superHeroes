@@ -1,10 +1,10 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace DragonBall
+namespace SuperHeroes
 {
-    /// <summary>대화에서 기억해 둔 사용자 이야기를 보고 지우는 창. 기억은 전부 이 PC 의 파일(드래곤볼_기억.txt)에만 있다.</summary>
+    /// <summary>대화에서 기억해 둔 사용자 이야기를 보고 지우는 창. 기억은 전부 이 PC 의 파일(수퍼히어로_기억.txt)에만 있다.</summary>
     internal sealed class ChatMemoryForm : Form
     {
         private readonly ListBox list = new ListBox { Dock = DockStyle.Fill, IntegralHeight = false, BorderStyle = BorderStyle.FixedSingle };
@@ -18,10 +18,10 @@ namespace DragonBall
             bar.Controls.Add(FriendUI.Button("닫기", delegate { Close(); }));
             bar.Controls.Add(FriendUI.Button("모두 잊게 하기", delegate
             {
-                if (MessageBox.Show(this, "기억한 이야기를 모두 지울까요?", "드래곤볼", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes) { ChatMemory.Clear(); Fill(); }
+                if (MessageBox.Show(this, "기억한 이야기를 모두 지울까요?", "수퍼히어로", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes) { ChatMemory.Clear(); Fill(); }
             }));
             bar.Controls.Add(FriendUI.Button("선택한 이야기 잊게 하기", delegate { if (list.SelectedIndex >= 0) { ChatMemory.RemoveAt(list.SelectedIndex); Fill(); } }));
-            var note = new Label { Dock = DockStyle.Top, Height = 44, ForeColor = Color.DimGray, Padding = new Padding(8, 6, 8, 0), Text = "대화가 끝나면 알게 된 사실만 한두 줄로 적어 둬요. 이 PC 안(드래곤볼_기억.txt)에만 저장되고, 언제든 지울 수 있어요." };
+            var note = new Label { Dock = DockStyle.Top, Height = 44, ForeColor = Color.DimGray, Padding = new Padding(8, 6, 8, 0), Text = "대화가 끝나면 알게 된 사실만 한두 줄로 적어 둬요. 이 PC 안(수퍼히어로_기억.txt)에만 저장되고, 언제든 지울 수 있어요." };
             Controls.Add(list); Controls.Add(empty); Controls.Add(note); Controls.Add(bar);
             list.BringToFront();
             Fill();

@@ -1,12 +1,12 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace DragonBall
+namespace SuperHeroes
 {
-    /// <summary>캐릭터들의 일기장. 대화가 끝날 때 한 줄씩 적어 둔 일기를 날짜별로 보여 주고, 지울 수 있다(드래곤볼_일기.txt).</summary>
+    /// <summary>캐릭터들의 일기장. 대화가 끝날 때 한 줄씩 적어 둔 일기를 날짜별로 보여 주고, 지울 수 있다(수퍼히어로_일기.txt).</summary>
     internal sealed class ChatDiaryForm : Form
     {
         private static readonly Color Paper = Color.FromArgb(255, 251, 235), Rule = Color.FromArgb(232, 222, 190), Ink = Color.FromArgb(60, 48, 40), Date = Color.FromArgb(54, 96, 190);
@@ -17,15 +17,15 @@ namespace DragonBall
         internal ChatDiaryForm(Icon icon)
         {
             FriendUI.Setup(this, icon);
-            Text = "드래곤볼 일기장"; ClientSize = new Size(480, 420); MinimumSize = new Size(380, 300); FormBorderStyle = FormBorderStyle.Sizable; MaximizeBox = true;
+            Text = "수퍼히어로 일기장"; ClientSize = new Size(480, 420); MinimumSize = new Size(380, 300); FormBorderStyle = FormBorderStyle.Sizable; MaximizeBox = true;
             var bar = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 46, FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(8, 8, 8, 4) };
             bar.Controls.Add(FriendUI.Button("닫기", delegate { Close(); }));
             bar.Controls.Add(FriendUI.Button("일기 모두 지우기", delegate
             {
-                if (MessageBox.Show(this, "일기를 모두 지울까요?", "드래곤볼", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes) { ChatDiary.Clear(); Fill(); }
+                if (MessageBox.Show(this, "일기를 모두 지울까요?", "수퍼히어로", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes) { ChatDiary.Clear(); Fill(); }
             }));
             bar.Controls.Add(FriendUI.Button("선택한 일기 지우기", delegate { DeleteSelected(); }));
-            var note = new Label { Dock = DockStyle.Top, Height = 44, ForeColor = Color.DimGray, Padding = new Padding(8, 6, 8, 0), Text = "대화가 끝나면 오늘 있었던 일을 한 줄씩 적어 둬요. 이 PC 안(드래곤볼_일기.txt)에만 저장되고, 언제든 지울 수 있어요." };
+            var note = new Label { Dock = DockStyle.Top, Height = 44, ForeColor = Color.DimGray, Padding = new Padding(8, 6, 8, 0), Text = "대화가 끝나면 오늘 있었던 일을 한 줄씩 적어 둬요. 이 PC 안(수퍼히어로_일기.txt)에만 저장되고, 언제든 지울 수 있어요." };
             Controls.Add(list); Controls.Add(empty); Controls.Add(note); Controls.Add(bar);
             list.BringToFront();
             list.MeasureItem += OnMeasure; list.DrawItem += OnDraw;

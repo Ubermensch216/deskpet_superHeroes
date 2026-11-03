@@ -7,7 +7,7 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>실행 중 입력(키보드·마우스 클릭)이 있었는지 감시 — 정각 말풍선이 입력이 있을 때까지 남게 한다.</summary>
     internal static class ActivityInput
@@ -64,7 +64,7 @@ namespace DragonBall
     internal sealed partial class App : ApplicationContext, IWorld
     {
         public const int MaxPets = 16;
-        public const string Title = "드래곤볼";
+        public const string Title = "수퍼히어로";
 
         private readonly List<PetWindow> windows = new List<PetWindow>();
         private readonly Random rng = new Random();
@@ -257,13 +257,13 @@ namespace DragonBall
         /// <summary>★ 표시가 붙은 시그니처 기술. 우클릭한 친구의 기술 3가지(트레이에서는 캐릭터별).</summary>
         private ToolStripMenuItem SignatureMenu(Pet pet)
         {
-            var root = new ToolStripMenuItem("★ 시그니처 기술");
+            var root = new ToolStripMenuItem("★ 히어로 특징 행동");
             if (pet != null)
             {
                 var sigs = Signatures.All[pet.Art.Id];
-                root.DropDownItems.Add(new ToolStripMenuItem(pet.Art.Info.Name + "의 기술") { Enabled = false });
-                for (int i = 0; i < 3; i++) { int idx = i; root.DropDownItems.Add(sigs[i].Label, null, delegate { pet.RequestSignature(this, idx); }); }
-                var others = new ToolStripMenuItem("다른 캐릭터 기술 보기");
+                root.DropDownItems.Add(new ToolStripMenuItem(pet.Art.Info.Name + "의 특징 행동") { Enabled = false });
+                for (int i = 0; i < sigs.Length; i++) { int idx = i; root.DropDownItems.Add(sigs[i].Label, null, delegate { pet.RequestSignature(this, idx); }); }
+                var others = new ToolStripMenuItem("다른 캐릭터 특징 행동 보기");
                 AddAllSignatures(others, pet.Art.Id); root.DropDownItems.Add(new ToolStripSeparator()); root.DropDownItems.Add(others);
             }
             else AddAllSignatures(root, -1);
@@ -276,7 +276,7 @@ namespace DragonBall
             {
                 if (c == skip) continue;
                 int id = c; var sub = new ToolStripMenuItem(CharacterArt.Infos[c].Name);
-                for (int i = 0; i < 3; i++) { int idx = i; sub.DropDownItems.Add(Signatures.All[c][i].Label, null, delegate { PreviewSignature(id, idx); }); }
+                for (int i = 0; i < Signatures.All[c].Length; i++) { int idx = i; sub.DropDownItems.Add(Signatures.All[c][i].Label, null, delegate { PreviewSignature(id, idx); }); }
                 parent.DropDownItems.Add(sub);
             }
         }
@@ -292,7 +292,7 @@ namespace DragonBall
             var rest = new ToolStripMenuItem("쉬는 모습"); fill(rest, new[] { new[] { "앉아서 쉬기", "sit" }, new[] { "잠자기", "sleep" }, new[] { "멍때리기", "daydream" }, new[] { "기지개", "stretch" } });
             var idle = new ToolStripMenuItem("멈춰 섰을 때 몸짓"); fill(idle, new[] { new[] { "머리 긁적", "scratch" }, new[] { "팔짱", "cross" }, new[] { "손 흔들기", "wave" }, new[] { "주먹 불끈", "flex" }, new[] { "수염 쓰다듬기", "beard" } });
             var react = new ToolStripMenuItem("반응"); fill(react, new[] { new[] { "클릭할 때 달달 떨며 우는 모습", "cry" }, new[] { "배고플 때 우는 모습", "weep" }, new[] { "폴짝 뛰기", "hop" }, new[] { "질주 (커서 피해 도망)", "slide" } });
-            var move = new ToolStripMenuItem("이동"); fill(move, new[] { new[] { "비행 하강", "fall" }, new[] { "벽 타기", "wall" }, new[] { "천장 타기", "ceiling" }, new[] { "창 타기", "window" } });
+            var move = new ToolStripMenuItem("이동"); fill(move, new[] { new[] { "비행 하강 (슈퍼히어로 랜딩)", "fall" }, new[] { "벽 타기", "wall" }, new[] { "천장 타기", "ceiling" }, new[] { "창 타기", "window" } });
             var secret = new ToolStripMenuItem("숨은 반응");
             secret.DropDownItems.Add("어질어질", null, delegate { Pet p = pet ?? windows.Select(a => a.Pet).FirstOrDefault(); if (p != null) p.Demonstrate(this, "dizzy"); });
             secret.DropDownItems.Add("몰래 하는 군무", null, delegate { DemonstrateSecretDance(pet); });
@@ -346,7 +346,7 @@ namespace DragonBall
                 foreach (ToolStripItem i in fresh.Items.Cast<ToolStripItem>().ToList()) menu.Items.Add(i);
                 trayHideItem = null;
             };
-            tray = new NotifyIcon { Icon = TrayIconImage, Text = "드래곤볼", ContextMenuStrip = menu, Visible = true };
+            tray = new NotifyIcon { Icon = TrayIconImage, Text = "수퍼히어로", ContextMenuStrip = menu, Visible = true };
             tray.DoubleClick += delegate { ToggleHidden(); };
         }
 

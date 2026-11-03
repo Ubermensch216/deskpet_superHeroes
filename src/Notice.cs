@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>정각·타이머 알림 카드. 직접 닫을 때까지 남고, 화면 가장자리 빛과 함께 보인다.</summary>
     internal sealed class HourlyNotice : Form
@@ -31,10 +31,10 @@ namespace DragonBall
         internal HourlyNotice(Icon icon)
         {
             scale = Math.Max(1, Native.SystemDpiScale()); AutoScaleMode = AutoScaleMode.None;
-            Text = "드래곤볼 · 정각 알림"; FormBorderStyle = FormBorderStyle.None; StartPosition = FormStartPosition.Manual;
+            Text = "수퍼히어로 · 정각 알림"; FormBorderStyle = FormBorderStyle.None; StartPosition = FormStartPosition.Manual;
             ShowInTaskbar = true; TopMost = true; MaximizeBox = false; MinimizeBox = false; DoubleBuffered = true;
             BackColor = Color.FromArgb(255, 253, 249); ForeColor = Color.FromArgb(45, 48, 64); if (icon != null) Icon = icon;
-            header = LabelAt("드래곤볼", 24, 21, 264, 22, 9, Color.FromArgb(110, 103, 115));
+            header = LabelAt("수퍼히어로", 24, 21, 264, 22, 9, Color.FromArgb(110, 103, 115));
             caption = LabelAt("정각 알림", 24, 58, 290, 19, 9, Color.FromArgb(153, 117, 92));
             clock = LabelAt("00:00", 20, 77, 310, 72, 38, ForeColor); clock.Font = OwnFont("Segoe UI", 38, FontStyle.Regular);
             message = LabelAt("", 24, 155, 312, 46, 10, Color.FromArgb(91, 87, 101));

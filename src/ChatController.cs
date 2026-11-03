@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>
     /// 캐릭터 ↔ 로컬 LLM 대화를 이끄는 곳. 말 걸기(입력칸) → 캐릭터가 생각 → 스트리밍으로 받은 말을 감정 태그와 함께

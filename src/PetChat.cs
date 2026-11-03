@@ -1,7 +1,7 @@
 using System;
 using System.Drawing;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     internal enum ChatPhase { None, Listening, Thinking, Talking, Afterglow }
 
@@ -159,8 +159,9 @@ namespace DragonBall
             P.HeadTilt = F(P.HeadTilt + side * 2.5 + (chatTypeDeleted ? -side * 4 * e : side * 1.5 * e));
             P.Brow = F(chatTypeDeleted ? -.25 * e : 0);
             if (chatTypedLen >= 24) { P.Eyes = EyeStyle.Open; P.EyeScale = 1.05f; }
-            if (Who == Persona.Vegeta || Who == Persona.Piccolo) P.Reach = Reach.Cross;
-            else if (Who == Persona.Roshi) P.Reach = Reach.Chin;
+            if (Who == Persona.Batman) P.Reach = Reach.Cross;
+            else if (Who == Persona.Thor) P.Reach = Reach.Chin;
+            else if (Who == Persona.Superman) P.Reach = Reach.Hips;
         }
 
         private void ThinkingPose(Pose P, ref Look L, double t, int side)
@@ -171,11 +172,10 @@ namespace DragonBall
             P.Brow = F(.2 * e);
             L.Decor |= Decor.Dots; L.DecorPhase = (float)t;
 
-            if (Who == Persona.Vegeta) { P.Reach = Reach.Cross; P.Brow = .4f; }
-            else if (Who == Persona.Piccolo) { P.Reach = Reach.Cross; }
-            else if (Who == Persona.Roshi) { P.Reach = Reach.Chin; }
-            else if (Who == Persona.Kid) { P.Reach = Reach.Chin; }
-            else { P.Reach = Reach.Scratch; }
+            if (Who == Persona.Batman) { P.Reach = Reach.Cross; P.Brow = .4f; }
+            else if (Who == Persona.Thor) { P.Reach = Reach.Chin; }
+            else if (Who == Persona.Superman) { P.Reach = Reach.Hips; }
+            else { P.Reach = Reach.Chin; }
         }
 
         private void MoodPose(Pose P, ref Look L, double t, int side, double k)
@@ -212,7 +212,7 @@ namespace DragonBall
                     P.Mouth = MouthStyle.Open; P.MouthOpen = F(.7 * k); P.Brow = -.3f; P.Cookie = 0;
                     break;
                 case ChatMood.Battle:
-                    P.Aura = F(.5 * k); P.AuraKind = Who == Persona.Vegeta ? 3 : Who == Persona.Piccolo ? 5 : 1; P.AuraT = F(t);
+                    P.Aura = F(.5 * k); P.AuraColor = Who == Persona.Thor ? Color.FromArgb(120, 200, 255) : Color.Gold; P.AuraT = F(t);
                     P.Mouth = MouthStyle.Smile; P.Brow = .4f; P.HandL = P.HandR = HandStyle.Fist;
                     break;
                 case ChatMood.Cheer:

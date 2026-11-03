@@ -1,10 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>말 걸기 단축키 규칙: 보조키(Ctrl · Alt · Shift) 2개 이상 + 글쇠 1개, 모두 합쳐 3개 이상. 값은 RegisterHotKey 의 modifier / 가상 키 코드.</summary>
     internal static class ChatHotkey

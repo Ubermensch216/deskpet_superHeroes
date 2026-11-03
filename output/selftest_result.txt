@@ -1,0 +1,41 @@
+﻿PASS 설정 저장
+PASS 설정 불러오기 일치
+PASS 시간 해석
+PASS 평일 제외 시간대
+PASS 정각 문구+점심 병합
+PASS 정각 문구 0시
+PASS 움직임 설정 저장
+PASS 움직임 설정 불러오기 일치
+PASS 함께한 1분 = 친밀도 +1
+PASS 포만감 감소량
+PASS 간식: 포만감 +25(최대 100), 친밀도 +5
+PASS 배가 꽉 차면 간식 거절
+PASS 100 단위 꽃다발 한 번씩
+PASS 포만감 20 이하 = 배고픔
+PASS 0분 = 항상 우는 표정
+PASS 기록 저장
+PASS 기록 불러오기 일치(할 일·메모·타이머·비밀)
+PASS 이전 기록 .bak 유지
+PASS 수퍼맨 그림 생성
+PASS 배트맨 그림 생성
+PASS 스파이더맨 그림 생성
+PASS 토르 그림 생성
+PASS 시작은 비행 하강
+PASS 바닥에 착지
+PASS 첫 클릭 = 눌리기
+PASS 둘째 클릭 = 달달 떨며 울기
+PASS 셋째 클릭 = 폴짝 (Hop)
+PASS 간식 먹기 (Eating 75)
+PASS 드래그 시작
+PASS 빠르게 놓으면 던지기
+PASS 던진 뒤 둥실 내려와 착지
+PASS 어질어질
+PASS 낮잠
+PASS 깨어남
+PASS 기 폭발: 10초 안 3번 던지기
+PASS 변신하며 천장까지 올라감
+PASS 10분 시뮬레이션: 걷기·쉬기·벽·천장·앉기 모두 등장
+PASS 화면 밖으로 나가지 않음
+PASS 위치 고정 중에는 자동 이동 없음
+PASS 겹친 친구는 서로 떨어짐
+ALL PASSED

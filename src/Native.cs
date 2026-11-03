@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     internal static class Native
     {
@@ -84,7 +84,7 @@ namespace DragonBall
             try
             {
                 Directory.CreateDirectory(Paths.Dir);
-                File.AppendAllText(Path.Combine(Paths.Dir, "드래곤볼_오류기록.txt"), DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + e + Environment.NewLine);
+                File.AppendAllText(Path.Combine(Paths.Dir, "수퍼히어로_오류기록.txt"), DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + e + Environment.NewLine);
             }
             catch { }
         }
@@ -93,7 +93,7 @@ namespace DragonBall
     internal static class Paths
     {
         internal static string StorageOverride;
-        internal static string Dir { get { return StorageOverride ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "드래곤볼"); } }
+        internal static string Dir { get { return StorageOverride ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "수퍼히어로"); } }
     }
 
     /// <summary>열린 창(걸어 올라갈 수 있는 면)과 마우스·전체화면 상태.</summary>

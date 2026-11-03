@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>Ollama 와 주고받는 JSON 만 다루는 아주 작은 파서(외부 참조 없이 EXE 하나로 유지하려고 직접 만들었다).</summary>
     internal static class Json

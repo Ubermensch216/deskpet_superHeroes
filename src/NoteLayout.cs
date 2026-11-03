@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>메모 색 8종. 메모에는 색 이름(키)만 저장하고, 실제 색은 여기서 정한다.</summary>
     internal static class NoteColors

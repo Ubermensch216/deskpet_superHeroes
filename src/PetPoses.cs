@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Drawing;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>
-    /// 상태마다 드래곤볼의 자세(Pose)를 만든다. 발은 움직인 거리에 맞춰 걷고(미끄러지지 않음),
+    /// 상태마다 수퍼히어로의 자세(Pose)를 만든다. 발은 움직인 거리에 맞춰 걷고(미끄러지지 않음),
     /// 눈 깜빡임·시선·귀 쫑긋·꼬리 흔들림·숨쉬기는 모든 자세에 겹쳐 흐른다.
     /// </summary>
     internal sealed partial class Pet
@@ -190,22 +190,14 @@ namespace DragonBall
             P.EarL = F(-4 + flutter * 5); P.EarR = F(4 - flutter * 5);
             P.Tail = F(-10 + sway * 8); P.TailWaveAmp = 20; P.TailWavePhase = F(t * 9); P.TailCurl = 12;
             P.Mouth = MouthStyle.Neutral; P.MouthOpen = .3f;
-            // 기를 모아 둥실 떠 내려온다: 오라(어린 오공은 근두운)
-            int aura = Who == Persona.Vegeta ? 3 : Who == Persona.Piccolo ? 5 : 1;
-            if (Who == Persona.Kid) P.Nimbus = F(Math.Min(1, t * 4));
-            else if (Who == Persona.Roshi && !IsPowerFlight)
-            {
-                // 무천도사: 거북 등껍질을 우산처럼 머리 위로 들고 두 손으로 꼭 잡은 채 살랑살랑 떨어진다
-                P.Umbrella = true; P.UmbrellaTilt = F(sway * 4); P.Reach = Reach.Umbrella; P.ArmsFront = false;
-                P.ArmLenL = P.ArmLenR = 1.6f; P.HandL = P.HandR = HandStyle.Fist;
-                P.Gy = -1f; P.Cross = 0; P.Mouth = MouthStyle.Smile;
-                P.BodyY = F(Math.Sin(t * 2.4 + 1.2) * 3);
-            }
-            else { P.Aura = F(.55 + .1 * Math.Sin(t * 5)); P.AuraKind = aura; P.AuraT = F(t); }
+            // 슈퍼히어로별 특유의 비행·강하 자세
+            if (Who == Persona.Batman) { P.CapeWing = 1.0f; P.Brow = 0.5f; }
+            else if (Who == Persona.Spiderman) { P.WebSwing = 1.0f; P.Reach = Reach.WebThrow; }
+            else if (Who == Persona.Thor) { P.MjolnirSpin = 0.8f; P.Aura = 0.6f; P.AuraColor = Color.FromArgb(120, 200, 255); }
+            else { P.SonicGlow = 0.8f; P.Aura = 0.5f; P.AuraColor = Color.LightSkyBlue; }
             if (IsPowerFlight)
             {
-                // 기 폭발: 변신하며 천장까지 솟구친다
-                P.Super = 1; P.Aura = 1; P.AuraKind = 2; P.AuraT = F(t); P.Spark = .6f; P.Muscle = 1; P.Nimbus = 0;
+                P.Aura = 1; P.AuraColor = Color.Gold; P.AuraT = F(t);
                 P.Mouth = MouthStyle.Smile; P.Gy = -.2f; P.Gx = 0; P.Cross = 0; P.Brow = .5f;
                 P.ArmLA = F(40); P.ArmRA = F(40); P.ArmLB = 20; P.ArmRB = 20; P.HandL = P.HandR = HandStyle.Fist;
             }
@@ -382,7 +374,7 @@ namespace DragonBall
             P.ArmLA = F(120 + Math.Sin(ph) * 22); P.ArmRA = F(120 - Math.Sin(ph) * 22); P.ArmLB = F(142 + Math.Sin(ph - .6) * 24); P.ArmRB = F(142 - Math.Sin(ph - .6) * 24);
             P.Eyes = EyeStyle.Open; P.OpenL = P.OpenR = 1; P.EyeScale = 1.04f; P.Gx = -.9f; P.Gy = 0; P.Cross = 0; P.PupilR = .85f;
             P.Mouth = MouthStyle.Open; P.MouthOpen = F(.35 + Math.Sin(ph * 2) * .06); P.Turn = .85f;
-            P.Aura = .35f; P.AuraKind = Who == Persona.Vegeta ? 3 : Who == Persona.Piccolo ? 5 : 1; P.AuraT = F(t);
+            P.Aura = .35f; P.AuraColor = Who == Persona.Thor ? Color.FromArgb(120, 200, 255) : Color.Gold; P.AuraT = F(t);
             P.EarL = F(26 + Math.Sin(ph * 2) * 5); P.EarR = F(26 + Math.Sin(ph * 2 + .5) * 5);
             P.Tail = F(-8 + Math.Sin(ph - 1) * 6); P.TailCurl = -6; P.TailWaveAmp = 10; P.TailWavePhase = F(ph * 2);
             P.HeadTilt = F(-4); P.HeadX = -4; P.Sweat = F(t);

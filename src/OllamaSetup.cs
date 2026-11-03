@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -9,7 +9,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>
     /// AI(Ollama + 모델) 가 없는 PC 에서 설정창의 "AI 자동 설치" 가 부르는 곳. 일꾼 스레드에서 부른다.

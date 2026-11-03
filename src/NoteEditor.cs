@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>
     /// 메모 본문 상자. RichTextBox 에 세 가지를 더한다: 붙여넣기를 글자만 받게 가로채기(서식 · 이미지는 위에서 처리),

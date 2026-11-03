@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -8,7 +8,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>포커스를 가져가지 않는 납작한 단추(메모 위 도구 단추가 본문의 선택을 풀지 않게).</summary>
     internal sealed class ChromeButton : Button
@@ -228,7 +228,7 @@ namespace DragonBall
 
         private void ShowTitle()
         {
-            string title = CurrentTitle; titleLabel.Text = title; Text = title.Length > 0 ? title : "드래곤볼 메모";
+            string title = CurrentTitle; titleLabel.Text = title; Text = title.Length > 0 ? title : "수퍼히어로 메모";
             placeholder.Visible = box.TextLength == 0;
         }
 

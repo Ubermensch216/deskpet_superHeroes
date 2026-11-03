@@ -1,10 +1,10 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     /// <summary>친구 한 마리를 보여주는 테두리 없는 픽셀 알파(레이어드) 창. 투명한 곳은 클릭이 통과한다.</summary>
     internal sealed class PetWindow : Form
@@ -35,7 +35,7 @@ namespace DragonBall
         {
             this.app = app; Pet = pet;
             FormBorderStyle = FormBorderStyle.None; ShowInTaskbar = false; StartPosition = FormStartPosition.Manual; TopMost = true;
-            Text = "드래곤볼"; Size = new Size(1, 1); Location = new Point(-32000, -32000);
+            Text = "수퍼히어로"; Size = new Size(1, 1); Location = new Point(-32000, -32000);
         }
 
         protected override void OnPaintBackground(PaintEventArgs e) { }

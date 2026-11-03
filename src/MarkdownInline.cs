@@ -1,8 +1,8 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace DragonBall
+namespace SuperHeroes
 {
     [Flags] internal enum InlineStyle { None = 0, Bold = 1, Italic = 2, Underline = 4, Strikethrough = 8 }
     internal struct InlineRun { internal string Text; internal InlineStyle Style; internal InlineRun(string t, InlineStyle s) { Text = t; Style = s; } }
