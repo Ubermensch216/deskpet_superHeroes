@@ -153,9 +153,12 @@ namespace SuperHeroes
 
         public void Run()
         {
-            float sc = k * 571f / 571f;
             var state = g.Save();
-            g.ScaleTransform(sc, sc);
+            g.ScaleTransform(faceRight ? -k : k, k);
+            g.TranslateTransform(-200, -571);
+
+            float ow = Math.Max(3.2f, .9f / k);
+            ink = Pn(cInk, ow);
 
             // 어깨 위치 계산
             float bx = p.BodyX, by = p.BodyY;
