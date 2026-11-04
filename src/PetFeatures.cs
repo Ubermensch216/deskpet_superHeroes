@@ -299,6 +299,7 @@ namespace SuperHeroes
             switch (State)
             {
                 case PetState.Thrown: AdvanceThrow(w, dt); break;
+                case PetState.Chat: SnapToFloor(w); break;
                 case PetState.Resting:
                     if (restPose == RestPose.Sig)
                     {

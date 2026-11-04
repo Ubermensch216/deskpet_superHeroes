@@ -184,10 +184,12 @@ namespace SuperHeroes
         public void Update(IWorld w, double dt, List<Pet> all, double mouseX)
         {
             UpdateWalkBlend(dt); UpdateGait(dt);
+            // 대화 상태는 AdvanceFeatures(State >= Resting 처리)가 먼저 가로채 Update를 끝내 버리므로, 말풍선·글자 찍기는 여기서 먼저 갱신한다.
+            UpdateChat(w, dt);
             if (AdvanceFeatures(w, dt)) return;
             StateT += dt; animT += dt;
             if (collideCooldown > 0) collideCooldown -= dt;
-            if (Bubble != null && w.Now > BubbleUntil) Bubble = null; UpdateChat(w, dt);
+            if (Bubble != null && w.Now > BubbleUntil) Bubble = null;
             switch (State)
             {
                 case PetState.Chat: SnapToFloor(w); break;
