@@ -31,6 +31,9 @@ namespace SuperHeroes
                 case Persona.Thor:
                     DrawThorHead();
                     break;
+                case Persona.WonderWoman:
+                    DrawWonderHead();
+                    break;
             }
 
             g.Restore(state);
@@ -354,7 +357,7 @@ namespace SuperHeroes
         private void DrawHeroMouth()
         {
             float mY = 22f;
-            using (var pn = Pn(cInk, 3.4f))
+            using (var pn = Pn(who == Persona.WonderWoman ? Color.FromArgb(178, 30, 58) : cInk, 3.4f))
             {
                 if (p.Mouth == MouthStyle.Smile)
                 {

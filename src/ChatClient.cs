@@ -79,7 +79,7 @@ namespace SuperHeroes
         {
             var b = new StringBuilder("{\"model\":" + Json.Quote(o.Model) + ",\"stream\":" + (stream ? "true" : "false") + ",\"think\":false,\"keep_alive\":" + Json.Quote(o.KeepAlive));
             b.Append(",\"options\":{\"num_predict\":" + numPredict + ",\"temperature\":" + temperature.ToString("0.0#", System.Globalization.CultureInfo.InvariantCulture)
-                + ",\"top_p\":0.9,\"repeat_penalty\":1.12,\"num_ctx\":3072,\"stop\":[\"\\n\",\"사용자:\",\"수퍼맨:\",\"배트맨:\",\"스파이더맨:\",\"토르:\"]}");
+                + ",\"top_p\":0.9,\"repeat_penalty\":1.12,\"num_ctx\":3072,\"stop\":[\"\\n\",\"사용자:\",\"수퍼맨:\",\"배트맨:\",\"스파이더맨:\",\"토르:\",\"원더우먼:\"]}");
             b.Append(",\"messages\":[");
             for (int i = 0; i < msgs.Count; i++)
             { if (i > 0) b.Append(','); b.Append("{\"role\":" + Json.Quote(msgs[i].Role) + ",\"content\":" + Json.Quote(msgs[i].Content) + "}"); }
@@ -120,7 +120,7 @@ namespace SuperHeroes
             try
             {
                 var r = Make(o, "/api/chat", "POST", 60000);
-                WriteBody(r, Body(o, msgs, false, numPredict, temperature).Replace(",\"stop\":[\"\\n\",\"사용자:\",\"수퍼맨:\",\"배트맨:\",\"스파이더맨:\",\"토르:\"]", ""));
+                WriteBody(r, Body(o, msgs, false, numPredict, temperature).Replace(",\"stop\":[\"\\n\",\"사용자:\",\"수퍼맨:\",\"배트맨:\",\"스파이더맨:\",\"토르:\",\"원더우먼:\"]", ""));
                 using (var resp = (HttpWebResponse)r.GetResponse())
                 using (var sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8))
                     return Json.Str(Json.Get(Json.Parse(sr.ReadToEnd()), "message"), "content");

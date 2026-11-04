@@ -50,6 +50,14 @@ namespace SuperHeroes
                 new SigDef("지면 강타 충격파", 7.0, "도약 후 묠니르로 땅을 쾅 내리쳐 대지 균열과 함께 푸른 번개 분출"),
                 new SigDef("묠니르 투척 & 귀환", 6.8, "묠니르를 회전 투척해 표적을 강타하고 손을 뻗어 번개 궤적으로 되돌려 받음"),
             },
+            // 4: 원더우먼
+            new[]
+            {
+                new SigDef("은팔찌 방어", 6.6, "양팔을 교차해 은팔찌로 날아오는 총알을 연달아 튕겨 내며 황금빛 불꽃을 터뜨림"),
+                new SigDef("진실의 올가미", 6.8, "허리의 황금 올가미를 꺼내 머리 위로 휘돌려 던져 거짓을 꿰뚫는 빛으로 포박"),
+                new SigDef("검과 방패", 7.0, "아마존의 방패로 막아 서고 검을 크게 휘둘러 호쾌한 참격을 그림"),
+                new SigDef("아마존의 비행", 7.0, "몸을 낮췄다 솟구쳐 별빛 꼬리를 끌며 하늘을 가르고 사뿐히 착지"),
+            },
         };
 
         internal static SigDef Get(Persona who, int idx)
@@ -104,8 +112,18 @@ namespace SuperHeroes
                     line = new[] { S(0, "천둥의 힘이여, 내게 오라!"), S(1.8, "오딘의 이름으로 벼락을 소환하노라!!"), S(4.5, "콰광--!!"), S(5.6, "이것이 천둥의 신이다!") }; break;
                 case 14: // 지면 강타 충격파
                     line = new[] { S(0, "대지를 뒤흔들리라!"), S(1.6, "크아앗! 천둥 강타!!"), S(4.2, "쿵--!!"), S(5.4, "대지가 요동치는군!") }; break;
-                default: // 묠니르 투척 & 귀환
+                case 15: // 묠니르 투척 & 귀환
                     line = new[] { S(0, "받아라, 묠니르!"), S(1.3, "날아가라--!!"), S(3.8, "돌아오너라!"), S(5.0, "자격을 갖춘 자만이 들 수 있지.") }; break;
+
+                // 원더우먼
+                case 16: // 은팔찌 방어
+                    line = new[] { S(0, "총알? 얼마든지 쏴 봐."), S(1.4, "아마존의 팔찌는 뚫리지 않아!"), S(3.9, "팅! 팅! 팅--!!"), S(5.3, "그 정도론 어림없지.") }; break;
+                case 17: // 진실의 올가미
+                    line = new[] { S(0, "진실의 올가미, 준비."), S(1.5, "거짓은 통하지 않아--!!"), S(3.3, "자, 솔직하게 말해 봐!"), S(5.1, "진실은 언제나 빛나는 법이야.") }; break;
+                case 18: // 검과 방패
+                    line = new[] { S(0, "방패를 들어라!"), S(1.5, "아마존의 검을 받아라--!!"), S(4.0, "테미스키라의 영광을 위해!"), S(5.5, "전사는 물러서지 않아.") }; break;
+                default: // 아마존의 비행
+                    line = new[] { S(0, "도약 준비..."), S(1.4, "하늘로--!!"), S(2.8, "별빛처럼 날아오른다!"), S(5.4, "사랑과 정의로 지킬게.") }; break;
             }
 
             string cur = "";
@@ -212,6 +230,9 @@ namespace SuperHeroes
                     break;
                 case Persona.Thor:
                     ApplyThorSig(P, ref L, t);
+                    break;
+                case Persona.WonderWoman:
+                    ApplyWonderSig(P, ref L, t);
                     break;
             }
         }
@@ -480,13 +501,15 @@ namespace SuperHeroes
                 case 1: // 천둥 벼락 소환
                     if (t < 1.8)
                     {
-                        P.Reach = Reach.Overhead; P.HeadTilt = -12f;
+                        // 묠니르를 쥔 팔을 하늘로 쭉 뻗어 올린다(반대 손은 주먹)
+                        double up = Ease(t / 1.3);
+                        P.Raise = F(up); P.HeadTilt = F(-12 * up); P.Gy = F(-.6 * up); P.HandL = HandStyle.Fist;
                     }
                     else if (t < 6.9)
                     {
                         // 먹구름이 모이고(충전) → 세 번 내리꽂히는 벼락(점점 강해짐) → 감전 잔광
                         float lt = (float)(t - 1.8), strike = ThorLightning.Strike(lt);
-                        P.Reach = Reach.Overhead;
+                        P.Raise = 1; P.HeadTilt = -10f; P.Gy = -.6f; P.HandL = HandStyle.Fist;
                         P.Lightning = 1.0f; P.LightningT = lt;
                         P.Aura = 1.0f; P.AuraColor = strike > .3f ? Color.FromArgb(220, 240, 255) : Color.FromArgb(120, 200, 255);
                         P.Mouth = MouthStyle.Open;
@@ -500,7 +523,7 @@ namespace SuperHeroes
                     }
                     else
                     {
-                        P.Lightning = 0; P.Reach = Reach.Hammer;
+                        P.Lightning = 0; P.Reach = Reach.Hammer; P.Raise = F(Math.Max(0, 1 - (t - 6.9) / .5));   // 팔을 천천히 내린다
                     }
                     break;
 
@@ -539,6 +562,84 @@ namespace SuperHeroes
                     {
                         P.HammerThrow = 0; P.Reach = Reach.Hammer;
                         P.Mouth = MouthStyle.Smile;
+                    }
+                    break;
+            }
+        }
+
+        private static float Smooth(double x) { float v = (float)Math.Max(0, Math.Min(1, x)); return v * v * (3 - 2 * v); }
+
+        private void ApplyWonderSig(Pose P, ref Look L, double t)
+        {
+            switch (sigIndex)
+            {
+                case 0: // 은팔찌 방어: 양팔을 X 로 교차해 날아오는 총알을 연달아 튕겨 낸다
+                    if (t < 1.2)
+                    {
+                        P.Reach = Reach.Hips; P.Brow = 0.5f; P.Mouth = MouthStyle.Neutral;
+                    }
+                    else
+                    {
+                        float on = t < 5.2 ? Smooth((t - 1.2) / 0.4) : 1 - Smooth((t - 5.2) / 0.6);
+                        P.Bracers = on; P.BracerT = (float)(t - 1.2);
+                        if (on > 0.05f)
+                        {
+                            P.HandLTo = new PointF(200 + 30, 292); P.HandRTo = new PointF(200 - 30, 288);
+                            P.Brow = 0.8f; P.Mouth = MouthStyle.Grit; P.HeadTilt = -2f;
+                            P.BodyX = (float)(Math.Sin(t * 47) * 1.6 * on);     // 총알이 부딪힐 때마다 움찔
+                        }
+                        else { P.Reach = Reach.Hips; P.Mouth = MouthStyle.Smile; }
+                    }
+                    break;
+
+                case 1: // 진실의 올가미: 허리에서 꺼내 → 머리 위로 휘돌려 → 던져 포박
+                    {
+                        float on = t < 0.4 ? Smooth(t / 0.4) : t < 6.3 ? 1 : 1 - Smooth((t - 6.3) / 0.5);
+                        P.LassoSpin = on; P.LassoT = (float)Math.Min(t, 6.3);
+                        if (t < 1.4) { P.HandRTo = new PointF(262, 420); P.Brow = 0.4f; }
+                        else if (t < 3.3) { P.HandRTo = new PointF(200 + 36, 196); P.Brow = 0.6f; P.Mouth = MouthStyle.Smile; P.HeadTilt = -4f; }
+                        else if (t < 6.3) { P.HandRTo = new PointF(200 - 56, 262); P.Mouth = MouthStyle.Open; P.Brow = 0.7f; P.BodyX = (float)(t < 3.6 ? -4 : 0); }
+                        else { P.Reach = Reach.Hips; P.Mouth = MouthStyle.Smile; }
+                    }
+                    break;
+
+                case 2: // 검과 방패: 방패를 세워 막고 검을 두 번 크게 휘두른다
+                    {
+                        float sh = t < 1.3 ? Smooth(t / 1.3) : t < 6.2 ? 1 : 1 - Smooth((t - 6.2) / 0.6);
+                        float s1 = Smooth((t - 2.6) / 0.8) * (1 - Smooth((t - 3.4) / 0.5));
+                        float s2 = Smooth((t - 3.9) / 0.6) * (1 - Smooth((t - 5.4) / 0.7));
+                        float sl = Math.Max(s1, s2);
+                        P.ShieldGuard = sh; P.SwordSlash = sl;
+                        if (sh > 0.05f)
+                        {
+                            P.HandLTo = new PointF(200 - 62, 322); P.HandRTo = new PointF(200 + 56 - 96 * sl, 272 + 26 * sl);
+                            P.Brow = 0.7f; P.Mouth = sl > 0.15f ? MouthStyle.Open : MouthStyle.Grit;
+                            if (t > 1.7 && t < 2.5) P.BodyX = (float)(Math.Sin(t * 52) * 2.0);     // 방패에 부딪히는 충격
+                            P.BodyX += -6f * sl;
+                        }
+                        else { P.Reach = Reach.Hips; P.Mouth = MouthStyle.Smile; }
+                    }
+                    break;
+
+                case 3: // 아마존의 비행: 웅크렸다 솟구쳐 별빛 꼬리를 끌며 날고 사뿐히 착지
+                    {
+                        float crouch = 14f * Smooth(t / 1.2) * (1 - Smooth((t - 1.4) / 0.3));
+                        float rise = Smooth((t - 1.4) / 1.0), land = Smooth((t - 5.0) / 1.0);
+                        float alt = -92f * rise * (1 - land);
+                        if (t >= 2.4 && t < 5.0) alt += (float)Math.Sin((t - 2.4) * 2.4) * 8;
+                        P.BodyY = crouch + alt;
+                        float fl = Smooth((t - 1.4) / 0.8) * (1 - 0.7f * land);
+                        if (t > 6.0) fl = 0;
+                        P.AmazonFlight = fl; P.FlightT = (float)Math.Max(0, t - 1.4);
+                        if (rise > 0.05f && land < 0.9f)
+                        {
+                            P.HandLTo = new PointF(200 - 92, 136); P.HandRTo = new PointF(200 + 44, 330);
+                            P.FootLY = P.FootRY = P.BodyY * 0.85f; P.FootLX = -12; P.FootRX = 16; P.FootLRot = P.FootRRot = -12;
+                            P.CapeWind = 42f; P.HeadTilt = -6f; P.Mouth = MouthStyle.Smile; P.Brow = 0.5f;
+                            P.Aura = 0.8f * (1 - land); P.AuraColor = Color.FromArgb(255, 214, 90);
+                        }
+                        else if (t < 1.4) { P.Reach = Reach.Hips; P.Brow = 0.5f; }
+                        else { P.Reach = Reach.Hips; P.Mouth = MouthStyle.Smile; if (t < 6.3) P.BodyY += 6; }
                     }
                     break;
             }

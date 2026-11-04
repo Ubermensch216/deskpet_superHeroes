@@ -194,6 +194,7 @@ namespace SuperHeroes
             if (Who == Persona.Batman) { P.CapeWing = 1.0f; P.Brow = 0.5f; }
             else if (Who == Persona.Spiderman) { P.WebSwing = 1.0f; P.Reach = Reach.WebThrow; }
             else if (Who == Persona.Thor) { P.MjolnirSpin = 0.8f; P.Aura = 0.6f; P.AuraColor = Color.FromArgb(120, 200, 255); }
+            else if (Who == Persona.WonderWoman) { P.AmazonFlight = 0.8f; P.FlightT = F(t); P.CapeWind = 30f; P.Aura = 0.5f; P.AuraColor = Color.FromArgb(255, 215, 90); }
             else { P.SonicGlow = 0.8f; P.Aura = 0.5f; P.AuraColor = Color.LightSkyBlue; }
             if (IsPowerFlight)
             {

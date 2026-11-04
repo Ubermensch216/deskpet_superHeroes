@@ -9,7 +9,7 @@ namespace SuperHeroes
     internal enum MouthStyle { Neutral, Smile, Open, Scared, Frown, Pout, Grit }
     internal enum HandStyle { Open, Fist, Point, Web }
     internal enum Reach { None, Lap, Belly, Mouth, Chest, Scratch, Chin, Cross, Overhead, Forehead, Hips, Cup, Front, Flex, Fist, Guard, Hammer, WebThrow, Umbrella }
-    internal enum Persona { Superman = 0, Batman = 1, Spiderman = 2, Thor = 3 }
+    internal enum Persona { Superman = 0, Batman = 1, Spiderman = 2, Thor = 3, WonderWoman = 4 }
 
     /// <summary>
     /// 한 순간의 자세. 모든 길이 값은 기준 그림(키 571)의 단위이고,
@@ -84,9 +84,19 @@ namespace SuperHeroes
 
         public float MjolnirSpin;              // 토르: 묠니르 회전 (0..1)
         public float Lightning;                // 토르: 번개 소환 (0..1)
-        public float LightningT;               // 토르: 번개 소환 시작 후 경과 초 (구름·충전·낙뢰 타이밍)
+        public float Raise;                    // 토르: 해머 든 팔을 하늘로 쭉 뻗어 올린 정도 (0..1)
+        public float LightningT;              // 토르: 번개 소환 시작 후 경과 초 (구름·충전·낙뢰 타이밍)
         public float GroundCrush;              // 토르: 지면 강타 충격파 (0..1)
         public float HammerThrow;              // 토르: 묠니르 투척 (0..1)
+
+        public float Bracers;                  // 원더우먼: 은팔찌 방어 — 총알을 튕기는 중 (0..1)
+        public float BracerT;                  // 원더우먼: 은팔찌 방어 시작 후 경과 초 (총알 타이밍)
+        public float LassoSpin;                // 원더우먼: 진실의 올가미를 쥐고 있는 중 (0..1)
+        public float LassoT;                   // 원더우먼: 올가미 동작 경과 초 (꺼내기·돌리기·던지기·포박)
+        public float SwordSlash;               // 원더우먼: 검을 휘두르는 각도 진행 (0 뒤로 젖힘 .. 1 내리벰)
+        public float ShieldGuard;              // 원더우먼: 방패·검을 든 정도 (0..1)
+        public float AmazonFlight;             // 원더우먼: 아마존의 비행 (0..1)
+        public float FlightT;                  // 원더우먼: 비행 경과 초 (별빛 꼬리 위상)
 
         public float Aura;                     // 공통 에너지 오라 (0..1)
         public int AuraKind;                   // 오라 색상 인덱스
@@ -115,7 +125,8 @@ namespace SuperHeroes
                 add(CapeWing, 10); add(CapeWind, 5); add(HeatLaser, 10); add(FreezeMist, 10); add(ShirtOpen, 10); add(SonicGlow, 10); add(Disguise, 10); add(Transform, 10);
                 add(Batarang, 10); add(Grapnel, 10); add(SmokeBomb, 10);
                 add(WebSwing, 10); add(SpiderSense, 10); add(WebNet, 10);
-                add(MjolnirSpin, 10); add(Lightning, 10); add(LightningT, 30); add(GroundCrush, 10); add(HammerThrow, 10);
+                add(MjolnirSpin, 10); add(Lightning, 10); add(LightningT, 30); add(Raise, 20); add(GroundCrush, 10); add(HammerThrow, 10);
+                add(Bracers, 10); add(BracerT, 30); add(LassoSpin, 10); add(LassoT, 30); add(SwordSlash, 20); add(ShieldGuard, 10); add(AmazonFlight, 10); add(FlightT, 30);
                 add(Aura, 10); add(Lie, 10);
                 return h;
             }

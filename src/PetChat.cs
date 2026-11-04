@@ -161,7 +161,7 @@ namespace SuperHeroes
             if (chatTypedLen >= 24) { P.Eyes = EyeStyle.Open; P.EyeScale = 1.05f; }
             if (Who == Persona.Batman) P.Reach = Reach.Cross;
             else if (Who == Persona.Thor) P.Reach = Reach.Chin;
-            else if (Who == Persona.Superman) P.Reach = Reach.Hips;
+            else if (Who == Persona.Superman || Who == Persona.WonderWoman) P.Reach = Reach.Hips;
         }
 
         private void ThinkingPose(Pose P, ref Look L, double t, int side)
@@ -174,7 +174,7 @@ namespace SuperHeroes
 
             if (Who == Persona.Batman) { P.Reach = Reach.Cross; P.Brow = .4f; }
             else if (Who == Persona.Thor) { P.Reach = Reach.Chin; }
-            else if (Who == Persona.Superman) { P.Reach = Reach.Hips; }
+            else if (Who == Persona.Superman || Who == Persona.WonderWoman) { P.Reach = Reach.Hips; }
             else { P.Reach = Reach.Chin; }
         }
 

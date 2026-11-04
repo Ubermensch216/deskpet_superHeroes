@@ -100,6 +100,23 @@ namespace SuperHeroes
                     "묠니르 풍차 회전, 천둥 벼락 소환, 지면 강타 충격파, 묠니르 투척"
                 }
             },
+            new CharInfo
+            {
+                Key = "wonderwoman",
+                Name = "원더우먼",
+                Title = "테미스키라의 아마존 전사",
+                Accent = Color.FromArgb(196, 30, 58),
+                Persona = Persona.WonderWoman,
+                Rig = new HeroRig(Persona.WonderWoman),
+                HeightFactor = 1.06f,
+                SpeedFactor = 1.04f,
+                Traits = new[]
+                {
+                    "붉은 별이 박힌 황금 티아라와 윤기 나는 긴 흑발",
+                    "황금 독수리 흉갑, 별무늬 푸른 스커트, 은색 팔찌, 붉은 부츠",
+                    "은팔찌 방어, 진실의 올가미, 검과 방패, 아마존의 비행"
+                }
+            },
         };
 
         internal static int Count { get { return Infos.Length; } }

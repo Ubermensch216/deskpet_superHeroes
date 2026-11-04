@@ -44,6 +44,9 @@ namespace SuperHeroes
                 case Persona.Thor:
                     pool = new[] { 5, 5, 1, 3 }; // 수염 쓰다듬기, 당당 포즈, 손 흔들기
                     break;
+                case Persona.WonderWoman:
+                    pool = new[] { 1, 1, 2, 3 }; // 당당 포즈, 팔짱(경계), 손 흔들기
+                    break;
                 default:
                     pool = new[] { 1, 2, 3 };
                     break;
@@ -153,6 +156,15 @@ namespace SuperHeroes
                     }
                     if (IdleLike && P.Mouth == MouthStyle.Neutral)
                     {
+                        P.Mouth = MouthStyle.Smile;
+                    }
+                    break;
+
+                case Persona.WonderWoman:
+                    if (IdleLike && P.Mouth == MouthStyle.Neutral) P.Mouth = MouthStyle.Smile;
+                    if (walking)
+                    {
+                        P.CapeWind = 16f * a;                       // 긴 머리카락이 바람에 휘날린다
                         P.Mouth = MouthStyle.Smile;
                     }
                     break;

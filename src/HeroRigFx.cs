@@ -22,6 +22,9 @@ namespace SuperHeroes
                 case Persona.Thor:
                     DrawThorFx();
                     break;
+                case Persona.WonderWoman:
+                    DrawWonderFx();
+                    break;
             }
 
             // 공통 오라 (선택적)
@@ -373,12 +376,12 @@ namespace SuperHeroes
         {
             float lt = p.LightningT, bx = p.BodyX, by = p.BodyY;
             int frame = (int)(lt * 30);
-            PointF hh = Pt(wrist[1].X, wrist[1].Y - 46);                 // 묠니르 머리 꼭대기
+            PointF hh = Pt(wrist[1].X, wrist[1].Y - 46 * (1 + .5f * p.Raise));   // 묠니르 머리 꼭대기(들어 올리면 해머가 커 보인다)
             float fade = Math.Max(0f, Math.Min(1f, Math.Min(lt / 1.0f, (ThorLightning.End - lt) / 0.6f)));
             float charge = Math.Min(1f, lt / 1.6f);
             float u, power; int idx = ThorLightning.Current(lt, out u, out power);
             float I = ThorLightning.Strike(lt), flash = Math.Min(1f, I);
-            float cx = 200 + (hh.X - 200) * .3f, cy = -190;   // 구름은 머리 위 중앙 쪽에(해머가 한쪽 끝이어도 잘리지 않게)
+            float cx = 200 + (hh.X - 200) * .3f, cy = -225;   // 구름은 머리 위 중앙 쪽에(해머가 한쪽 끝이어도 잘리지 않게)
             PointF cloudMouth = Pt(cx, cy + 24);
 
             // 1. 먹구름
@@ -494,6 +497,8 @@ namespace SuperHeroes
             PointF hand = wrist[1];
             var st = g.Save();
             g.TranslateTransform(hand.X, hand.Y);
+            float big = 1 + .5f * Math.Min(1f, p.Raise);   // 하늘 높이 치켜들면 한층 크고 위압적으로
+            g.ScaleTransform(big, big);
 
             // 망치 자루
             g.FillRectangle(B(Color.FromArgb(120, 80, 50)), -4, -14, 8, 36);

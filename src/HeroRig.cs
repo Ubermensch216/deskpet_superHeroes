@@ -154,6 +154,19 @@ namespace SuperHeroes
                     cGloves = Color.FromArgb(180, 185, 195);     // 은색 건틀릿
                     shDx = 86; topW = 168; waistY = 412; hipY = 432; legW = 48; // 건장한 신의 체격
                     break;
+
+                case Persona.WonderWoman:
+                    // 원더우먼: 붉은 흉갑(황금 독수리) + 별무늬 푸른 스커트 + 황금 벨트 + 은팔찌 + 붉은 부츠
+                    cSuit = Color.FromArgb(206, 30, 48);        // 붉은 흉갑
+                    cSuitSh = Color.FromArgb(150, 18, 34);
+                    cSuitAccent = Color.FromArgb(28, 66, 168);  // 별무늬 푸른 스커트
+                    cCape = Color.Transparent;                  // 망토 없음
+                    cCapeInner = Color.Transparent;
+                    cBelt = Color.FromArgb(240, 196, 60);       // 황금(독수리·벨트·티아라)
+                    cBoots = Color.FromArgb(200, 28, 44);
+                    cGloves = cSkin;                            // 손은 맨손, 팔뚝에 은팔찌
+                    shDx = 72; topW = 140; botW = 108; waistY = 410; hipY = 430; legW = 40; armW = 34; l1 = 66; l2 = 66;
+                    break;
             }
         }
 
@@ -301,7 +314,7 @@ namespace SuperHeroes
                 Pt(h.X + legW * .4f, h.Y)
             };
 
-            Color pantsCol = (who == Persona.Spiderman) ? cSuitAccent : (who == Persona.Thor) ? Color.FromArgb(36, 42, 54) : cSuit;
+            Color pantsCol = (who == Persona.Spiderman) ? cSuitAccent : (who == Persona.Thor) ? Color.FromArgb(36, 42, 54) : (who == Persona.WonderWoman) ? cSkin : cSuit;
             Fill(pts, pantsCol);
 
             // 부츠 그리기
@@ -319,7 +332,13 @@ namespace SuperHeroes
             };
             Fill(bootPts, cBoots);
 
-            if (who == Persona.Thor)
+            if (who == Persona.WonderWoman)
+            {
+                // 붉은 부츠 윗단의 흰 줄무늬 + 황금 별
+                var cuff = new[] { Pt(bootTopX - legW * .36f, bootTopY), Pt(bootTopX + legW * .36f, bootTopY), Pt(bootTopX + legW * .37f, bootTopY + 9), Pt(bootTopX - legW * .37f, bootTopY + 9) };
+                Fill(cuff, cWhite);
+            }
+            else if (who == Persona.Thor)
             {
                 // 토르의 부츠 십자 끈 디테일
                 using (var pn = Pn(Color.FromArgb(210, 180, 70), 2.4f))
@@ -351,7 +370,7 @@ namespace SuperHeroes
                 Pt(tcX + topW * .52f, shY + by)
             };
 
-            Color torsoCol = cSuit;
+            Color torsoCol = who == Persona.WonderWoman ? cSkin : cSuit;   // 원더우먼은 어깨·팔이 드러난다(붉은 흉갑은 따로 그림)
             Fill(chestPts, torsoCol);
 
             // 캐릭터별 상체 특징
@@ -368,6 +387,9 @@ namespace SuperHeroes
                     break;
                 case Persona.Thor:
                     DrawThorChest(tcX, shY + by);
+                    break;
+                case Persona.WonderWoman:
+                    DrawWonderChest(tcX, shY + by);
                     break;
             }
 
@@ -491,7 +513,11 @@ namespace SuperHeroes
 
         private void DrawBeltAndHips(float cx, float wy, float hy)
         {
-            if (who == Persona.Superman && reporter)
+            if (who == Persona.WonderWoman)
+            {
+                DrawWonderSkirt(cx, wy, hy);
+            }
+            else if (who == Persona.Superman && reporter)
             {
                 DrawReporterBelt(cx, wy, hy);
             }
@@ -598,6 +624,14 @@ namespace SuperHeroes
                 if (p.HandLTo.HasValue) wrist[0] = p.HandLTo.Value;
                 if (p.HandRTo.HasValue) wrist[1] = p.HandRTo.Value;
             }
+
+            if (who == Persona.Thor && p.Raise > .001f)
+            {
+                // 묠니르를 쥔 팔을 하늘로 쭉 뻗는다(머리보다 훨씬 위까지). 기존 자세에서 부드럽게 올라간다.
+                float r = Math.Min(1f, p.Raise); r = r * r * (3 - 2 * r);
+                PointF up = Pt(shR.X + 30, shR.Y - 255);
+                wrist[1] = Pt(wrist[1].X + (up.X - wrist[1].X) * r, wrist[1].Y + (up.Y - wrist[1].Y) * r);
+            }
         }
 
         private void DrawArm(bool front)
@@ -608,7 +642,9 @@ namespace SuperHeroes
             float side = front ? 1 : -1;
 
             // 팔꿈치 위치
-            PointF elbow = Pt((sh.X + wr.X) * .5f + side * 22, (sh.Y + wr.Y) * .5f);
+            // (하늘로 뻗은 팔은 팔꿈치를 거의 펴서 곧게)
+            float bow = 22 * (1 - (front && who == Persona.Thor ? .85f * Math.Min(1f, p.Raise) : 0f));
+            PointF elbow = Pt((sh.X + wr.X) * .5f + side * bow, (sh.Y + wr.Y) * .5f);
 
             // 어깨~팔꿈치~손목 다각형
             var armPts = new[]
@@ -621,7 +657,7 @@ namespace SuperHeroes
                 Pt(sh.X + armW * .45f, sh.Y)
             };
 
-            Color armCol = (who == Persona.Spiderman) ? cSuit : cSuit;
+            Color armCol = (who == Persona.WonderWoman) ? cSkin : cSuit;   // 원더우먼: 맨팔 + 은팔찌
             Fill(armPts, armCol);
 
             // 장갑/건틀릿
@@ -638,7 +674,11 @@ namespace SuperHeroes
                 Pt(elbow.X + armW * .38f, elbow.Y + 14)
             };
 
-            if (who != Persona.Superman)
+            if (who == Persona.WonderWoman)
+            {
+                DrawBracer(wr, elbow);
+            }
+            else if (who != Persona.Superman)
             {
                 Fill(glPts, cGloves);
             }
