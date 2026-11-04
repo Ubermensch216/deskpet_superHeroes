@@ -326,7 +326,14 @@ namespace SuperHeroes
             // 광선·기탄·늘어난 팔·여의봉은 몸 밖으로 멀리 뻗는다(앞쪽 = 바라보는 쪽)
             float fwd = 0, up = 0;
             if (ps.HeatLaser > 0 || ps.FreezeMist > 0 || ps.Batarang > 0 || ps.WebSwing > 0 || ps.WebNet > 0 || ps.HammerThrow > 0) fwd = Math.Max(fwd, 280 * K);
-            if (ps.Grapnel > 0 || ps.Lightning > 0 || ps.SonicGlow > 0) up = Math.Max(up, 220 * K);
+            if (ps.Grapnel > 0 || ps.SonicGlow > 0) up = Math.Max(up, 220 * K);
+            if (ps.Lightning > 0)
+            {
+                // 먹구름과 벼락이 머리 위 하늘(리그 좌표 y≈-300)까지 올라간다. 말풍선도 그 위로 얹는다.
+                var sky = new[] { new PointF(0, -h - 300 * K) };
+                matrix.TransformPoints(sky);
+                minY = Math.Min(minY, sky[0].Y); spriteTop = Math.Min(spriteTop, sky[0].Y);
+            }
             if (ps.CapeWing > 0) fwd = Math.Max(fwd, 160 * K);
             if (ps.SmokeBomb > 0) { fwd = Math.Max(fwd, 160 * K); }
             if (ps.BeamLen > 1) fwd = Math.Max(fwd, (ps.BeamLen + 280) * K);

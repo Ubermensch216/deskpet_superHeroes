@@ -470,11 +470,21 @@ namespace SuperHeroes
                     {
                         P.Reach = Reach.Overhead; P.HeadTilt = -12f;
                     }
-                    else if (t < 5.2)
+                    else if (t < 6.9)
                     {
-                        P.Lightning = 1.0f;
-                        P.Aura = 1.0f; P.AuraColor = Color.FromArgb(120, 200, 255);
+                        // 먹구름이 모이고(충전) → 세 번 내리꽂히는 벼락(점점 강해짐) → 감전 잔광
+                        float lt = (float)(t - 1.8), strike = ThorLightning.Strike(lt);
+                        P.Reach = Reach.Overhead;
+                        P.Lightning = 1.0f; P.LightningT = lt;
+                        P.Aura = 1.0f; P.AuraColor = strike > .3f ? Color.FromArgb(220, 240, 255) : Color.FromArgb(120, 200, 255);
                         P.Mouth = MouthStyle.Open;
+                        if (strike > 0.05f)
+                        {
+                            // 감전: 온몸이 파르르 떨리고 눈이 번쩍 뜨인다
+                            P.BodyX = (float)(Math.Sin(t * 95) * 5.5 * strike);
+                            P.BodyY = (float)(Math.Cos(t * 83) * 3.0 * strike);
+                            P.Eyes = EyeStyle.Open; P.EyeScale = 1.12f; P.PupilR = .45f;
+                        }
                     }
                     else
                     {

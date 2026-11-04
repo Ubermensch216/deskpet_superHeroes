@@ -82,6 +82,7 @@ namespace SuperHeroes
 
         public float MjolnirSpin;              // 토르: 묠니르 회전 (0..1)
         public float Lightning;                // 토르: 번개 소환 (0..1)
+        public float LightningT;               // 토르: 번개 소환 시작 후 경과 초 (구름·충전·낙뢰 타이밍)
         public float GroundCrush;              // 토르: 지면 강타 충격파 (0..1)
         public float HammerThrow;              // 토르: 묠니르 투척 (0..1)
 
@@ -111,7 +112,7 @@ namespace SuperHeroes
                 add(CapeWing, 10); add(CapeWind, 5); add(HeatLaser, 10); add(FreezeMist, 10); add(ShirtOpen, 10); add(SonicGlow, 10);
                 add(Batarang, 10); add(Grapnel, 10); add(SmokeBomb, 10);
                 add(WebSwing, 10); add(SpiderSense, 10); add(WebNet, 10);
-                add(MjolnirSpin, 10); add(Lightning, 10); add(GroundCrush, 10); add(HammerThrow, 10);
+                add(MjolnirSpin, 10); add(Lightning, 10); add(LightningT, 30); add(GroundCrush, 10); add(HammerThrow, 10);
                 add(Aura, 10); add(Lie, 10);
                 return h;
             }
