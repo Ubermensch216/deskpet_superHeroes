@@ -73,7 +73,7 @@ namespace SuperHeroes
         private FlatButton bChatSetup, bChatSetupCancel; private ProgressBar chatSetupBar;
         private ChatRequest setupHandle;
         // 캐릭터
-        private ListBox rosterList; private ComboBox dexChar, sigFreq; private PictureBox dexPic; private Label dexTitle, dexTraits;
+        private ListBox rosterList; private ComboBox dexChar, sigFreq, costume; private PictureBox dexPic; private Label dexTitle, dexTraits;
         private readonly Label[] sigName = new Label[3]; private readonly Label[] sigDesc = new Label[3];
 
         public SettingsForm(App app, int page = -1)
@@ -257,6 +257,11 @@ namespace SuperHeroes
             var rowS = Row(s); rowS.Controls.Add(Cap("가만히 쉴 때 저절로 보여주기"));
             sigFreq = Combo(new[] { "끄기", "드물게", "보통", "자주" }, PlayOptions.Current.SigFreq, 90); rowS.Controls.Add(sigFreq);
             Note(s, "얌전 모드에서는 자동으로 나오지 않아요. 손으로 보려면 우클릭 → ★ 시그니처 기술.");
+
+            var gCos = Group(f, "수퍼맨 커스튬"); var cs = In(gCos);
+            var rowC = Row(cs); rowC.Controls.Add(Cap("평소 입는 옷", 110));
+            costume = Combo(new[] { "수퍼히어로 수트 (기본)", "기자 (클라크 켄트)" }, PlayOptions.Current.ClarkKent ? 1 : 0, 190); rowC.Controls.Add(costume);
+            Note(cs, "기자 차림은 정장 · 붉은 넥타이 · 검은 뿔테 안경이에요. 어느 쪽이든 '셔츠 찢기 (S 각성)'은 기자 차림에서 시작해 수퍼맨으로 변신해요.");
             RefreshRoster();
             return page;
         }
@@ -791,6 +796,7 @@ namespace SuperHeroes
             o.ClickMode = (ClickReaction)clickMode.SelectedIndex;
             o.Escape = rEscape.Checked; o.Follow = rFollow.Checked; o.EscapeDelay = (double)nDelay.Value; o.Secrets = cSecrets.Checked;
             o.HungerMinutes = (int)nHunger.Value; o.HungerCry = cHungerCry.Checked; o.ShowAffinity = cAffinity.Checked;
+            o.ClarkKent = costume.SelectedIndex == 1;
             o.SigFreq = sigFreq.SelectedIndex; o.SizePercent = (int)nSize.Value; o.PetOpacityPercent = (int)nOpacity.Value;
             o.MemoTopMost = cMemoTop.Checked; o.MemoOpacityPercent = (int)nMemoOpacity.Value;
 

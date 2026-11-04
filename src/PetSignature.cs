@@ -24,7 +24,7 @@ namespace SuperHeroes
                 new SigDef("히트 비전", 7.0, "두 눈이 붉게 타오르며 바닥으로 강렬한 고열 레이저 빔을 방출"),
                 new SigDef("냉기 입김", 6.5, "가슴 깊이 숨을 들이쉰 뒤 입으로 푸른 냉기 폭풍을 뿜어 얼음 결정 생성"),
                 new SigDef("초음속 펀치", 7.2, "하늘로 로켓처럼 솟구쳐 소닉 붐을 일으킨 뒤 급강하 슈퍼맨 펀치"),
-                new SigDef("셔츠 찢기 (S 각성)", 6.8, "정장 셔츠를 힘차게 찢어 가슴 속 찬란한 희망의 S 심볼을 드러냄"),
+                new SigDef("셔츠 찢기 (S 각성)", 6.8, "기자 클라크 켄트가 정장 셔츠를 힘차게 찢어 안경을 벗고 가슴 속 희망의 S 심볼과 함께 수퍼맨으로 각성"),
             },
             // 1: 배트맨
             new[]
@@ -75,7 +75,7 @@ namespace SuperHeroes
                 case 2: // 초음속 펀치
                     line = new[] { S(0, "하늘 높이!"), S(1.5, "초음속 돌파--!!"), S(3.8, "슈퍼맨 펀치!!"), S(5.5, "정의는 승리합니다.") }; break;
                 case 3: // 셔츠 찢기
-                    line = new[] { S(0, "위험 신호 감지..."), S(1.6, "이곳엔 수퍼맨이 필요해!"), S(3.5, "희망은 사라지지 않아!"), S(5.2, "내가 곁에 있습니다.") }; break;
+                    line = new[] { S(0, "취재 중... 어? 위험 신호!"), S(1.6, "이곳엔 수퍼맨이 필요해!"), S(3.5, "희망은 사라지지 않아!"), S(5.2, "내가 곁에 있습니다.") }; break;
 
                 // 배트맨
                 case 4: // 배트랭
@@ -279,21 +279,33 @@ namespace SuperHeroes
                     }
                     break;
 
-                case 3: // 셔츠 찢기 (S 각성)
+                case 3: // 셔츠 찢기 (S 각성) — 기자 클라크 켄트에서 수퍼맨으로
                     if (t < 1.6)
                     {
-                        P.Reach = Reach.Lap; P.HeadTilt = 3f;
+                        // 신문사 기자 차림으로 취재 중: 정장·넥타이·뿔테 안경, 문득 위험 신호를 느낀다
+                        P.Disguise = 1f; P.Reach = Reach.Lap;
+                        P.HeadTilt = (float)(3 + Math.Sin(t * 5) * 2); P.Eyes = EyeStyle.Open;
+                        if (t > 1.0) { P.Brow = 0.5f; P.Mouth = MouthStyle.Open; }
                     }
-                    else if (t < 4.8)
+                    else if (t < 3.45)
                     {
-                        P.Reach = Reach.Chest;
-                        P.ShirtOpen = (float)Math.Min(1, (t - 1.6) / 1.2);
-                        P.Mouth = MouthStyle.Smile;
-                        P.Aura = 0.8f; P.AuraColor = Color.FromArgb(255, 220, 50);
+                        // 양손으로 셔츠를 좌우로 힘껏 찢어 젖힌다 → 가슴 속 S 가 드러나고 안경·넥타이가 날아간다
+                        float open = (float)Math.Min(1, (t - 1.6) / 1.2);
+                        P.Disguise = 1f; P.ShirtOpen = open;
+                        P.HandLTo = new PointF(200 - 26 - open * 52, 322 - open * 6);
+                        P.HandRTo = new PointF(200 + 26 + open * 52, 322 - open * 6);
+                        P.Brow = 0.9f; P.Mouth = MouthStyle.Grit; P.BodyY = (float)(-3 * open);
+                        P.Aura = 0.8f * open; P.AuraColor = Color.FromArgb(255, 220, 50);
+                        if (t > 3.2) P.Transform = (float)Math.Min(1, (t - 3.2) / 0.25);
                     }
                     else
                     {
-                        P.ShirtOpen = 1.0f; P.Reach = Reach.Hips;
+                        // 변신 섬광 → 수퍼맨 수트, 희망의 광채
+                        float fade = (float)Math.Max(0, Math.Min(1, 1 - (t - 5.0) / 1.2));
+                        P.Disguise = 0f; P.ShirtOpen = fade; P.Reach = Reach.Hips;
+                        P.Transform = (float)Math.Max(0, Math.Min(1, 1 - (t - 3.45) / 0.8));
+                        P.Mouth = MouthStyle.Smile; P.Brow = 0.4f; P.CapeWind = 20f * (float)Math.Max(0, Math.Min(1, 1 - (t - 3.45) / 1.5));
+                        P.Aura = 0.8f * Math.Max(fade, 0.25f); P.AuraColor = Color.FromArgb(255, 220, 50);
                     }
                     break;
             }

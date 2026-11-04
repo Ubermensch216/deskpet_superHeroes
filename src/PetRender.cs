@@ -157,6 +157,8 @@ namespace SuperHeroes
             L.Bubble = PersistentBubble(hourlyBubble, Bubble);
             CompanionLook(ref L, now);
             ApplyPersona(ref L, now);
+            // 수퍼맨은 인간으로 지낼 땐 신문사 기자(클라크 켄트). 시그니처 중에는 각 동작이 직접 정한다.
+            if (Who == Persona.Superman && !IsSignatureActive && PlayOptions.Current.ClarkKent) L.Pose.Disguise = 1f;
             L.BubbleReveal = ChatRevealCount;
             L.Ai = chatPresence > .005;
             return L;
@@ -302,6 +304,7 @@ namespace SuperHeroes
             Pose ps = L.Pose; float K = art.K;
             if (ps.Nimbus > .01f) padBottom += 34 * K;                                              // 근두운이 발 밑으로 내려옴
             if (ps.Aura > .01f || ps.Spark > .01f || ps.Flash > .01f) padTop += 70 * K;              // 오라·번쩍임이 머리 위로
+            if (ps.Lightning > .01f) padBottom += 26 * K;                                          // 발밑 전기 고리
             bool lying = Math.Abs(L.Pose.Lie) > .01f;
             // 누우면 몸이 옆으로 길어진다
             float bx = lying ? Math.Max(w / 2 + padX, h * .62f) : w / 2 + padX, by = h + padTop;

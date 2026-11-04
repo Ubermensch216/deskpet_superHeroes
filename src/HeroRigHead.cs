@@ -43,6 +43,7 @@ namespace SuperHeroes
             // 목
             var neck = new[] { Pt(-24, 50), Pt(-26, 90), Pt(26, 90), Pt(24, 50) };
             Fill(neck, cSkinSh);
+            if (reporter) DrawReporterCollar();
 
             // 얼굴 윤곽
             var face = new[]
@@ -69,6 +70,9 @@ namespace SuperHeroes
 
             // 입
             DrawHeroMouth();
+
+            // 기자 차림: 검은 뿔테 안경 (셔츠를 찢는 순간 벗겨진다)
+            if (reporter && p.ShirtOpen < .35f) DrawReporterGlasses(rx);
 
             // 흑발 헤어 & 상징적인 'S'자 앞머리 컬 (Superman Curl)
             var hairCol = Color.FromArgb(20, 22, 28);
@@ -101,12 +105,25 @@ namespace SuperHeroes
             g.FillPolygon(B(hairCol), hairFront);
             g.DrawPolygon(ink, hairFront);
 
-            // S자 앞머리 컬 (이마 중앙으로 내려오는 컬)
-            using (var pn = Pn(hairCol, 6.5f))
+            if (reporter)
             {
-                var curl = new GraphicsPath();
-                curl.AddBezier(Pt(8, -ry * .6f), Pt(-12, -ry * .42f), Pt(-2, -ry * .22f), Pt(-14, -ry * .16f));
-                g.DrawPath(pn, curl);
+                // 기자: 포마드로 단정하게 빗어 넘긴 가르마 머리 (S 컬은 수트를 입을 때만)
+                using (var pn = Pn(Color.FromArgb(92, 96, 112), 3f))
+                {
+                    var part = new GraphicsPath();
+                    part.AddBezier(Pt(-rx * .30f, -ry * .96f), Pt(-rx * .38f, -ry * .80f), Pt(-rx * .36f, -ry * .66f), Pt(-rx * .52f, -ry * .50f));
+                    g.DrawPath(pn, part);
+                }
+            }
+            else
+            {
+                // S자 앞머리 컬 (이마 중앙으로 내려오는 컬)
+                using (var pn = Pn(hairCol, 6.5f))
+                {
+                    var curl = new GraphicsPath();
+                    curl.AddBezier(Pt(8, -ry * .6f), Pt(-12, -ry * .42f), Pt(-2, -ry * .22f), Pt(-14, -ry * .16f));
+                    g.DrawPath(pn, curl);
+                }
             }
         }
 

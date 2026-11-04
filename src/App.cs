@@ -322,6 +322,14 @@ namespace SuperHeroes
             quick.DropDownItems.Add(toggle("친구 위치 고정 (자동 이동 멈추기)", () => o.PositionFixed, v => SetPositionFixed(v)));
             quick.DropDownItems.Add(toggle("얌전 모드 (바닥에서만)", () => o.Focus, v => { o.Focus = v; o.Save(); }));
             quick.DropDownItems.Add(toggle("★ 시그니처 자동 재생", () => o.SigFreq > 0, v => { o.SigFreq = v ? 2 : 0; o.Save(); }));
+            var costume = new ToolStripMenuItem("수퍼맨 커스튬");
+            ToolStripMenuItem hero = null, reporter = null;
+            Action<bool> pick = clark => { o.ClarkKent = clark; o.Save(); hero.Checked = !clark; reporter.Checked = clark; };
+            hero = new ToolStripMenuItem("수퍼히어로 수트 (기본)") { Checked = !o.ClarkKent };
+            reporter = new ToolStripMenuItem("기자 (클라크 켄트)") { Checked = o.ClarkKent };
+            hero.Click += delegate { pick(false); }; reporter.Click += delegate { pick(true); };
+            costume.DropDownItems.Add(hero); costume.DropDownItems.Add(reporter);
+            quick.DropDownItems.Add(costume);
             quick.DropDownItems.Add(toggle("친밀도 숫자 표시", () => o.ShowAffinity, v => { o.ShowAffinity = v; o.Save(); ApplyCharacterSettings(); }));
             return quick;
         }

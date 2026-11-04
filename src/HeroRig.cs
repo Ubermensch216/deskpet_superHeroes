@@ -108,6 +108,12 @@ namespace SuperHeroes
                     cBoots = Color.FromArgb(190, 20, 30);
                     cGloves = cSkin; // 장갑 없음(맨손)
                     shDx = 82; topW = 160; waistY = 412; hipY = 432;
+                    reporter = p.Disguise > .5f;
+                    if (reporter)
+                    {
+                        // 기자(클라크 켄트): 네이비 정장 + 검정 구두 (망토·수트는 숨긴다)
+                        cSuit = cJacket; cSuitSh = cJacketSh; cBoots = cShoes;
+                    }
                     break;
 
                 case Persona.Batman:
@@ -201,7 +207,7 @@ namespace SuperHeroes
 
         private void DrawBackCape()
         {
-            if (cCape == Color.Transparent) return;
+            if (cCape == Color.Transparent || reporter) return;
 
             float bx = p.BodyX, by = p.BodyY;
             float tilt = p.HeadTilt * .4f;
@@ -245,7 +251,7 @@ namespace SuperHeroes
 
         private void DrawFrontCape()
         {
-            if (cCape == Color.Transparent) return;
+            if (cCape == Color.Transparent || reporter) return;
 
             // 어깨 고정부 / 망토 깃
             if (who == Persona.Thor)
@@ -299,14 +305,17 @@ namespace SuperHeroes
             Fill(pts, pantsCol);
 
             // 부츠 그리기
+            // 기자 차림이면 롱부츠 대신 발목까지만 오는 검정 구두
+            float bootTopY = reporter ? foot.Y - 26 : knee.Y + 20;
+            float bootTopX = reporter ? foot.X : knee.X;
             var bootPts = new[]
             {
-                Pt(knee.X - legW * .35f, knee.Y + 20),
+                Pt(bootTopX - legW * .35f, bootTopY),
                 Pt(foot.X - legW * .35f, foot.Y - 12),
                 Pt(foot.X - legW * .45f, foot.Y),
                 Pt(foot.X + legW * .42f, foot.Y),
                 Pt(foot.X + legW * .35f, foot.Y - 12),
-                Pt(knee.X + legW * .35f, knee.Y + 20)
+                Pt(bootTopX + legW * .35f, bootTopY)
             };
             Fill(bootPts, cBoots);
 
@@ -349,7 +358,7 @@ namespace SuperHeroes
             switch (who)
             {
                 case Persona.Superman:
-                    DrawSupermanChest(tcX, shY + by);
+                    if (reporter) DrawReporterChest(tcX, shY + by); else DrawSupermanChest(tcX, shY + by);
                     break;
                 case Persona.Batman:
                     DrawBatmanChest(tcX, shY + by);
@@ -367,6 +376,12 @@ namespace SuperHeroes
         }
 
         private void DrawSupermanChest(float cx, float cy)
+        {
+            DrawSupermanEmblem(cx, cy);
+            // 셔츠 찢기는 기자 차림(DrawReporterChest)에서 그린다 — 수트 차림에는 찢을 셔츠가 없다.
+        }
+
+        private void DrawSupermanEmblem(float cx, float cy)
         {
             // 수퍼맨 S 다이아몬드 방패 엠블럼
             float embY = cy + 45;
@@ -390,17 +405,6 @@ namespace SuperHeroes
                 spath.AddBezier(Pt(cx + 18, embY + 12), Pt(cx - 16, embY + 14), Pt(cx - 16, embY + 28), Pt(cx, embY + 30));
                 spath.AddBezier(Pt(cx, embY + 30), Pt(cx + 18, embY + 32), Pt(cx + 16, embY + 46), Pt(cx - 18, embY + 46));
                 g.DrawPath(pn, spath);
-            }
-
-            // 셔츠 뜯기 시그니처 연출
-            if (p.ShirtOpen > 0.05f)
-            {
-                float rip = p.ShirtOpen * 36f;
-                // 클라크 켄트 흰색 셔츠 및 정장 코트가 양옆으로 젖혀짐
-                var shirtL = new[] { Pt(cx - 50, cy), Pt(cx - 40 - rip, cy + 30), Pt(cx - 45 - rip, cy + 90), Pt(cx - 52, cy + 90) };
-                var shirtR = new[] { Pt(cx + 50, cy), Pt(cx + 40 + rip, cy + 30), Pt(cx + 45 + rip, cy + 90), Pt(cx + 52, cy + 90) };
-                g.FillPolygon(B(cWhite), shirtL); g.DrawPolygon(ink, shirtL);
-                g.FillPolygon(B(cWhite), shirtR); g.DrawPolygon(ink, shirtR);
             }
         }
 
@@ -487,7 +491,11 @@ namespace SuperHeroes
 
         private void DrawBeltAndHips(float cx, float wy, float hy)
         {
-            if (who == Persona.Superman)
+            if (who == Persona.Superman && reporter)
+            {
+                DrawReporterBelt(cx, wy, hy);
+            }
+            else if (who == Persona.Superman)
             {
                 // 수퍼맨 붉은색 트렁크(하의)
                 var trunks = new[]
@@ -634,6 +642,8 @@ namespace SuperHeroes
             {
                 Fill(glPts, cGloves);
             }
+
+            if (reporter) DrawReporterCuff(wr);
 
             // 주먹/손바닥
             float hx = wr.X, hy = wr.Y + 10;

@@ -113,6 +113,7 @@ namespace SuperHeroes
         internal bool Escape = true, Follow = false, Focus = false, WorkFocus = false, Fullscreen = false;
         internal bool HungerCry = true, Secrets = true, ShortRest = false, ShowAffinity = false;
         internal bool PositionFixed = false, MemoTopMost = false;
+        internal bool ClarkKent = false;     // 수퍼맨 커스튬: false 수퍼히어로 수트(기본) · true 기자(클라크 켄트) — 셔츠 찢기는 항상 기자 차림에서 시작
         internal double Speed = 1.0, FallSpeed = 1.2, SlideSpeed = 1.0, EscapeDelay = .12;
         internal int HungerMinutes = 60;
         internal int PetOpacityPercent = 100, MemoOpacityPercent = 100;
@@ -155,7 +156,7 @@ namespace SuperHeroes
                 o.Escape = flag("Escape", o.Escape); o.Follow = flag("Follow", o.Follow); o.Focus = flag("Focus", o.Focus); o.WorkFocus = flag("WorkFocus", o.WorkFocus);
                 o.Fullscreen = flag("Fullscreen", o.Fullscreen); o.HungerCry = flag("HungerCry", o.HungerCry); o.Secrets = flag("Secrets", o.Secrets);
                 o.ShortRest = flag("ShortRest", o.ShortRest); o.ShowAffinity = flag("ShowAffinity", o.ShowAffinity);
-                o.PositionFixed = flag("PositionFixed", o.PositionFixed); o.MemoTopMost = flag("MemoTopMost", o.MemoTopMost);
+                o.PositionFixed = flag("PositionFixed", o.PositionFixed); o.MemoTopMost = flag("MemoTopMost", o.MemoTopMost); o.ClarkKent = flag("ClarkKent", o.ClarkKent);
                 if (d.TryGetValue("Speed", out v)) o.Speed = ReadNumber(v, o.Speed, .5, 2);
                 if (d.TryGetValue("FallSpeed", out v)) o.FallSpeed = ReadNumber(v, o.FallSpeed, .5, 3);
                 if (d.TryGetValue("SlideSpeed", out v)) o.SlideSpeed = ReadNumber(v, o.SlideSpeed, .5, 3);
@@ -191,7 +192,7 @@ namespace SuperHeroes
             t.Append("Walls=" + b(Walls) + "\r\nCeiling=" + b(Ceiling) + "\r\nWindows=" + b(Windows) + "\r\nIdle=" + b(Idle) + "\r\n");
             t.Append("Escape=" + b(Escape) + "\r\nFollow=" + b(Follow) + "\r\nFocus=" + b(Focus) + "\r\nWorkFocus=" + b(WorkFocus) + "\r\nFullscreen=" + b(Fullscreen) + "\r\n");
             t.Append("HungerCry=" + b(HungerCry) + "\r\nSecrets=" + b(Secrets) + "\r\nShortRest=" + b(ShortRest) + "\r\nShowAffinity=" + b(ShowAffinity) + "\r\n");
-            t.Append("PositionFixed=" + b(PositionFixed) + "\r\nMemoTopMost=" + b(MemoTopMost) + "\r\n");
+            t.Append("PositionFixed=" + b(PositionFixed) + "\r\nMemoTopMost=" + b(MemoTopMost) + "\r\nClarkKent=" + b(ClarkKent) + "\r\n");
             t.Append("Speed=" + f(Speed) + "\r\nFallSpeed=" + f(FallSpeed) + "\r\nSlideSpeed=" + f(SlideSpeed) + "\r\nClickMode=" + ClickMode + "\r\n");
             t.Append("EscapeDelay=" + f(EscapeDelay) + "\r\nHungerMinutes=" + HungerMinutes + "\r\n");
             t.Append("PetOpacityPercent=" + PetOpacityPercent + "\r\nMemoOpacityPercent=" + MemoOpacityPercent + "\r\n");

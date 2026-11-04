@@ -70,6 +70,8 @@ namespace SuperHeroes
         public float FreezeMist;               // 수퍼맨: 냉기 입김 (0..1)
         public float ShirtOpen;                // 수퍼맨: 셔츠 뜯기 (0..1)
         public float SonicGlow;                // 수퍼맨: 초음속 비행 오라 (0..1)
+        public float Disguise;                 // 수퍼맨: 기자(클라크 켄트) 차림 (0 수퍼히어로 수트 .. 1 정장·뿔테 안경)
+        public float Transform;                // 수퍼맨: 변신 순간의 섬광 (0..1)
         
         public float Batarang;                 // 배트맨: 배트랭 던지기/날아감 (0..1)
         public float Grapnel;                  // 배트맨: 그래플건 와이어 (0..1)
@@ -107,9 +109,10 @@ namespace SuperHeroes
                 add((int)Eyes, 1); add(OpenL, 12); add(OpenR, 12); add(Gx, 10); add(Gy, 10); add(Cross, 10);
                 add(PupilR, 10); add(EyeScale, 20); add(Brow, 10); add(SpiralT, 5); add((int)Mouth, 1); add(MouthOpen, 12);
                 add(Tongue, 8); add(ArmLA, 3); add(ArmLB, 3); add(ArmRA, 3); add(ArmRB, 3); add(ArmLenL, 20); add(ArmLenR, 20); add((int)HandL, 1); add((int)HandR, 1);
-                add((int)Reach, 1); add(Clasp ? 1 : 0, 1); add(ArmsFront ? 1 : 0, 1);
+                add((int)Reach, 1); add(HandLTo.HasValue ? HandLTo.Value.X : -999, 2); add(HandLTo.HasValue ? HandLTo.Value.Y : -999, 2);
+                add(HandRTo.HasValue ? HandRTo.Value.X : -999, 2); add(HandRTo.HasValue ? HandRTo.Value.Y : -999, 2); add(Clasp ? 1 : 0, 1); add(ArmsFront ? 1 : 0, 1);
                 add(FootLX, 2); add(FootLY, 2); add(FootRX, 2); add(FootRY, 2); add(FootLRot, 2); add(FootRRot, 2); add(Knee, 4);
-                add(CapeWing, 10); add(CapeWind, 5); add(HeatLaser, 10); add(FreezeMist, 10); add(ShirtOpen, 10); add(SonicGlow, 10);
+                add(CapeWing, 10); add(CapeWind, 5); add(HeatLaser, 10); add(FreezeMist, 10); add(ShirtOpen, 10); add(SonicGlow, 10); add(Disguise, 10); add(Transform, 10);
                 add(Batarang, 10); add(Grapnel, 10); add(SmokeBomb, 10);
                 add(WebSwing, 10); add(SpiderSense, 10); add(WebNet, 10);
                 add(MjolnirSpin, 10); add(Lightning, 10); add(LightningT, 30); add(GroundCrush, 10); add(HammerThrow, 10);

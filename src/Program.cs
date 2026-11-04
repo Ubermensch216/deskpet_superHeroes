@@ -30,6 +30,7 @@ namespace SuperHeroes
             if (args.Length >= 2 && args[0] == "--make-icon") { DevTools.MakeIcon(args[1]); return; }
             if (args.Length >= 2 && args[0] == "--perf") { DevTools.Perf(args[1]); return; }
             if (args.Length >= 2 && args[0] == "--render-test") { DevTools.RenderSheet(args[1], args.Length >= 3 ? float.Parse(args[2]) : Native.SystemDpiScale()); return; }
+            if (args.Length >= 5 && args[0] == "--sig-shots") { DevTools.SigShots(args[1], args[2], int.Parse(args[3]), args[4], args.Length >= 6 ? float.Parse(args[5]) : 2f); return; }
             if (args.Length >= 2 && args[0] == "--selftest") { Environment.Exit(DevTools.SelfTest(args[1])); return; }
             if (args.Length >= 2 && args[0] == "--ui-test") { Environment.Exit(DevTools.UiTest(args[1])); return; }
             Log("Main start");
@@ -140,6 +141,37 @@ namespace SuperHeroes
         }
 
         /// <summary>캐릭터별·상태별 모습을 한 장의 시트 PNG 로 저장한다.</summary>
+        /// <summary>시그니처 동작을 지정한 시각(초)마다 크게 한 컷씩 뽑아 한 장으로 잇는다. 예: --sig-shots out Thor 1 1.8,3,3.5,4.5,5.5,6.4</summary>
+        internal static void SigShots(string dir, string who, int sig, string times, float scale)
+        {
+            Directory.CreateDirectory(dir);
+            CharacterArt.Reset(scale);
+            PlayOptions.Current = new PlayOptions();
+            DesktopSurfaces.TestProvider = () => new List<SurfaceWindow>(); DesktopSurfaces.TestMouse = () => new Point(-9999, -9999);
+            FriendData.Current = new FriendData();
+            int c = 0; for (int i = 0; i < CharacterArt.Count; i++) if (CharacterArt.Infos[i].Persona.ToString() == who) c = i;
+            var ts = new List<double>(); foreach (string s in times.Split(',')) ts.Add(double.Parse(s, System.Globalization.CultureInfo.InvariantCulture));
+            var shots = new List<Bitmap>();
+            var w = new FakeWorld { Rng = new Random(5) }; w.Areas[0] = new Rectangle(0, 0, 1280, 720);
+            var pet = new Pet(w, c, 640, 720) { Area = w.Areas[0] };
+            pet.SetState(PetState.Pause, w); pet.X = 640; pet.Y = 720; pet.Demonstrate(w, "sig" + sig);
+            double now = 0;
+            foreach (double t in ts)
+            {
+                for (; now < t - 1e-6; now += 0.02) { w.Now += 0.02; pet.Update(w, 0.02, null, 0); }
+                PointF origin; shots.Add(Pet.Render(pet.GetLook(w.Now), out origin));
+            }
+            int W = 0, H = 0; foreach (var b in shots) { W += b.Width; H = Math.Max(H, b.Height); }
+            using (var sheet = new Bitmap(W, H, PixelFormat.Format32bppArgb))
+            using (var g = Graphics.FromImage(sheet))
+            {
+                g.Clear(Color.FromArgb(70, 80, 100)); int x = 0;
+                foreach (var b in shots) { g.DrawImage(b, x, H - b.Height, b.Width, b.Height); x += b.Width; b.Dispose(); }
+                sheet.Save(Path.Combine(dir, "shots_" + who + "_" + sig + ".png"), ImageFormat.Png);
+            }
+            Console.WriteLine("saved " + dir);
+        }
+
         internal static void RenderSheet(string dir, float scale)
         {
             Directory.CreateDirectory(dir);
