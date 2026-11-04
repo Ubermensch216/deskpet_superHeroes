@@ -10,8 +10,8 @@ namespace SuperHeroes
     internal static class FriendUI
     {
         internal static readonly Color Paper = Color.FromArgb(255, 252, 249), Ink = Color.FromArgb(68, 50, 50);
-        internal static readonly Color Orange = Color.FromArgb(244, 124, 30), OrangeDark = Color.FromArgb(206, 92, 10), Gold = Color.FromArgb(255, 214, 60);
-        internal static readonly Color Blue = Color.FromArgb(54, 96, 190), BlueDark = Color.FromArgb(20, 54, 122), Navy = Color.FromArgb(15, 36, 84), Sheet = Color.FromArgb(248, 250, 255);
+        internal static readonly Color Orange = Color.FromArgb(244, 124, 30), OrangeDark = Color.FromArgb(206, 92, 10);
+        internal static readonly Color Blue = Color.FromArgb(30, 77, 164), BlueDark = Color.FromArgb(20, 54, 122), Navy = Color.FromArgb(15, 36, 84), Sheet = Color.FromArgb(248, 250, 255), Gold = Color.FromArgb(255, 214, 10);
         internal static void Setup(Form f, Icon icon)
         {
             f.Font = new Font("Malgun Gothic", 9f); f.BackColor = Paper;
@@ -31,8 +31,8 @@ namespace SuperHeroes
     }
 
     /// <summary>
-    /// 통합 설정창. 흩어져 있던 설정(알림 / 움직임·반응 / 친구 기록·생활 / 도우미 창)을 한 곳에 분류했다.
-    ///   캐릭터 · 움직임 · 반응 · 생활 · 알림 · 화면·시스템
+    /// 통합 설정창. 흩어져 있던 설정(알림 / 움직임·반응 / 친구 기록·생활 / 화면 / 메모 / AI)을 한 곳에 분류했다.
+    ///   캐릭터 · 움직임 · 반응 · 생활 · 알림 · 화면·시스템 · 메모 · AI 대화
     /// 왼쪽에서 분류를 고르고, 저장 한 번으로 모든 분류가 함께 저장된다.
     /// </summary>
     internal sealed class SettingsForm : Form
@@ -65,12 +65,12 @@ namespace SuperHeroes
         // 화면·시스템
         private NumericUpDown nSize, nOpacity, nMemoOpacity; private CheckBox cMemoTop, cStartup;
         // 메모
-        private ComboBox noteColor, noteSize; private Label noteInfo;
+        private ChoiceStrip noteColor, noteSize; private Label noteInfo;
         // AI 대화
-        private ComboBox cMode; private Label modeDesc; private HotkeyBox hkBox; private Label hkHint;
+        private ChoiceStrip cMode; private HotkeyBox hkBox;
         private CheckBox cChat, cChatKey, cChatSound, cChatProactive, cChatMemory, cChatChips, cChatDiary;
         private TextBox tChatModel, tChatUrl; private NumericUpDown nProactive; private Label chatProbe;
-        private Button bChatSetup, bChatSetupCancel; private ProgressBar chatSetupBar; private Label chatSetupText;
+        private FlatButton bChatSetup, bChatSetupCancel; private ProgressBar chatSetupBar;
         private ChatRequest setupHandle;
         // 캐릭터
         private ListBox rosterList; private ComboBox dexChar, sigFreq; private PictureBox dexPic; private Label dexTitle, dexTraits;
@@ -84,16 +84,13 @@ namespace SuperHeroes
             FormBorderStyle = FormBorderStyle.Sizable; MaximizeBox = false; ShowInTaskbar = true; BackColor = SystemColors.Control;
 
             // 아래 단추줄
-            var bar = new Panel { Dock = DockStyle.Bottom, Height = 52, BackColor = Color.FromArgb(245, 240, 232) };
+            var bar = new Panel { Dock = DockStyle.Bottom, Height = 52, BackColor = Color.FromArgb(232, 239, 250) };
             var bSave = new Button { Text = "저장", Width = 92, Height = 32, Anchor = AnchorStyles.Right | AnchorStyles.Top };
             var bApply = new Button { Text = "적용", Width = 92, Height = 32, Anchor = AnchorStyles.Right | AnchorStyles.Top };
             var bCancel = new Button { Text = "닫기", Width = 92, Height = 32, Anchor = AnchorStyles.Right | AnchorStyles.Top };
-            // 단추는 오른쪽 묶음, 상태 글은 남는 칸만 써서 서로 겹치지 않게 한다 (창 크기·화면 배율과 무관)
-            var btns = new FlowLayoutPanel { Dock = DockStyle.Right, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, FlowDirection = FlowDirection.LeftToRight, Padding = new Padding(0, 10, 14, 0), BackColor = Color.Transparent };
-            foreach (var b in new[] { bSave, bApply, bCancel }) { b.Anchor = AnchorStyles.None; b.Margin = new Padding(0, 0, 8, 0); btns.Controls.Add(b); }
-            bCancel.Margin = new Padding(0);
-            status = new Label { AutoSize = false, Dock = DockStyle.Fill, Padding = new Padding(14, 0, 0, 0), ForeColor = Color.DimGray, TextAlign = ContentAlignment.MiddleLeft };
-            bar.Controls.Add(status); bar.Controls.Add(btns);
+            status = new Label { AutoSize = false, Left = 14, Top = 8, Width = 330, Height = 36, ForeColor = Color.DimGray, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left | AnchorStyles.Top };
+            bar.Controls.AddRange(new Control[] { status, bSave, bApply, bCancel });
+            bar.Resize += delegate { bCancel.Left = bar.Width - 14 - bCancel.Width; bApply.Left = bCancel.Left - 8 - bApply.Width; bSave.Left = bApply.Left - 8 - bSave.Width; bSave.Top = bApply.Top = bCancel.Top = 10; status.Width = Math.Max(0, bSave.Left - 8 - status.Left); };
             Controls.Add(bar);
             bSave.Click += delegate { if (Apply()) Close(); };
             bApply.Click += delegate { Apply(); };
@@ -101,10 +98,10 @@ namespace SuperHeroes
             AcceptButton = bSave; CancelButton = bCancel;
 
             // 왼쪽 분류 목록
-            nav = new ListBox { Dock = DockStyle.Left, Width = 176, DrawMode = DrawMode.OwnerDrawFixed, ItemHeight = 54, BorderStyle = BorderStyle.None, IntegralHeight = false, BackColor = Color.FromArgb(58, 44, 40), ForeColor = Color.White };
+            nav = new ListBox { Dock = DockStyle.Left, Width = 176, DrawMode = DrawMode.OwnerDrawFixed, ItemHeight = 54, BorderStyle = BorderStyle.None, IntegralHeight = false, BackColor = FriendUI.Navy, ForeColor = Color.White };
             nav.Items.AddRange(PageNames);
             nav.DrawItem += DrawNav;
-            host = new Panel { Dock = DockStyle.Fill, BackColor = FriendUI.Paper };
+            host = new Panel { Dock = DockStyle.Fill, BackColor = FriendUI.Sheet };
             Controls.Add(host); Controls.Add(nav);
             host.BringToFront();
 
@@ -118,7 +115,7 @@ namespace SuperHeroes
             live = new System.Windows.Forms.Timer { Interval = 500 };
             live.Tick += delegate { RefreshLive(); };
             live.Start(); RefreshLive();
-            FormClosed += delegate { live.Stop(); live.Dispose(); };
+            FormClosed += delegate { live.Stop(); live.Dispose(); if (setupHandle != null) setupHandle.Abort(); };
         }
 
         internal void SelectPage(int i) { if (i >= 0 && i < pages.Length) nav.SelectedIndex = i; }
@@ -128,14 +125,13 @@ namespace SuperHeroes
         {
             if (e.Index < 0) return;
             bool sel = (e.State & DrawItemState.Selected) != 0;
-            using (var bg = new SolidBrush(sel ? FriendUI.Orange : nav.BackColor)) e.Graphics.FillRectangle(bg, e.Bounds);
+            using (var bg = new SolidBrush(sel ? FriendUI.Blue : nav.BackColor)) e.Graphics.FillRectangle(bg, e.Bounds);
             if (sel) using (var bar = new SolidBrush(FriendUI.Gold)) e.Graphics.FillRectangle(bar, e.Bounds.Left, e.Bounds.Top, 5, e.Bounds.Height);
             using (var f1 = new Font("Malgun Gothic", 11f, FontStyle.Bold)) using (var f2 = new Font("Malgun Gothic", 7.8f))
             {
-                string[] glyph = { "★", "▶", "☝", "♥", "♪", "▣", "✎", "💬" };
-                string g = e.Index < glyph.Length ? glyph[e.Index] : "·";
-                TextRenderer.DrawText(e.Graphics, g + "  " + PageNames[e.Index], f1, new Rectangle(e.Bounds.Left + 14, e.Bounds.Top + 7, e.Bounds.Width - 16, 22), Color.White, TextFormatFlags.Left | TextFormatFlags.NoPrefix);
-                TextRenderer.DrawText(e.Graphics, PageHints[e.Index], f2, new Rectangle(e.Bounds.Left + 14, e.Bounds.Top + 29, e.Bounds.Width - 16, 20), sel ? Color.FromArgb(255, 240, 214) : Color.FromArgb(190, 176, 168), TextFormatFlags.Left | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
+                string[] glyph = { "★", "▶", "☝", "♥", "♪", "▣", "✎", "✦" };
+                TextRenderer.DrawText(e.Graphics, glyph[e.Index] + "  " + PageNames[e.Index], f1, new Rectangle(e.Bounds.Left + 14, e.Bounds.Top + 7, e.Bounds.Width - 16, 22), Color.White, TextFormatFlags.Left | TextFormatFlags.NoPrefix);
+                TextRenderer.DrawText(e.Graphics, PageHints[e.Index], f2, new Rectangle(e.Bounds.Left + 14, e.Bounds.Top + 29, e.Bounds.Width - 16, 20), sel ? Color.FromArgb(214, 228, 250) : Color.FromArgb(150, 176, 220), TextFormatFlags.Left | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
             }
         }
 
@@ -149,11 +145,11 @@ namespace SuperHeroes
         // ───────── 쪽 만들기 도구 ─────────
         private Panel NewPage(string title, string subtitle, out FlowLayoutPanel flow)
         {
-            var page = new Panel { BackColor = FriendUI.Paper };
-            var head = new Panel { Dock = DockStyle.Top, Height = 62, BackColor = FriendUI.Paper };
-            head.Controls.Add(new Label { Text = title, AutoSize = true, Left = 20, Top = 10, Font = new Font("Malgun Gothic", 15f, FontStyle.Bold), ForeColor = FriendUI.OrangeDark });
+            var page = new Panel { BackColor = FriendUI.Sheet };
+            var head = new Panel { Dock = DockStyle.Top, Height = 62, BackColor = FriendUI.Sheet };
+            head.Controls.Add(new Label { Text = title, AutoSize = true, Left = 20, Top = 10, Font = new Font("Malgun Gothic", 15f, FontStyle.Bold), ForeColor = FriendUI.BlueDark });
             head.Controls.Add(new Label { Text = subtitle, AutoSize = true, Left = 22, Top = 40, ForeColor = Color.DimGray });
-            head.Paint += (s, e) => { using (var pen = new Pen(Color.FromArgb(236, 214, 190), 2)) e.Graphics.DrawLine(pen, 16, head.Height - 2, head.Width - 16, head.Height - 2); };
+            head.Paint += (s, e) => { using (var pen = new Pen(Color.FromArgb(190, 208, 238), 2)) e.Graphics.DrawLine(pen, 16, head.Height - 2, head.Width - 16, head.Height - 2); };
             flow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true, Padding = new Padding(18, 6, 12, 12) };
             page.Controls.Add(flow); page.Controls.Add(head);
             head.SendToBack(); flow.BringToFront();
@@ -162,7 +158,7 @@ namespace SuperHeroes
 
         private static GroupBox Group(FlowLayoutPanel parent, string title, int width = 500)
         {
-            var g = new GroupBox { Text = title, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(10, 6, 10, 8), Margin = new Padding(2, 8, 2, 4), MinimumSize = new Size(width, 0), ForeColor = FriendUI.OrangeDark };
+            var g = new GroupBox { Text = title, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Padding = new Padding(10, 6, 10, 8), Margin = new Padding(2, 8, 2, 4), MinimumSize = new Size(width, 0), ForeColor = FriendUI.BlueDark };
             var inner = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, Dock = DockStyle.Top, ForeColor = FriendUI.Ink };
             g.Controls.Add(inner); parent.Controls.Add(g);
             g.Tag = inner; return g;
@@ -180,14 +176,6 @@ namespace SuperHeroes
         { var l = new Label { Text = text, AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(3, 3, 3, 3), MaximumSize = new Size(maxW, 0) }; f.Controls.Add(l); return l; }
         private static FlowLayoutPanel Row(FlowLayoutPanel f)
         { var r = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 1, 0, 1), FlowDirection = FlowDirection.LeftToRight }; f.Controls.Add(r); return r; }
-        private static Label Cap(string text, int width = 0)
-        { var l = new Label { Text = text, AutoSize = width == 0, Margin = new Padding(3, 6, 3, 0), ForeColor = FriendUI.Ink }; if (width > 0) { l.Width = width; l.Height = 22; } return l; }
-        private static NumericUpDown Num(decimal min, decimal max, decimal value, int dec = 0, decimal inc = 1, int width = 70)
-        { return new NumericUpDown { Minimum = min, Maximum = max, DecimalPlaces = dec, Increment = inc, Value = Math.Max(min, Math.Min(max, value)), Width = width, Margin = new Padding(3) }; }
-        private static ComboBox Combo(string[] items, int selected, int width)
-        { var c = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = width, Margin = new Padding(3) }; c.Items.AddRange(items); c.SelectedIndex = Math.Max(0, Math.Min(items.Length - 1, selected)); return c; }
-
-        // 아이콘 글꼴(Segoe MDL2 Assets)의 글리프 하나를 작은 그림으로 그린다. 글꼴이 없으면 null(글자만 보인다).
         private Bitmap Glyph(char ch, Color col)
         {
             try
@@ -209,19 +197,18 @@ namespace SuperHeroes
         private Button IconButton(char glyph, string text, string tip, EventHandler click)
         {
             var b = FriendUI.Button(text, click);
-            var img = Glyph(glyph, FriendUI.OrangeDark);
+            var img = Glyph(glyph, FriendUI.BlueDark);
             if (img != null) { b.Image = img; b.TextImageRelation = TextImageRelation.ImageBeforeText; b.ImageAlign = ContentAlignment.MiddleLeft; b.TextAlign = ContentAlignment.MiddleRight; }
             else if (text.Length == 0) b.Text = "취소";
             if (img != null && text.Length == 0) { b.AutoSize = false; b.Size = new Size(36, b.Height > 0 ? Math.Max(b.Height, 27) : 27); b.ImageAlign = ContentAlignment.MiddleCenter; b.Padding = Padding.Empty; }
             tips.SetToolTip(b, tip); return b;
         }
-        private Label IconCap(char glyph, string tip)
-        {
-            var l = new Label { Width = 24, Height = 22, Margin = new Padding(3, 6, 0, 0), Image = Glyph(glyph, FriendUI.OrangeDark), ImageAlign = ContentAlignment.MiddleCenter };
-            if (l.Image == null) l.Text = "?";
-            tips.SetToolTip(l, tip); return l;
-        }
-
+        private static Label Cap(string text, int width = 0)
+        { var l = new Label { Text = text, AutoSize = width == 0, Margin = new Padding(3, 6, 3, 0), ForeColor = FriendUI.Ink }; if (width > 0) { l.Width = width; l.Height = 22; } return l; }
+        private static NumericUpDown Num(decimal min, decimal max, decimal value, int dec = 0, decimal inc = 1, int width = 70)
+        { return new NumericUpDown { Minimum = min, Maximum = max, DecimalPlaces = dec, Increment = inc, Value = Math.Max(min, Math.Min(max, value)), Width = width, Margin = new Padding(3) }; }
+        private static ComboBox Combo(string[] items, int selected, int width)
+        { var c = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = width, Margin = new Padding(3) }; c.Items.AddRange(items); c.SelectedIndex = Math.Max(0, Math.Min(items.Length - 1, selected)); return c; }
 
         // ───────── 1. 캐릭터 ─────────
         private Panel BuildCharacterPage()
@@ -240,6 +227,7 @@ namespace SuperHeroes
             col.Controls.Add(bCall);
             col.Controls.Add(FriendUI.Button("선택한 친구 보내기", delegate { if (rosterList.SelectedIndex >= 0) { app.RemoveByIndex(rosterList.SelectedIndex); RefreshRoster(); } }));
             col.Controls.Add(FriendUI.Button("모두 숨기기 / 보이기", delegate { app.ToggleHidden(); }));
+            col.Controls.Add(FriendUI.Button("화면 가운데로 다시 부르기", delegate { app.RecoverVisible(); }));
             Note(r, "마지막에 불러 둔 구성은 다음 실행에도 그대로 나와요.");
 
             var gDex = Group(f, "캐릭터 도감  ★ 시그니처 기술"); var d = In(gDex);
@@ -281,7 +269,11 @@ namespace SuperHeroes
             dexTitle.Text = info.Name + "  ·  " + info.Title;
             dexTraits.Text = "· " + string.Join("\n· ", info.Traits);
             var sigs = Signatures.All[c];
-            for (int i = 0; i < 3; i++) { sigName[i].Text = sigs[i].Label; sigDesc[i].Text = sigs[i].Desc; }
+            for (int i = 0; i < 3; i++)
+            {
+                sigName[i].Text = sigs[i].Label;
+                sigDesc[i].Text = sigs[i].Desc;
+            }
         }
 
         private void RefreshRoster()
@@ -373,25 +365,25 @@ namespace SuperHeroes
 
             // ① 맨 위: 켜기 + 미리보기
             var top = Row(a);
-            cHourly = new CheckBox { Text = "정각 알림 (매시간 현재 시각 알려주기)", Checked = s.HourlyOn, AutoSize = false, Width = 310, Height = 24, Margin = new Padding(3, 8, 3, 3) };
+            cHourly = new CheckBox { Text = "정각 알림", Checked = s.HourlyOn, AutoSize = false, Width = 310, Height = 24, Margin = new Padding(3, 8, 3, 3) };
             top.Controls.Add(cHourly);
             var bPreview = IconButton('', "정각창 미리보기", "지금 고른 빛 · 폭 · 진하기로 정각 알림창을 미리 봐요", delegate
             {
-                var n = new HourlyNotice(app.TrayIconImage); n.SetMessage(App.HourlyText(DateTime.Now) + "\n(미리보기)");
+                var n = new HourlyNotice(app.TrayIconImage); n.SetMessage(App.HourlyMessage(DateTime.Now, true, "13:00", "점심 먹으러 가자!", false, "18:00", "x") + "\n(미리보기)");
                 n.EnableEdgeGlow(cGlow.Checked, glowTheme.SelectedIndex, glowWidth.SelectedIndex, glowStrength.SelectedIndex); n.Show();
             });
             bPreview.Margin = new Padding(6, 3, 3, 3); top.Controls.Add(bPreview);
 
             // ② 알림 방식: 두 가지를 나란히
-            SubHead(a, "알림 방식");
-            var mode = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, RowCount = 1, Margin = Padding.Empty };
-            mode.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 232)); mode.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 238));
-            var m1 = HalfCell(); cPopup = Check(m1, "별도 알림창으로 보기", s.HourlyWindow, "직접 닫을 때까지 유지돼요. 끄면 친구의 말풍선으로 알려줘요."); WrapHint(m1, 200);
-            var m2 = HalfCell(); cAlertPet = Check(m2, "큰 캐릭터로 보여주기", s.AlertPet, "정각 · 점심 · 퇴근 · 메모 알림이 화면 가운데에 2배 크기로 나와요."); WrapHint(m2, 205);
-            tips.SetToolTip(cAlertPet, "2배 크기 부기가 네온 빛을 두르고 나와요. 눌러서 닫을 때까지 유지돼요.\n끄면 예전 알림창 · 말풍선을 써요. (메모 알림은 늘 큰 부기로 나와요)");
-            mode.Controls.Add(m1, 0, 0); mode.Controls.Add(m2, 1, 0); a.Controls.Add(mode);
+            var methods = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, Margin = Padding.Empty };
+            methods.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 240)); methods.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 230));
+            cPopup = new CheckBox { Text = "정각 알림창 띄우기 (화면 오른쪽 아래)", Checked = s.HourlyWindow, AutoSize = true, Margin = new Padding(3, 3, 3, 3) };
+            cAlertPet = new CheckBox { Text = "친구들이 정각 알림 배너 들기", Checked = s.AlertPet, AutoSize = true, Margin = new Padding(3, 3, 3, 3) };
+            methods.Controls.Add(cPopup, 0, 0); methods.Controls.Add(cAlertPet, 1, 0);
+            a.Controls.Add(methods);
+            cHourly.CheckedChanged += delegate { methods.Enabled = cHourly.Checked; }; methods.Enabled = cHourly.Checked;
 
-            // ③ 화면 가장자리 빛
+            // ③ 가장자리 빛
             SubHead(a, "화면 가장자리 빛");
             cGlow = Check(a, "알림창을 닫을 때까지 화면 가장자리 빛 유지", s.EdgeGlow);
             var glowBox = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Margin = Padding.Empty };
@@ -454,20 +446,15 @@ namespace SuperHeroes
                 using (var font = new Font("Malgun Gothic", 9f, FontStyle.Bold))
                 {
                     Size sz = TextRenderer.MeasureText(e.Graphics, text, font, new Size(int.MaxValue, int.MaxValue), TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
-                    TextRenderer.DrawText(e.Graphics, text, font, new Point(3, (p.Height - sz.Height) / 2 + 2), FriendUI.OrangeDark, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
-                    using (var pen = new Pen(Color.FromArgb(236, 214, 190))) e.Graphics.DrawLine(pen, sz.Width + 12, p.Height / 2 + 2, p.Width - 3, p.Height / 2 + 2);
+                    TextRenderer.DrawText(e.Graphics, text, font, new Point(3, (p.Height - sz.Height) / 2 + 2), FriendUI.Blue, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix);
+                    using (var pen = new Pen(Color.FromArgb(206, 218, 240))) e.Graphics.DrawLine(pen, sz.Width + 12, p.Height / 2 + 2, p.Width - 3, p.Height / 2 + 2);
                 }
             };
             f.Controls.Add(p);
         }
-        private static FlowLayoutPanel HalfCell()
-        { return new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Margin = Padding.Empty }; }
-        private static void WrapHint(FlowLayoutPanel cell, int maxW)
-        { var l = cell.Controls[cell.Controls.Count - 1] as Label; if (l != null) l.MaximumSize = new Size(maxW, 0); }
         private static Label Tiny(string text, int width = 0)
         { var l = new Label { Text = text, AutoSize = width == 0, ForeColor = Color.DimGray, Margin = new Padding(3, 5, 3, 1), Font = new Font("Malgun Gothic", 8.5f) }; if (width > 0) { l.AutoSize = false; l.Width = width; l.Height = 16; } return l; }
 
-        // 화면 모양 그림: 가장자리에서 안쪽으로 번지는 빛 띠(thick px 폭, alpha 진하기)
         private static void GlowThumb(Graphics g, Rectangle r, Color[] pal, double thick, int alpha)
         {
             r = new Rectangle(r.X, r.Y, r.Width - 1, r.Height - 1);
@@ -511,7 +498,6 @@ namespace SuperHeroes
             d.Controls.Add(FriendUI.Button("설정을 처음 상태로 되돌리기 (기록은 그대로)", delegate
             {
                 if (MessageBox.Show(this, "모든 설정을 처음 값으로 되돌릴까요?\n친밀도·할 일·메모 같은 기록은 지워지지 않아요.", "수퍼히어로", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
-                string roster = app.Settings.Roster;
                 app.ResetAllSettings(); status.Text = "처음 설정으로 되돌렸어요."; Close(); app.OpenSettingsPage(lastPage);
             }));
             return page;
@@ -529,101 +515,187 @@ namespace SuperHeroes
                 }
         }
 
-        // ───────── 실시간 표시 ─────────
-        private void RefreshLive()
-        {
-            if (lifeSummary == null) return;
-            var d = FriendData.Current;
-            {
-                lifeSummary.Text = "♥ 친밀도 " + d.Affinity.ToString("N0") + "   ·   함께 " + FriendData.FormatTogether(d.TogetherSeconds);
-                satietyBar.Value = Math.Max(0, Math.Min(100, (int)Math.Floor(d.Satiety)));
-                lifeDetail.Text = "포만감 " + (int)Math.Floor(d.Satiety) + " / 100   ·   다음 꽃다발: 친밀도 " + ((d.Affinity / 100 + 1) * 100).ToString("N0") + "   ·   " + (d.CanSnack ? "지금 간식을 줄 수 있어요" : "지금은 배가 꽉 찼어요");
-                snackButton.Enabled = d.CanSnack;
-                var names = new[] { new[] { "dance", "몰래 하는 군무" }, new[] { "dizzy", "어질어질" }, new[] { "power", "기 폭발" } };
-                secretLabel.Text = "발견한 숨은 반응 " + names.Count(p => d.Discoveries.Contains(p[0])) + " / 3\n" + string.Join("  ·  ", names.Where(p => d.Discoveries.Contains(p[0])).Select(p => p[1]).ToArray());
-            }
-            RefreshRoster();
-        }
-
         // ───────── 7. 메모 ─────────
+        // 글 대신 그림으로: 색 · 크기는 그림 카드로 고르고, 단축키는 아이콘 + 키캡 카드로 보여 준다. 자세한 설명은 마우스를 올리면 말풍선으로.
         private Panel BuildMemoPage()
         {
             FlowLayoutPanel f; var page = NewPage("메모", "바탕화면 메모의 기본 모습 · 단축키 · 저장 위치", out f);
             var mgr = app.Notes;
-            var g1 = Group(f, "새 메모의 기본값"); var a = In(g1);
-            var rc = Row(a); rc.Controls.Add(Cap("기본 색", 70));
-            noteColor = Combo(NoteColors.All.Select(k => NoteColors.Label(k)).ToArray(), mgr == null ? 0 : Array.IndexOf(NoteColors.All, mgr.DefaultColor), 120); rc.Controls.Add(noteColor);
-            var rs = Row(a); rs.Controls.Add(Cap("기본 크기", 70));
-            noteSize = Combo(new[] { "작게  240×180", "보통  320×260", "크게  420×360" }, mgr == null ? 1 : (int)mgr.DefaultSize, 150); rs.Controls.Add(noteSize);
-            Note(a, "저장한 다음에 만드는 메모부터 적용돼요. 이미 있는 메모의 색과 크기는 그대로예요.");
-            var g2 = Group(f, "어디서나 쓰는 단축키"); var b = In(g2);
-            Note(b, "Ctrl+Alt+N   새 메모\nCtrl+Shift+F   메모 라이브러리\nCtrl+Shift+P   마지막으로 쓴 메모를 항상 위에 두기\nCtrl+Shift+R   마지막으로 쓴 메모에 1시간 뒤 알림");
-            Note(b, "다른 프로그램이 이미 쓰는 조합이면 등록되지 않아요. 트레이·우클릭 메뉴의 새 메모와, 메모 위젯 ⋯ 메뉴의 메모 라이브러리는 늘 쓸 수 있어요.");
-            var g3 = Group(f, "메모를 쓰는 중"); var c = In(g3);
-            Note(c, "Ctrl+B / I / U   굵게 · 기울임 · 밑줄       Ctrl+Shift+X   취소선\nCtrl+K   링크       Ctrl+Shift+K   코드       Ctrl+1 / 2 / 3   제목\nCtrl+Shift+L   글머리 목록       Ctrl+Shift+C   체크리스트\nCtrl+Enter   커서 줄의 체크박스 토글       Enter   목록 이어쓰기(빈 항목에서 목록 끝)");
-            var g4 = Group(f, "내 메모는 어디에"); var d = In(g4);
-            noteInfo = Note(d, ""); noteInfo.Text = mgr == null ? "" : mgr.Store.Root + "\n메모 " + mgr.Store.Count.ToString("N0") + "개";
-            d.Controls.Add(FriendUI.Button("폴더 열기", delegate { try { if (mgr != null) System.Diagnostics.Process.Start("explorer.exe", "\"" + mgr.Store.Root + "\""); } catch { } }));
-            Note(d, "백업은 프로그램을 끈 뒤 이 폴더를 통째로 복사하면 돼요. 삭제는 되돌릴 수 없어요(휴지통이 없어요).");
+
+            var g1 = Group(f, "새 메모의 기본값", 520); var a = In(g1);
+            var rc = Row(a); rc.Controls.Add(Badge(FlatIcon.Palette, "기본 색"));
+            noteColor = new ChoiceStrip(NoteColors.All.Select(k => NoteColors.Label(k)).ToArray(), mgr == null ? 0 : Math.Max(0, Array.IndexOf(NoteColors.All, mgr.DefaultColor)), 50, new Size(28, 24),
+                delegate(Graphics g, Rectangle r, int i) { FlatIcon.NoteShape(g, r, NoteColors.All[i]); });
+            rc.Controls.Add(noteColor);
+            var rs = Row(a); rs.Controls.Add(Badge(FlatIcon.Resize, "기본 크기"));
+            // 크기 카드는 실제 메모 비율로 그리고, 위에서 고른 색으로 칠한다.
+            Size[] dims = { new Size(NoteGeometry.SmallW, NoteGeometry.SmallH), new Size(NoteGeometry.MediumW, NoteGeometry.MediumH), new Size(NoteGeometry.LargeW, NoteGeometry.LargeH) };
+            noteSize = new ChoiceStrip(new[] { "작게  240×180", "보통  320×260", "크게  420×360" }, mgr == null ? 1 : (int)mgr.DefaultSize, 140, new Size(38, 30),
+                delegate(Graphics g, Rectangle r, int i)
+                {
+                    float w = r.Width * dims[i].Width / (float)NoteGeometry.LargeW, h = r.Height * dims[i].Height / (float)NoteGeometry.LargeH;
+                    FlatIcon.NoteShape(g, new RectangleF(r.X + (r.Width - w) / 2f, r.Y + (r.Height - h) / 2f, w, h), NoteColors.All[Math.Max(0, noteColor.SelectedIndex)]);
+                });
+            noteColor.SelectedIndexChanged += delegate { noteSize.Invalidate(); };
+            rs.Controls.Add(noteSize);
+            IconText(Row(a), FlatIcon.Info, "저장한 다음에 만드는 메모부터 적용돼요.", "이미 있는 메모의 색과 크기는 그대로예요.", Color.DimGray);
+
+            var g2 = Group(f, "어디서나 쓰는 단축키", 520); var b = In(g2);
+            var hot = TileGrid(b, 2, 246);
+            AddTile(hot, FlatIcon.NewNote, "새 메모", new[] { "Ctrl", "Alt", "N" }, "어디서나 새 메모를 만들어요.", true);
+            AddTile(hot, FlatIcon.Library, "메모 라이브러리", new[] { "Ctrl", "Shift", "F" }, "모든 메모를 한눈에 보고 찾아요.", true);
+            AddTile(hot, FlatIcon.Pin, "항상 위에 두기", new[] { "Ctrl", "Shift", "P" }, "마지막으로 쓴 메모를 항상 위에 두었다가 풀어요.", true);
+            AddTile(hot, FlatIcon.BellClock, "1시간 뒤 알림", new[] { "Ctrl", "Shift", "R" }, "마지막으로 쓴 메모에 1시간 뒤 알림을 걸어요.", true);
+            IconText(Row(b), FlatIcon.Warning, "다른 프로그램이 쓰는 조합이면 등록되지 않아요.", "그래도 트레이·우클릭 메뉴의 새 메모와, 메모 위젯 ⋯ 메뉴의 메모 라이브러리는 늘 쓸 수 있어요.", Color.DimGray);
+
+            var g3 = Group(f, "메모를 쓰는 중", 520); var c = In(g3);
+            var edit = TileGrid(c, 4, 122);
+            AddTile(edit, FlatIcon.Bold, "굵게", new[] { "Ctrl", "B" }, "굵게", false);
+            AddTile(edit, FlatIcon.Italic, "기울임", new[] { "Ctrl", "I" }, "기울임", false);
+            AddTile(edit, FlatIcon.Underline, "밑줄", new[] { "Ctrl", "U" }, "밑줄", false);
+            AddTile(edit, FlatIcon.Strike, "취소선", new[] { "Ctrl", "Shift", "X" }, "취소선", false);
+            AddTile(edit, FlatIcon.Link, "링크", new[] { "Ctrl", "K" }, "링크", false);
+            AddTile(edit, FlatIcon.Code, "코드", new[] { "Ctrl", "Shift", "K" }, "코드 블록", false);
+            AddTile(edit, FlatIcon.Heading, "제목", new[] { "Ctrl", "1" }, "제목 1단계 (Ctrl+2, 3으로 2·3단계)", false);
+            AddTile(edit, FlatIcon.Bullets, "글머리", new[] { "Ctrl", "Shift", "L" }, "글머리 기호 목록", false);
+            AddTile(edit, FlatIcon.Checklist, "할 일 목록", new[] { "Ctrl", "Shift", "C" }, "체크리스트 만들기", false);
+            AddTile(edit, FlatIcon.ToggleCheck, "체크 토글", new[] { "Ctrl", "Enter" }, "커서 줄의 체크박스 켜고 끄기", false);
+            AddTile(edit, FlatIcon.EnterKey, "목록 이어쓰기", new[] { "Enter" }, "목록에서 엔터를 치면 다음 줄도 목록 (빈 줄에서 치면 끝)", false);
+
+            var g4 = Group(f, "내 메모는 어디에", 520); var d = In(g4);
+            var rWhere = Row(d);
+            rWhere.Controls.Add(Badge(FlatIcon.Folder, "저장 위치"));
+            var infoBox = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, Margin = new Padding(0, 10, 0, 0) };
+            noteInfo = new Label { AutoSize = true, ForeColor = FriendUI.Ink, Text = mgr == null ? "" : mgr.Store.Root + "   (메모 " + mgr.Store.Count.ToString("N0") + "개)" };
+            infoBox.Controls.Add(noteInfo);
+            var btns = Row(infoBox);
+            btns.Controls.Add(IconBtn(FlatIcon.OpenOut, "폴더 열기", delegate { try { if (mgr != null) System.Diagnostics.Process.Start("explorer.exe", "\"" + mgr.Store.Root + "\""); } catch { } }));
+            btns.Controls.Add(IconBtn(FlatIcon.Copy, "백업 안내\n프로그램을 끈 뒤 이 폴더를 통째로 복사해 두면 안전해요.", delegate
+            { MessageBox.Show(this, "백업하는 방법:\n\n1. 프로그램을 끕니다.\n2. 위의 '폴더 열기'로 연 폴더를 다른 디스크나 클라우드에 통째로 복사하세요.\n3. 새 PC 에서는 같은 위치에 덮어쓰면 모든 메모·태그·알림이 그대로 돌아와요.", "수퍼히어로 · 백업", MessageBoxButtons.OK, MessageBoxIcon.Information); }));
+            btns.Controls.Add(IconBtn(FlatIcon.Trash, "삭제 주의\n지운 메모는 휴지통으로 가지 않고 바로 사라져요.", delegate
+            { MessageBox.Show(this, "메모를 지울 때 주의:\n\n· 메모나 노트북을 지우면 휴지통을 거치지 않고 바로 삭제돼요.\n· 되돌릴 수 없으니 중요한 메모는 가끔 백업해 두세요.", "수퍼히어로 · 삭제 주의", MessageBoxButtons.OK, MessageBoxIcon.Warning); }));
+            rWhere.Controls.Add(infoBox);
             return page;
         }
 
+        // 설정 값 옆에 붙이는 그림 표지
+        private IconBox Badge(FlatIcon.Painter p, string tip)
+        { var b = new IconBox(p, 26) { Margin = new Padding(3, 14, 6, 3) }; tips.SetToolTip(b, tip); return b; }
+        // 그림 + 한 줄 글(자세한 설명은 말풍선)
+        private void IconText(FlowLayoutPanel row, FlatIcon.Painter p, string text, string tip, Color color)
+        {
+            var ib = new IconBox(p, 18) { Margin = new Padding(3, 4, 4, 3) };
+            var l = new Label { Text = text, AutoSize = true, ForeColor = color, Margin = new Padding(0, 4, 14, 3), MaximumSize = new Size(440, 0) };
+            row.Controls.Add(ib); row.Controls.Add(l);
+            if (tip != null) { tips.SetToolTip(ib, tip); tips.SetToolTip(l, tip); }
+        }
+        private static TableLayoutPanel TileGrid(FlowLayoutPanel parent, int cols, int cellW)
+        {
+            var t = new TableLayoutPanel { AutoSize = true, ColumnCount = cols, Margin = new Padding(0, 2, 0, 0) };
+            for (int i = 0; i < cols; i++) t.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, cellW));
+            parent.Controls.Add(t); return t;
+        }
+        private void AddTile(TableLayoutPanel t, FlatIcon.Painter p, string caption, string[] keys, string tip, bool wide)
+        { var tile = new HintTile(p, caption, keys, wide); tips.SetToolTip(tile, tip); t.Controls.Add(tile); }
+
         // ───────── 8. AI 대화 ─────────
+        // 글 대신 그림으로: 단추는 그림 단추, 설정마다 작은 아이콘을 붙이고 설명은 마우스를 올리면 말풍선으로. 스크롤 없이 한 화면에 들어간다.
+        private static readonly FlatIcon.Painter[] ModeArt = { FlatIcon.Smile, FlatIcon.Heart, FlatIcon.Bulb, FlatIcon.Laugh, FlatIcon.Bolt };
+
+        private IconBox Mark(FlatIcon.Painter p, string tip, int size = 22)
+        { var b = new IconBox(p, size) { Margin = new Padding(3, 4, 2, 3) }; tips.SetToolTip(b, tip); return b; }
+
+        private FlatButton IconBtn(FlatIcon.Painter p, string tip, EventHandler click)
+        { var b = new FlatButton(p, tip); b.Click += click; tips.SetToolTip(b, tip); return b; }
+
+        // 아이콘 + 켜고 끄는 칸. 아이콘을 눌러도 켜지고 꺼진다.
+        private CheckBox IconCheck(FlowLayoutPanel row, FlatIcon.Painter p, string text, bool value, string tip)
+        {
+            var ib = Mark(p, tip); ib.Cursor = Cursors.Hand;
+            var c = new CheckBox { Text = text, Checked = value, AutoSize = true, Margin = new Padding(2, 5, 8, 3) };
+            ib.Click += delegate { c.Checked = !c.Checked; };
+            tips.SetToolTip(c, tip); row.Controls.Add(ib); row.Controls.Add(c);
+            return c;
+        }
+
         private Panel BuildChatPage()
         {
-            FlowLayoutPanel f; var page = NewPage("AI 대화", "이 PC 의 Ollama 와 이야기해요", out f);
+            FlowLayoutPanel f; var page = NewPage("AI 대화", "내 PC의 Ollama와 이야기해요", out f);
             var o = ChatOptions.Current;
-            // 연결: 글자 대신 아이콘(설정창 전용 글리프)으로 줄여 높이를 절반 가까이로 맞췄다. 자세한 설명은 마우스를 올리면 말풍선으로.
-            var g1 = Group(f, "연결"); var a = In(g1);
-            var rc = Row(a);
-            cChat = Check(rc, "AI 대화 사용", o.Enabled); tips.SetToolTip(cChat, "켜면 캐릭터를 더블클릭하거나 우클릭 → 말 걸기로 이야기할 수 있어요.");
-            rc.Controls.Add(new Label { Text = "더블클릭 · 우클릭 → 말 걸기", AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(0, 6, 3, 0) });
-            var rm = Row(a);
-            rm.Controls.Add(IconCap('', "모델 (Ollama 모델 이름)"));
-            tChatModel = new TextBox { Text = o.Model, Width = 130, Margin = new Padding(3) }; rm.Controls.Add(tChatModel);
-            rm.Controls.Add(IconCap('', "서버 주소\n대화 내용은 이 서버로만 보내져요.\n기본값(localhost)이면 이 PC 밖으로 나가지 않아요."));
-            tChatUrl = new TextBox { Text = o.Endpoint, Width = 215, Margin = new Padding(3) }; rm.Controls.Add(tChatUrl);
-            var rp = Row(a);
-            var bProbe = IconButton('', "연결 확인", "서버와 모델이 준비됐는지 확인해요.", delegate { ProbeChat(); });
-            bChatSetup = IconButton('', "자동 설치", "Ollama 나 모델이 없는 PC 에서 공식 사이트에서 내려받아 설치하고 모델까지 받아요.\n서버 주소가 이 PC 일 때만 되고, 내려받기 전에 한 번 물어봐요.", delegate { StartChatSetup(); });
-            bChatSetupCancel = IconButton('', "", "설치 취소", delegate { if (setupHandle != null) setupHandle.Abort(); }); bChatSetupCancel.Enabled = false;
-            chatProbe = new Label { AutoSize = true, Margin = new Padding(6, 8, 3, 3), ForeColor = Color.DimGray };
-            rp.Controls.Add(bProbe); rp.Controls.Add(bChatSetup); rp.Controls.Add(bChatSetupCancel); rp.Controls.Add(chatProbe);
-            chatSetupBar = new ProgressBar { Width = 440, Height = 8, Margin = new Padding(6, 0, 3, 3), Visible = false };
-            a.Controls.Add(chatSetupBar);
-            chatSetupText = new Label { Text = "", AutoSize = true, MaximumSize = new Size(440, 0), ForeColor = Color.DimGray, Margin = new Padding(6, 0, 3, 3), Visible = false };
-            a.Controls.Add(chatSetupText);
-            var gm = Group(f, "대화 모드"); var m = In(gm);
-            var rmo = Row(m); rmo.Controls.Add(Cap("모드", 60)); cMode = Combo(ChatMode.All.Select(x => x.Name).ToArray(), o.Mode, 120); rmo.Controls.Add(cMode);
-            modeDesc = new Label { AutoSize = true, MaximumSize = new Size(440, 0), ForeColor = Color.DimGray, Margin = new Padding(6, 4, 3, 3), Text = ChatMode.At(o.Mode).Desc };
-            cMode.SelectedIndexChanged += delegate { modeDesc.Text = ChatMode.At(cMode.SelectedIndex).Desc; };
-            m.Controls.Add(modeDesc);
-            Note(m, "캐릭터의 성격은 그대로이고 말하는 방식과 길이만 달라져요. 우클릭 메뉴의 대화 모드에서도 바꿀 수 있고, 바꾼 다음 말부터 적용돼요.");
-            var g2 = Group(f, "말 걸기"); var b = In(g2);
-            cChatKey = Check(b, "단축키로 말 걸기", o.Hotkey);
-            var rk = Row(b); rk.Controls.Add(Cap("단축키", 70)); hkBox = new HotkeyBox(o.HotkeyMods, o.HotkeyKey); rk.Controls.Add(hkBox);
-            rk.Controls.Add(FriendUI.Button("기본값", delegate { hkBox.SetValue(ChatHotkey.DefaultMods, ChatHotkey.DefaultKey); hkHint.Text = ""; }));
-            hkHint = new Label { AutoSize = true, MaximumSize = new Size(440, 0), ForeColor = Color.Firebrick, Margin = new Padding(6, 4, 3, 3) };
-            hkBox.Hint += t => { hkHint.ForeColor = t != null && t.StartsWith("키를 하나씩") ? Color.DimGray : Color.Firebrick; hkHint.Text = t ?? ""; };
-            Note(b, "입력란을 클릭한 뒤 키를 하나씩 누르세요. 누른 키가 \"Ctrl + \" 처럼 보이고 다음 키를 기다려요. 보조키(Ctrl · Alt · Shift) 2개 이상 + 글쇠 1개, 모두 3개 이상이어야 해요. Esc 는 취소, Backspace 는 방금 누른 키 취소예요.");
-            b.Controls.Add(hkHint);
-            cChatChips = Check(b, "캐릭터의 말 끝에 답장 추천 칩 보여주기", o.Chips, "눌러서 바로 보낼 수 있는 짧은 말이에요(Ctrl+1~3). 글자를 치기 시작하면 사라져요.");
-            cChatSound = Check(b, "말할 때 글자마다 뽁뽁 소리 내기", o.Sound, "기본은 꺼져 있어요.");
-            cChatProactive = Check(b, "캐릭터가 먼저 말 걸기 (선톡)", o.Proactive, "컴퓨터를 쓰는 중일 때 가끔 한마디 건네요. 켜면 모델이 메모리에 올라가 있어요.");
-            var rq = Row(b); rq.Controls.Add(Cap("평균 간격", 70)); nProactive = Num(5, 480, o.ProactiveMinutes, 0, 5, 70); rq.Controls.Add(nProactive); rq.Controls.Add(Cap("분"));
-            var g3 = Group(f, "기억"); var c = In(g3);
-            cChatMemory = Check(c, "대화에서 알게 된 이야기를 기억하기", o.Memory, "대화가 끝날 때 사실만 한두 줄로 적어 둬요. 이 PC 의 파일에만 저장돼요.");
-            c.Controls.Add(FriendUI.Button("기억 보기 · 지우기...", delegate { new ChatMemoryForm(app.TrayIconImage).ShowDialog(this); }));
-            var g4 = Group(f, "수퍼히어로 일기장"); var d = In(g4);
-            cChatDiary = Check(d, "대화가 끝나면 캐릭터가 일기 한 줄 쓰기", o.Diary, "오늘 나눈 이야기를 캐릭터의 시점에서 한두 문장으로 적어 둬요. 이 PC 의 파일(수퍼히어로_일기.txt)에만 저장돼요.");
-            d.Controls.Add(FriendUI.Button("일기장 열기...", delegate { new ChatDiaryForm(app.TrayIconImage).ShowDialog(this); }));
+
+            // 연결: 켜기 · 단추 세 개 / 모델 · 서버 / 상태 한 줄
+            var g1 = Group(f, "연결", 520); var a = In(g1);
+            var ra = Row(a);
+            ra.Controls.Add(new IconBox(FlatIcon.Chat, 24) { Margin = new Padding(3, 5, 0, 3) });
+            cChat = new CheckBox { Text = "AI 대화 사용", Checked = o.Enabled, AutoSize = false, Width = 309, Height = 24, Margin = new Padding(5, 8, 3, 3) };
+            tips.SetToolTip(cChat, "켜면 캐릭터를 더블클릭하거나 우클릭 → 말 걸기로 이야기할 수 있어요.");
+            ra.Controls.Add(cChat);
+            ra.Controls.Add(IconBtn(FlatIcon.PlugCheck, "연결 확인\n서버와 모델이 준비됐는지 봐요.", delegate { ProbeChat(); }));
+            bChatSetup = IconBtn(FlatIcon.Download, "자동 설치\nOllama 와 모델이 없을 때 공식 사이트에서 받아 설치해요.\n서버가 이 PC(localhost)일 때만 되고, 받기 전에 한 번 물어봐요.", delegate { StartChatSetup(); });
+            bChatSetupCancel = IconBtn(FlatIcon.Stop, "설치 취소", delegate { if (setupHandle != null) setupHandle.Abort(); }); bChatSetupCancel.Enabled = false;
+            ra.Controls.Add(bChatSetup); ra.Controls.Add(bChatSetupCancel);
+
+            var rb = Row(a);
+            rb.Controls.Add(Mark(FlatIcon.Chip, "모델  (Ollama 모델 이름)"));
+            tChatModel = new TextBox { Text = o.Model, Width = 150, Margin = new Padding(3, 3, 12, 3) }; rb.Controls.Add(tChatModel);
+            rb.Controls.Add(Mark(FlatIcon.Globe, "서버 주소\n대화는 이 서버로만 보내져요.\n기본값(localhost)이면 이 PC 밖으로 나가지 않아요."));
+            tChatUrl = new TextBox { Text = o.Endpoint, Width = 250, Margin = new Padding(3) }; rb.Controls.Add(tChatUrl);
+
+            var rs = Row(a);
+            chatProbe = new Label { Text = "○ 아직 확인 안 함", AutoSize = false, AutoEllipsis = true, Width = 330, Height = 20, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(6, 3, 3, 3), ForeColor = Color.DimGray };
+            chatSetupBar = new ProgressBar { Width = 140, Height = 8, Margin = new Padding(6, 9, 3, 3), Visible = false };
+            rs.Controls.Add(chatProbe); rs.Controls.Add(chatSetupBar);
+
+            // 대화 방식: 그림 카드 다섯 장 + 단축키 한 줄
+            var g2 = Group(f, "대화 방식", 520); var b = In(g2);
+            cMode = new ChoiceStrip(ChatMode.All.Select(x => x.Name).ToArray(), o.Mode, 90, new Size(24, 24),
+                delegate(Graphics g, Rectangle r, int i) { ModeArt[Math.Min(i, ModeArt.Length - 1)](g, new RectangleF(r.X, r.Y, r.Width, r.Height), FriendUI.BlueDark); });
+            cMode.HotChanged += i =>
+            {
+                if (i < 0 || i >= ChatMode.All.Length) tips.Hide(cMode);
+                else tips.Show(ChatMode.All[i].Desc, cMode, Math.Max(0, Math.Min(cMode.Width - 150, cMode.PointToClient(Cursor.Position).X - 20)), cMode.Height + 2, 6000);
+            };
+            b.Controls.Add(cMode);
+
+            var rk = Row(b);
+            rk.Controls.Add(Mark(FlatIcon.Keyboard, "단축키로 말 걸기\n입력란을 클릭한 뒤 키를 하나씩 누르세요.\nCtrl · Alt · Shift 중 2개 이상 + 글쇠 1개.\nEsc 는 취소, Backspace 는 방금 누른 키 취소예요."));
+            cChatKey = new CheckBox { Text = "단축키", Checked = o.Hotkey, AutoSize = false, Width = 76, Height = 24, Margin = new Padding(2, 5, 3, 3) }; rk.Controls.Add(cChatKey);
+            hkBox = new HotkeyBox(o.HotkeyMods, o.HotkeyKey) { Width = 190, Margin = new Padding(3, 3, 6, 3) }; rk.Controls.Add(hkBox);
+            var bKeyReset = IconBtn(FlatIcon.Reset, "기본 단축키로 되돌리기", delegate { hkBox.SetValue(ChatHotkey.DefaultMods, ChatHotkey.DefaultKey); tips.Hide(hkBox); });
+            rk.Controls.Add(bKeyReset);
+            hkBox.Hint += t => { if (string.IsNullOrEmpty(t)) tips.Hide(hkBox); else tips.Show(t, hkBox, 0, hkBox.Height + 3, 30000); };
+            cChatKey.CheckedChanged += delegate { hkBox.Enabled = bKeyReset.Enabled = cChatKey.Checked; };
+            hkBox.Enabled = bKeyReset.Enabled = cChatKey.Checked;
+
+            // 부가 기능: 두 칸 표
+            var g3 = Group(f, "부가 기능", 520); var c = In(g3);
+            var grid = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, Margin = Padding.Empty };
+            grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 250)); grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 250));
+            Func<FlowLayoutPanel> cell = () => { var r = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty, FlowDirection = FlowDirection.LeftToRight }; return r; };
+            var c00 = cell(); cChatChips = IconCheck(c00, FlatIcon.ReplyChips, "답장 추천", o.Chips, "캐릭터의 말 끝에 짧은 답장 칩을 보여 줘요.\n눌러서 바로 보내요 (Ctrl+1~3). 글자를 치면 사라져요.");
+            var c10 = cell(); cChatSound = IconCheck(c10, FlatIcon.Sound, "글자 소리", o.Sound, "말할 때 글자마다 뽁뽁 소리가 나요.");
+            var c01 = cell(); cChatProactive = IconCheck(c01, FlatIcon.Spark, "먼저 말 걸기", o.Proactive, "컴퓨터를 쓰는 중에 친구가 가끔 먼저 한마디 건네요.\n켜면 모델이 메모리에 올라가 있어요.");
+            var c11 = cell(); c11.Controls.Add(Mark(FlatIcon.Clock, "평균 간격 (분)"));
+            nProactive = Num(5, 480, o.ProactiveMinutes, 0, 5, 64); c11.Controls.Add(nProactive); c11.Controls.Add(Cap("분마다"));
+            cChatProactive.CheckedChanged += delegate { nProactive.Enabled = cChatProactive.Checked; }; nProactive.Enabled = cChatProactive.Checked;
+            var c02 = cell(); cChatMemory = IconCheck(c02, FlatIcon.Memory, "기억하기", o.Memory, "대화에서 알게 된 사실을 한두 줄로 적어 둬요.\n이 PC 의 파일에만 저장돼요.");
+            c02.Controls.Add(IconBtn(FlatIcon.OpenOut, "기억 보기 · 지우기", delegate { new ChatMemoryForm(app.TrayIconImage).ShowDialog(this); }));
+            var c12 = cell(); cChatDiary = IconCheck(c12, FlatIcon.Diary, "일기 쓰기", o.Diary, "대화가 끝나면 친구가 오늘 이야기를 일기 한두 줄로 적어요.\n이 PC 의 파일(수퍼히어로_일기.txt)에만 저장돼요.");
+            c12.Controls.Add(IconBtn(FlatIcon.OpenOut, "일기장 열기", delegate { new ChatDiaryForm(app.TrayIconImage).ShowDialog(this); }));
+            grid.Controls.Add(c00, 0, 0); grid.Controls.Add(c10, 1, 0);
+            grid.Controls.Add(c01, 0, 1); grid.Controls.Add(c11, 1, 1);
+            grid.Controls.Add(c02, 0, 2); grid.Controls.Add(c12, 1, 2);
+            c.Controls.Add(grid);
             return page;
         }
+
+        private void SetChatStatus(string text, Color color)
+        { chatProbe.ForeColor = color; chatProbe.Text = text; tips.SetToolTip(chatProbe, text); }
 
         private void ProbeChat()
         {
             var probe = new ChatOptions { Endpoint = tChatUrl.Text.Trim().TrimEnd('/'), Model = tChatModel.Text.Trim() };
-            chatProbe.ForeColor = Color.DimGray; chatProbe.Text = "확인하는 중...";
+            SetChatStatus("확인하는 중...", Color.DimGray);
             new System.Threading.Thread(delegate ()
             {
                 ProbeResult r = OllamaClient.Probe(probe);
@@ -631,8 +703,7 @@ namespace SuperHeroes
                 {
                     BeginInvoke(new Action(delegate
                     {
-                        chatProbe.ForeColor = r == ProbeResult.Ok ? Color.FromArgb(30, 130, 70) : Color.Firebrick;
-                        chatProbe.Text = r == ProbeResult.Ok ? "● 연결됐어요" : r == ProbeResult.ModelMissing ? "● 모델이 없어요 → 자동 설치" : "● 연결 안 됨 → Ollama 확인·자동 설치";
+                        SetChatStatus(r == ProbeResult.Ok ? "● 연결됐어요" : r == ProbeResult.ModelMissing ? "● 모델이 없어요 — 설치(↓) 단추를 눌러요" : "● 연결 안 됨 — Ollama 가 켜져 있나요?", r == ProbeResult.Ok ? Color.FromArgb(30, 130, 70) : Color.Firebrick);
                     }));
                 }
                 catch { }
@@ -649,7 +720,6 @@ namespace SuperHeroes
             if (!OllamaSetup.IsLocalEndpoint(url)) { Warn("자동 설치는 서버 주소가 이 PC(localhost)일 때만 쓸 수 있어요.\n다른 PC 의 서버를 쓰는 중이라면 그 PC 에서 직접 설치해 주세요."); return; }
             var opts = new ChatOptions { Endpoint = url, Model = model };
             var handle = setupHandle = new ChatRequest();
-            chatProbe.Text = "";
             ShowSetup("시작하는 중...", -1, true); bChatSetup.Enabled = false; chatSetupBar.Visible = true;
             new System.Threading.Thread(delegate ()
             {
@@ -674,7 +744,7 @@ namespace SuperHeroes
 
         private void ShowSetup(string text, int pct, bool cancellable)
         {
-            chatSetupText.Visible = true; chatSetupText.ForeColor = Color.DimGray; chatSetupText.Text = text;
+            SetChatStatus(text, Color.DimGray);
             if (pct < 0) chatSetupBar.Style = ProgressBarStyle.Marquee;
             else { chatSetupBar.Style = ProgressBarStyle.Continuous; chatSetupBar.Value = Math.Min(100, pct); }
             bChatSetupCancel.Enabled = cancellable;
@@ -684,13 +754,26 @@ namespace SuperHeroes
         {
             if (setupHandle == handle) setupHandle = null;
             chatSetupBar.Visible = false; bChatSetup.Enabled = true; bChatSetupCancel.Enabled = false;
-            chatSetupText.Visible = true;
-            if (err == null) { chatSetupText.ForeColor = Color.FromArgb(30, 130, 70); chatSetupText.Text = "준비 끝! 'AI 대화 사용'을 켜고 저장하세요."; }
-            else if (err == OllamaSetup.Cancelled) { chatSetupText.ForeColor = Color.DimGray; chatSetupText.Text = "취소했어요. 다시 누르면 이어서 받아요."; }
-            else { chatSetupText.ForeColor = Color.Firebrick; chatSetupText.Text = err; }
+            if (err == null) SetChatStatus("● 준비 끝 — 'AI 대화 사용'을 켜고 저장하세요", Color.FromArgb(30, 130, 70));
+            else if (err == OllamaSetup.Cancelled) SetChatStatus("취소했어요 — 다시 누르면 이어서 받아요", Color.DimGray);
+            else SetChatStatus(err, Color.Firebrick);
         }
 
-// ───────── 저장 ─────────
+        // ───────── 실시간 표시 ─────────
+        private void RefreshLive()
+        {
+            if (lifeSummary == null) return;
+            var d = FriendData.Current;
+            lifeSummary.Text = "♥ 친밀도 " + d.Affinity.ToString("N0") + "   ·   함께 " + FriendData.FormatTogether(d.TogetherSeconds);
+            satietyBar.Value = Math.Max(0, Math.Min(100, (int)Math.Floor(d.Satiety)));
+            lifeDetail.Text = "포만감 " + (int)Math.Floor(d.Satiety) + " / 100   ·   다음 꽃다발: 친밀도 " + ((d.Affinity / 100 + 1) * 100).ToString("N0") + "   ·   " + (d.CanSnack ? "지금 간식을 줄 수 있어요" : "지금은 배가 꽉 찼어요");
+            snackButton.Enabled = d.CanSnack;
+            var names = new[] { new[] { "dance", "몰래 하는 군무" }, new[] { "dizzy", "어질어질" }, new[] { "power", "기 폭발" } };
+            secretLabel.Text = "발견한 숨은 반응 " + names.Count(p => d.Discoveries.Contains(p[0])) + " / 3\n" + string.Join("  ·  ", names.Where(p => d.Discoveries.Contains(p[0])).Select(p => p[1]).ToArray());
+            RefreshRoster();
+        }
+
+        // ───────── 저장 ─────────
         private static string Norm(string v) { TimeSpan t = Settings.ParseTime(v).Value; return string.Format("{0:00}:{1:00}", t.Hours, t.Minutes); }
         private void Warn(string m) { MessageBox.Show(this, m, "수퍼히어로", MessageBoxButtons.OK, MessageBoxIcon.Asterisk); }
 

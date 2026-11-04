@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
@@ -47,7 +47,7 @@ namespace SuperHeroes
         {
             int gap = (int)Math.Round(Gap * UiScale), n = labels.Length;
             int w = (Width - gap * (n - 1)) / n;
-            return new Rectangle(i * (w + gap), 0, w, Height - 1);
+            return new Rectangle(i * (w + gap) + 1, 0, w - 2, Height - 1);   // 좌우 1px 안쪽으로: 맨 끝 카드의 테두리가 잘리지 않게
         }
 
         private int HitTest(Point p)
@@ -98,8 +98,11 @@ namespace SuperHeroes
                 g.DrawLines(pen, new[] { new PointF(r.Left + d * .27f, r.Top + d * .53f), new PointF(r.Left + d * .44f, r.Top + d * .70f), new PointF(r.Left + d * .74f, r.Top + d * .32f) });
         }
 
-        protected override void OnMouseMove(MouseEventArgs e) { base.OnMouseMove(e); int h = HitTest(e.Location); if (h != hot) { hot = h; Invalidate(); } }
-        protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); if (hot != -1) { hot = -1; Invalidate(); } }
+        /// <summary>마우스가 가리키는 카드가 바뀔 때(없으면 -1). 카드마다 다른 말풍선을 띄울 때 쓴다.</summary>
+        internal event Action<int> HotChanged;
+        private void SetHot(int h) { if (h == hot) return; hot = h; Invalidate(); var ev = HotChanged; if (ev != null) ev(h); }
+        protected override void OnMouseMove(MouseEventArgs e) { base.OnMouseMove(e); SetHot(HitTest(e.Location)); }
+        protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); SetHot(-1); }
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e); if (e.Button != MouseButtons.Left) return;
