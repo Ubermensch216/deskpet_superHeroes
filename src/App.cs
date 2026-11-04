@@ -247,7 +247,6 @@ namespace SuperHeroes
             menu.Items.Add(FriendsMenu(w));
             menu.Items.Add(QuickMenu());
             menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("도우미  (할 일 · 메모 · 타이머)...", null, delegate { ShowFriendPanel(); });
             menu.Items.Add("설정...", null, delegate { OpenSettings(); });
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("종료", null, delegate { Quit(); });
