@@ -257,7 +257,7 @@ namespace SuperHeroes
         // 캐릭터
         private readonly HeroToggleCard[] heroCards = new HeroToggleCard[5];
         private ComboBox dexChar, sigFreq, costume; private PictureBox dexPic; private Label dexTitle, dexTraits, rosterTitle, dexStatus;
-        private readonly Label[] sigName = new Label[3]; private readonly Label[] sigDesc = new Label[3];
+        private readonly Label[] sigName = new Label[8]; private readonly Label[] sigDesc = new Label[8]; private readonly FlowLayoutPanel[] sigRow = new FlowLayoutPanel[8];
 
         public SettingsForm(App app, int page = -1)
         {
@@ -455,9 +455,9 @@ namespace SuperHeroes
             txt.Controls.Add(dexTraits);
 
             m.Controls.Add(new Label { Text = "★ 시그니처 기술 (미리보기 단추를 누르면 바로 보여줘요)", AutoSize = true, ForeColor = Color.FromArgb(176, 108, 14), Font = new Font("Malgun Gothic", 9f, FontStyle.Bold), Margin = new Padding(3, 8, 3, 2) });
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < 8; i++)
             {
-                int idx = i; var row = Row(m);
+                int idx = i; var row = Row(m); sigRow[i] = row;
                 var star = new Label { Text = "★", AutoSize = true, ForeColor = FriendUI.Gold, Font = new Font("Malgun Gothic", 14f, FontStyle.Bold), Margin = new Padding(3, 0, 0, 0) };
                 var box = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Width = 330 };
                 sigName[i] = new Label { AutoSize = true, Font = new Font("Malgun Gothic", 9.5f, FontStyle.Bold), ForeColor = FriendUI.Ink, Margin = new Padding(3, 2, 3, 0) };
@@ -514,8 +514,11 @@ namespace SuperHeroes
             dexTitle.Text = info.Name + "  ·  " + info.Title;
             dexTraits.Text = "· " + string.Join("\n· ", info.Traits);
             var sigs = Signatures.All[c];
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < sigName.Length; i++)
             {
+                bool has = i < sigs.Length;
+                if (sigRow[i] != null) sigRow[i].Visible = has;
+                if (!has) continue;
                 sigName[i].Text = sigs[i].Label;
                 sigDesc[i].Text = sigs[i].Desc;
             }

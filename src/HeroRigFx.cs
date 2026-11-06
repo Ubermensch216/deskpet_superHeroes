@@ -137,6 +137,10 @@ namespace SuperHeroes
 
             if (SigOn(1)) DrawGrapnelFx();
             if (SigOn(3)) DrawGargoyleFx();
+            if (SigOn(4)) DrawBatArmorFx();
+            if (SigOn(5)) DrawBatmobileFx();
+            if (SigOn(6)) DrawBatpodFx();
+            if (SigOn(7)) DrawBatwingFx();
 
             // 1. 배트랭 투척 (Batarang Throw)
             if (SigOn(0)) DrawBatarangFx();

@@ -196,6 +196,7 @@ namespace SuperHeroes
 
             // 공중제비: 몸(망토·팔다리·머리)만 몸통 중심을 축으로 돈다. 이펙트는 돌리지 않는다.
             var bodyState = g.Save();
+            if (p.Hide > .5f) g.SetClip(new Region(new RectangleF(0, 0, 0, 0)), CombineMode.Replace);   // 탈것 안에 탑승: 몸은 그리지 않는다
             if (Math.Abs(p.Flip) > .01f)
             {
                 g.TranslateTransform(200, 340); g.RotateTransform(p.Flip); g.TranslateTransform(-200, -340);

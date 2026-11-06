@@ -333,6 +333,7 @@ namespace SuperHeroes
             if (ps.Grapnel > 0 || ps.SonicGlow > 0) up = Math.Max(up, 220 * K);
             if (ps.UpsideDown > 0) up = Math.Max(up, 250 * K);                                      // 천장에서 내려오는 거미줄
             if (Math.Abs(ps.Flip) > .5f || ps.WebSwing > 0) { fwd = Math.Max(fwd, 250 * K); up = Math.Max(up, 130 * K); }   // 공중제비·스윙
+            if (ps.Vehicle > 0) { fwd = Math.Max(fwd, 300 * K); up = Math.Max(up, 330 * K); padBottom += 30 * K; }          // 배트모빌·배트포드·배트윙
             if (ps.SonicGlow > 0 || ps.SpiderSense > 0 || ps.SmokeBomb > 0 || ps.Batarang > 0) fwd = Math.Max(fwd, 280 * K);
             if (ps.AmazonFlight > 0 || ps.LassoSpin > 0) up = Math.Max(up, 200 * K);
             if (ps.Lightning > 0 || ps.GroundCrush > 0)

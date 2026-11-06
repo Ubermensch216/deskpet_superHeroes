@@ -33,6 +33,10 @@ namespace SuperHeroes
                 new SigDef("그래플건 발사", 6.8, "그래플건을 위쪽 창문으로 발사하여 와이어를 타고 밤하늘로 솟구침"),
                 new SigDef("연막탄 은신", 7.0, "바닥에 연막탄을 터뜨려 짙은 연무 속으로 숨었다가 번뜩이는 안광과 재등장"),
                 new SigDef("가고일 응시", 7.5, "석조 가고일 위에서 망토를 박쥐 날개처럼 거대하게 펼치며 도시를 감시"),
+                new SigDef("중무장 아머 슈트", 8.2, "격납고의 장갑 부품이 날아와 찰칵 장착되고, 붉은 발광 라인이 켜지며 건틀릿 블레이드·어깨 미사일·배트 수리검을 시험 사격"),
+                new SigDef("배트모빌 탑승", 7.8, "건틀릿으로 호출하자 제트 애프터버너를 뿜으며 달려온 배트모빌의 캐노피가 열리고, 뛰어올라 탑승해 질주"),
+                new SigDef("배트포드 사출·질주", 8.0, "손상된 터미블러에서 배트포드가 사출되고 터미블러는 자폭, 엎드려 올라타 쌍기관포를 쏘며 질주했다 복귀"),
+                new SigDef("배트윙 탑승 출격", 8.4, "배트 시그널로 호출한 배트윙이 회전날개 바람을 일으키며 내려오고, 윈치 케이블에 매달려 탑승해 날아갔다 망토 글라이더로 강하"),
             },
             // 2: 스파이더맨
             new[]
@@ -64,7 +68,14 @@ namespace SuperHeroes
         {
             int pIdx = (int)who;
             if (pIdx < 0 || pIdx >= All.Length) pIdx = 0;
-            return All[pIdx][Math.Max(0, Math.Min(3, idx))];
+            return All[pIdx][Math.Max(0, Math.Min(All[pIdx].Length - 1, idx))];
+        }
+
+        /// <summary>그 캐릭터가 가진 시그니처 개수(대부분 4개, 배트맨은 8개).</summary>
+        internal static int Count(Persona who)
+        {
+            int pIdx = (int)who;
+            return pIdx < 0 || pIdx >= All.Length ? 4 : All[pIdx].Length;
         }
 
         private static Tuple<double, string> S(double t, string text) { return Tuple.Create(t, text); }
@@ -72,9 +83,19 @@ namespace SuperHeroes
         internal static string Shout(Persona who, int idx, double t)
         {
             Tuple<double, string>[] line;
-            int key = (int)who * 4 + idx;
+            int key = idx < 4 ? (int)who * 4 + idx : 100 + (int)who * 10 + (idx - 4);   // 5번째 이후 시그니처는 100번대
             switch (key)
             {
+                // 배트맨 확장 시그니처
+                case 110: // 중무장 아머 슈트
+                    line = new[] { S(0, "배트수트 시스템 가동 준비."), S(1.0, "아머 전개!"), S(3.4, "시스템 온라인."), S(4.2, "블레이드, 미사일 전개."), S(6.4, "이제 아무도 날 막을 수 없다.") }; break;
+                case 111: // 배트모빌 탑승
+                    line = new[] { S(0, "배트모빌, 호출."), S(1.0, "엔진 소리가 가까워진다..."), S(2.2, "탑승한다!"), S(3.9, "애프터버너 점화."), S(4.6, "출격!!"), S(6.1, "...임무 시작이다.") }; break;
+                case 112: // 배트포드
+                    line = new[] { S(0, "터미블러가 손상됐다..."), S(1.6, "배트포드, 사출!"), S(3.1, "올라탄다!"), S(4.1, "달려라!!"), S(6.1, "복귀한다."), S(7.1, "임무 완료.") }; break;
+                case 113: // 배트윙
+                    line = new[] { S(0, "배트 시그널, 점등."), S(1.2, "배트윙, 출격 요청!"), S(3.1, "탑승!"), S(4.6, "고담의 밤하늘로!"), S(6.3, "강하한다...!"), S(7.5, "착지 완료.") }; break;
+
                 // 수퍼맨
                 case 0: // 히트 비전
                     line = new[] { S(0, "집중... 열을 모은다"), S(1.5, "히트 비전 발사--!!"), S(4.8, "후..."), S(5.5, "정리 완료!") }; break;
@@ -160,7 +181,7 @@ namespace SuperHeroes
 
         internal void StartSignature(IWorld w, int idx)
         {
-            idx = Math.Max(0, Math.Min(3, idx));
+            idx = Math.Max(0, Math.Min(Signatures.Count(Art.Persona) - 1, idx));
             sigIndex = idx;
             SigDef def = Signatures.Get(Art.Persona, idx);
             sigDuration = def.Dur;
@@ -434,6 +455,111 @@ namespace SuperHeroes
                         P.CapeWind = 14f * perch;
                         P.Aura = .25f * perch * (1 - rel); P.AuraColor = Color.FromArgb(130, 150, 220);
                         if (tt >= 1.9f && tt < 2.3f) P.BodyX = (float)Math.Sin(t * 90) * 1.5f;
+                    }
+                    break;
+
+                case 4: // 중무장 아머 슈트: 부품이 찰칵 장착 → 시스템 온라인 → 블레이드·미사일·수리검 시험 → 증기를 뿜으며 대기
+                    {
+                        float tt = (float)t;
+                        P.HandL = HandStyle.Fist; P.HandR = HandStyle.Fist; P.Mouth = MouthStyle.Neutral;
+                        float recoil = 0f; foreach (float rk in new[] { 4.7f, 5.0f, 5.45f }) if (tt > rk) recoil += -6f * (float)Math.Exp(-(tt - rk) * 7f);
+                        if (tt < 3.4f)
+                        {
+                            P.Reach = Reach.Hips; P.Brow = .5f * Smooth(tt / 1.2);
+                            P.BodyX = tt > 1.0f && tt < 3.3f ? (float)Math.Sin(t * 50) * .9f : 0f;
+                        }
+                        else if (tt < 4.0f)
+                        {
+                            P.Reach = Reach.Lap; P.HandRTo = new PointF(130, 300); P.HandLTo = new PointF(152, 330);
+                            P.Brow = .8f; P.Mouth = MouthStyle.Grit; P.CapeWind = 22f; P.Aura = .5f; P.AuraColor = Color.FromArgb(255, 80, 60);
+                        }
+                        else if (tt < 6.4f)
+                        {
+                            P.Reach = Reach.Lap; P.HandRTo = new PointF(96, 292); P.HandLTo = new PointF(126, 318);
+                            P.Brow = .8f; P.Mouth = MouthStyle.Grit; P.BodyX = recoil; P.CapeWind = 16f;
+                            P.Aura = .5f; P.AuraColor = Color.FromArgb(255, 80, 60); P.Knee = .6f;
+                        }
+                        else
+                        {
+                            P.Reach = Reach.Hips; P.Brow = .6f; P.CapeWind = 12f; P.Aura = .3f * (1 - Smooth((tt - 6.4) / 1.6)); P.AuraColor = Color.FromArgb(255, 80, 60);
+                        }
+                    }
+                    break;
+
+                case 5: // 배트모빌 탑승: 호출 → 도착 → 캐노피 열림 → 도약해 탑승 → 시동 → 질주 → 연기 속에 재등장
+                    {
+                        float tt = (float)t; P.Vehicle = 1f; P.HandL = HandStyle.Fist; P.HandR = HandStyle.Fist;
+                        if (tt < 1.1f) { P.Reach = Reach.Lap; P.HandRTo = new PointF(176, 318); P.HandLTo = new PointF(246, 350); P.Brow = .6f; P.HeadTilt = 6f * Smooth(tt / .6); }
+                        else if (tt < 2.0f) { P.Reach = Reach.Hips; P.Brow = .7f; P.CapeWind = 38f * (1f - (float)(tt - 1.1) / .9f); P.HeadTilt = 5f; P.BodyX = tt > 1.6f ? (float)Math.Sin(t * 60) * 1.4f : 0f; }
+                        else if (tt < 2.6f) { P.Reach = Reach.Hips; P.BodyX = -30f * Smooth((tt - 2.0) / .6); P.Brow = .7f; }
+                        else if (tt < 3.3f)
+                        {
+                            float bxx = -30f + (-75f + 30f) * Smooth((tt - 2.6) / .35);
+                            float byy = tt < 2.85f ? -90f * Smooth((tt - 2.6) / .25) : -90f + 420f * Smooth((tt - 2.85) / .45);
+                            P.BodyX = bxx; P.BodyY = byy; P.FootLY = P.FootRY = byy; P.Knee = 1.4f; P.CapeWind = 50f;
+                            P.Reach = Reach.Lap; P.HandLTo = new PointF(200 + bxx - 30, 170 + byy); P.HandRTo = new PointF(200 + bxx + 30, 170 + byy); P.Brow = .8f;
+                        }
+                        else if (tt < 5.85f) { P.Hide = 1f; }
+                        else if (tt < 7.0f) { P.Reach = Reach.Cross; P.Brow = .7f; P.CapeWind = 16f * (1f - (float)(tt - 5.85) / 1.15f); }
+                        else { P.Reach = Reach.Cross; P.Mouth = MouthStyle.Neutral; }
+                    }
+                    break;
+
+                case 6: // 배트포드: 터미블러 손상 → 사출 → 자폭 → 엎드려 탑승 → 질주 → 복귀해 뛰어내림
+                    {
+                        float tt = (float)t; P.Vehicle = 1f; P.HandL = HandStyle.Fist; P.HandR = HandStyle.Fist;
+                        float blast = tt > 2.3f ? 3.5f * (float)Math.Exp(-(tt - 2.3f) * 4f) * (float)Math.Sin(t * 90) : 0f;
+                        if (tt < .9f) { P.Reach = Reach.Lap; P.HandRTo = new PointF(176, 318); P.HandLTo = new PointF(246, 350); P.Brow = .6f; P.HeadTilt = 6f * Smooth(tt / .6); }
+                        else if (tt < 2.9f)
+                        {
+                            P.Reach = Reach.Hips; P.Brow = .8f; P.BodyX = -35f * Smooth((tt - .9) / .6) + blast; P.CapeWind = tt > 2.3f ? 45f : 22f; P.HeadTilt = 6f;
+                        }
+                        else if (tt < 3.2f)
+                        {
+                            float u = (float)((tt - 2.9) / .3);
+                            P.BodyX = -35f + (-80f + 35f) * Smooth(u);
+                            P.BodyY = tt < 3.05f ? -70f * Smooth((tt - 2.9) / .15) : -70f + 130f * Smooth((tt - 3.05) / .15);
+                            P.FootLY = P.FootRY = P.BodyY * .8f; P.Knee = 1.2f; P.CapeWind = 50f; P.Reach = Reach.Lap;
+                            P.HandLTo = new PointF(200 + P.BodyX - 20, 250 + P.BodyY); P.HandRTo = new PointF(200 + P.BodyX - 60, 270 + P.BodyY);
+                        }
+                        else if (tt < 6.95f) { P.Hide = 1f; }
+                        else if (tt < 7.5f)
+                        {
+                            float u = (float)((tt - 6.95) / .45);
+                            P.BodyX = -80f + 40f * Smooth(u); P.BodyY = -50f * (float)Math.Sin(Math.PI * Math.Min(1f, u)); P.Knee = 1f * (1f - Math.Min(1f, u)); P.Reach = Reach.Hips; P.CapeWind = 30f; P.Brow = .7f;
+                        }
+                        else { P.Reach = Reach.Cross; P.BodyX = -40f * (1f - Smooth((tt - 7.5) / .5)); P.Mouth = MouthStyle.Neutral; }
+                    }
+                    break;
+
+                case 7: // 배트윙 탑승 출격: 배트 시그널 → 회전날개 바람 속에 착륙 호출 → 윈치에 매달려 탑승 → 하늘로 출격 → 망토 글라이더로 강하
+                    {
+                        float tt = (float)t; P.Vehicle = 1f; P.HandL = HandStyle.Fist; P.HandR = HandStyle.Fist;
+                        if (tt < 1.2f) { P.Reach = Reach.Lap; P.HandRTo = new PointF(176, 318); P.HandLTo = new PointF(246, 350); P.Brow = .6f; P.HeadTilt = -6f * Smooth(tt / .6); }
+                        else if (tt < 3.3f)
+                        {
+                            float wind = Smooth((tt - 1.5) / .8);
+                            P.Reach = tt < 3.0f ? Reach.Hips : Reach.Lap; P.CapeWind = 20f + 40f * wind; P.HeadTilt = -8f; P.Brow = .7f; P.BodyX = (float)Math.Sin(t * 33) * 1.2f * wind;
+                            if (tt >= 3.0f) { P.HandRTo = new PointF(205, 150); P.HandLTo = new PointF(180, 170); }
+                        }
+                        else if (tt < 4.12f)
+                        {
+                            float u = Smooth((tt - 3.3) / .8); float byy = -300f * u;
+                            P.BodyY = byy; P.FootLY = P.FootRY = byy * .9f; P.Reach = Reach.Lap; P.CapeWind = 50f; P.Knee = .6f;
+                            P.HandRTo = new PointF(205, 150 + byy); P.HandLTo = new PointF(180, 170 + byy); P.Brow = .8f;
+                        }
+                        else if (tt < 6.3f) { P.Hide = 1f; }
+                        else if (tt < 7.4f)
+                        {
+                            float u = Smooth((tt - 6.3) / 1.1); float byy = -330f * (1f - u);
+                            P.BodyY = byy; P.FootLY = P.FootRY = byy * .9f; P.CapeWing = 1f; P.CapeWind = 34f; P.Reach = Reach.Lap;
+                            P.HandLTo = new PointF(70, 280 + byy); P.HandRTo = new PointF(330, 280 + byy); P.Brow = .7f; P.HeadTilt = -4f;
+                        }
+                        else
+                        {
+                            float k0 = Smooth((tt - 7.4) / .5);
+                            P.CapeWing = 1f - k0; P.Knee = 1.3f * (1f - k0); P.BodyY = 14f * (1f - k0); P.Reach = Reach.Hips; P.Brow = .6f; P.Mouth = MouthStyle.Neutral;
+                        }
                     }
                     break;
             }
