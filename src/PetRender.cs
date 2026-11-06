@@ -304,7 +304,7 @@ namespace SuperHeroes
             Pose ps = L.Pose; float K = art.K;
             if (ps.Nimbus > .01f) padBottom += 34 * K;                                              // 근두운이 발 밑으로 내려옴
             if (ps.Aura > .01f || ps.Spark > .01f || ps.Flash > .01f) padTop += 70 * K;              // 오라·번쩍임이 머리 위로
-            if (ps.Lightning > .01f) padBottom += 26 * K;                                          // 발밑 전기 고리
+            if (ps.Lightning > .01f || ps.GroundCrush > .01f) padBottom += 30 * K;                 // 발밑 전기 고리·충격파
             bool lying = Math.Abs(L.Pose.Lie) > .01f;
             // 누우면 몸이 옆으로 길어진다
             float bx = lying ? Math.Max(w / 2 + padX, h * .62f) : w / 2 + padX, by = h + padTop;
@@ -332,7 +332,7 @@ namespace SuperHeroes
             if (ps.Bracers > 0 || ps.LassoSpin > 0 || ps.ShieldGuard > 0) fwd = Math.Max(fwd, 280 * K);
             if (ps.Grapnel > 0 || ps.SonicGlow > 0) up = Math.Max(up, 220 * K);
             if (ps.AmazonFlight > 0 || ps.LassoSpin > 0) up = Math.Max(up, 200 * K);
-            if (ps.Lightning > 0)
+            if (ps.Lightning > 0 || ps.GroundCrush > 0)
             {
                 // 먹구름과 벼락이 머리 위 하늘(리그 좌표 y≈-300)까지 올라간다. 말풍선도 그 위로 얹는다.
                 var sky = new[] { new PointF(0, -h - 345 * K) };

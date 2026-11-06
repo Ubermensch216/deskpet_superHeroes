@@ -484,16 +484,24 @@ namespace SuperHeroes
                 case 0: // 묠니르 풍차 회전
                     if (t < 1.5)
                     {
-                        P.Reach = Reach.Hammer;
+                        // 자루 끈을 쥐고 묠니르를 치켜들며 기를 모은다
+                        float w = Smooth(t / 1.5);
+                        P.Reach = Reach.Hammer; P.Aura = .5f * w; P.AuraColor = Color.FromArgb(140, 210, 255);
+                        P.CapeWind = 12f * w; P.Brow = .5f * w; P.Mouth = MouthStyle.Grit;
                     }
-                    else if (t < 4.8)
+                    else if (t < 1.5 + ThorWhirl.Duration)
                     {
-                        P.MjolnirSpin = 1.0f;
-                        P.CapeWind = 35f;
+                        // 회전이 빨라질수록 방어막·돌풍이 커지고, 몸은 원심력에 휘청인다
+                        float T = (float)(t - 1.5), k = ThorWhirl.Intensity(T);
+                        P.Reach = Reach.Hammer; P.MjolnirSpin = Math.Max(.06f, k); P.SpinT = Math.Max(.001f, T);
+                        P.CapeWind = 35f + 35f * k; P.Aura = k; P.AuraColor = Color.FromArgb(150, 220, 255);
+                        P.Mouth = MouthStyle.Open; P.Brow = .6f; P.HeadTilt = -4f * k;
+                        P.BodyX = (float)(Math.Sin(T * 7.5) * 4.0 * k + Math.Sin(t * 61) * 1.4 * k);
+                        P.BodyY = (float)(Math.Abs(Math.Sin(T * 5.0)) * -3.0 * k);
                     }
                     else
                     {
-                        P.MjolnirSpin = 0; P.Reach = Reach.Hips;
+                        P.Reach = Reach.Hips;
                         P.Mouth = MouthStyle.Smile;
                     }
                     break;
@@ -528,18 +536,42 @@ namespace SuperHeroes
                     break;
 
                 case 2: // 지면 강타 충격파
-                    if (t < 1.6)
+                    if (t < ThorSlam.End)
                     {
-                        P.BodyY = -60; P.Reach = Reach.Overhead;
-                    }
-                    else if (t < 4.6)
-                    {
-                        P.BodyY = 25; P.GroundCrush = 1.0f;
-                        P.Reach = Reach.Lap;
+                        // 웅크려 기를 모음 → 번개를 두른 채 높이 도약 → 묠니르를 내리꽂음 → 충격에 휘청 → 여진 → 일어섬
+                        float tt = (float)t, s = ThorSlam.Swing(tt);
+                        float crouch = Smooth(tt / .7), lift = Smooth((tt - .7) / .55), rise = Smooth((tt - 4.8) / .8);
+                        float u1 = tt - ThorSlam.Hit1, u2 = tt - ThorSlam.Hit2;
+                        float sh = (u1 > 0 ? (float)Math.Exp(-u1 * 4.5) : 0f) + (u2 > 0 ? .55f * (float)Math.Exp(-u2 * 5.5) : 0f);
+                        P.GroundCrush = 1f; P.CrushT = Math.Max(.001f, tt);
+                        P.HandL = HandStyle.Fist; P.Mouth = MouthStyle.Open; P.Brow = .7f;
+                        P.Aura = tt < ThorSlam.Hit1 ? .5f + .5f * crouch : .45f + .55f * sh; P.AuraColor = Color.FromArgb(150, 215, 255);
+
+                        float by;
+                        if (tt < .7f) by = 18f * crouch;
+                        else if (tt < 1.5f) by = 18f + (-85f - 18f) * lift;
+                        else if (tt < ThorSlam.Hit1) by = -85f + (22f + 85f) * s;
+                        else by = 22f * (1f - rise);
+                        P.BodyY = by + (float)Math.Cos(t * 77) * 3.5f * sh + 6f * (u2 > 0 && u2 < .25f ? 1f : 0f);
+                        P.BodyX = (float)Math.Sin(t * 95) * 6f * sh;
+                        P.FootLY = P.FootRY = Math.Min(0f, by * .85f); P.Knee = Math.Max(0f, by) / 18f;
+                        P.HeadTilt = -9f * lift * (1f - s);
+                        P.CapeWind = 20f + 30f * lift + 40f * sh;
+
+                        if (tt < 1.5f)
+                        {
+                            P.Reach = Reach.Hammer; P.Raise = .35f * crouch + .65f * lift;   // 묠니르를 하늘 높이 치켜든다
+                        }
+                        else
+                        {
+                            P.Reach = Reach.Lap; P.Raise = 1f - s;
+                            PointF tgt = new PointF(ThorSlam.ImpactX, ThorSlam.HandY);
+                            P.HandRTo = new PointF(tgt.X + (252f - tgt.X) * rise, tgt.Y + (418f - tgt.Y) * rise);
+                        }
                     }
                     else
                     {
-                        P.GroundCrush = 0; P.BodyY = 0; P.Reach = Reach.Hips;
+                        P.Reach = Reach.Hips; P.Mouth = MouthStyle.Smile;
                     }
                     break;
 

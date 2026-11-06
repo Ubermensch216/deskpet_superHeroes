@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -33,6 +33,7 @@ namespace SuperHeroes
             if (args.Length >= 5 && args[0] == "--sig-shots") { DevTools.SigShots(args[1], args[2], int.Parse(args[3]), args[4], args.Length >= 6 ? float.Parse(args[5]) : 2f); return; }
             if (args.Length >= 2 && args[0] == "--selftest") { Environment.Exit(DevTools.SelfTest(args[1])); return; }
             if (args.Length >= 2 && args[0] == "--ui-test") { Environment.Exit(DevTools.UiTest(args[1])); return; }
+            if (args.Length >= 2 && args[0] == "--shot-settings") { DevTools.ShotSettings(args[1]); return; }
             Log("Main start");
             bool created;
             using (var mutex = new Mutex(true, "SuperHeroes_DeskFriend_single_instance", out created))
@@ -91,6 +92,22 @@ namespace SuperHeroes
         [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern void mouse_event(int flags, int dx, int dy, int data, UIntPtr extra);
         [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(Point p);
         [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern void keybd_event(byte vk, byte scan, int flags, UIntPtr extra);
+
+        internal static void ShotSettings(string outPath)
+        {
+            PlayOptions.Load(); FriendData.Load(); CharacterArt.Reset(Native.SystemDpiScale());
+            var app = new App(true);
+            app.Spawn(1); // Batman
+            var f = new SettingsForm(app, 0);
+            f.Show();
+            for (int i = 0; i < 25; i++) { Application.DoEvents(); Thread.Sleep(20); }
+            using (var b = new Bitmap(f.Width, f.Height))
+            {
+                f.DrawToBitmap(b, new Rectangle(0, 0, f.Width, f.Height));
+                b.Save(outPath, ImageFormat.Png);
+            }
+            f.Close();
+        }
 
         /// <summary>걷는 모습을 계속 그리는 데 드는 시간 측정(결과: perf.txt).</summary>
         internal static void Perf(string dir)

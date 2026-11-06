@@ -6,7 +6,7 @@
 /nowarn:CS0649,CS0169,CS0414,CS0219
 /utf8output
 /langversion:latest
-/out:"D:\Dev\deskpet_superHeroes\output\superheroes.exe"
+/out:"C:\Users\COMTREE\AppData\Local\Temp\claude\a5e8a587c2f44dde\73082e42-77ca-457b-9913-311b9a02209c\scratchpad\sh_test.exe"
 /win32manifest:"D:\Dev\deskpet_superHeroes\assets\app.manifest"
 /win32icon:"D:\Dev\deskpet_superHeroes\assets\superheroes.ico"
 /r:"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\mscorlib.dll"
@@ -37,6 +37,7 @@
 "D:\Dev\deskpet_superHeroes\src\HeroRigFx.cs"
 "D:\Dev\deskpet_superHeroes\src\HeroRigHead.cs"
 "D:\Dev\deskpet_superHeroes\src\HeroRigReporter.cs"
+"D:\Dev\deskpet_superHeroes\src\HeroRigThorFx.cs"
 "D:\Dev\deskpet_superHeroes\src\HeroRigWonder.cs"
 "D:\Dev\deskpet_superHeroes\src\MarkdownEditing.cs"
 "D:\Dev\deskpet_superHeroes\src\MarkdownInline.cs"

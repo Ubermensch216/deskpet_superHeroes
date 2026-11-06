@@ -73,7 +73,8 @@ namespace SuperHeroes
         private FlatButton bChatSetup, bChatSetupCancel; private ProgressBar chatSetupBar;
         private ChatRequest setupHandle;
         // 캐릭터
-        private ListBox rosterList; private ComboBox dexChar, sigFreq, costume; private PictureBox dexPic; private Label dexTitle, dexTraits;
+        private ListBox rosterList; private ComboBox dexChar, sigFreq, costume; private PictureBox dexPic; private Label dexTitle, dexTraits, rosterTitle, dexStatus;
+        private Button bDismissFriend; private bool refreshingRoster;
         private readonly Label[] sigName = new Label[3]; private readonly Label[] sigDesc = new Label[3];
 
         public SettingsForm(App app, int page = -1)
@@ -215,33 +216,74 @@ namespace SuperHeroes
         {
             FlowLayoutPanel f; var page = NewPage("캐릭터", "함께할 친구를 부르고, 캐릭터별 ★ 시그니처 기술을 구경해요", out f);
 
-            var gRoster = Group(f, "지금 화면에 있는 친구들"); var r = In(gRoster);
-            var rowA = Row(r);
-            rosterList = new ListBox { Width = 250, Height = 92, IntegralHeight = false, Margin = new Padding(3) }; rowA.Controls.Add(rosterList);
-            var col = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false }; rowA.Controls.Add(col);
+            // 하나의 통합 섹션: 화면의 친구 & 캐릭터 도감
+            var gHero = Group(f, "화면의 친구 · 캐릭터 도감"); var m = In(gHero);
+
+            // 1) 지금 화면에 있는 친구들 (상단 컴팩트 관리 영역)
+            rosterTitle = new Label { Text = "지금 화면에 있는 친구들", AutoSize = true, Font = new Font("Malgun Gothic", 9.2f, FontStyle.Bold), ForeColor = FriendUI.BlueDark, Margin = new Padding(3, 4, 3, 3) };
+            m.Controls.Add(rosterTitle);
+
+            var rowRoster = Row(m);
+            rosterList = new ListBox { Width = 195, Height = 68, IntegralHeight = false, Margin = new Padding(3, 3, 6, 3) };
+            rowRoster.Controls.Add(rosterList);
+
+            var btnCol = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = new Padding(0) };
+            rowRoster.Controls.Add(btnCol);
+
+            var btnRow1 = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, WrapContents = false, Margin = new Padding(0) };
             var bCall = FriendUI.Button("친구 부르기 ▼", null);
             var callMenu = new ContextMenuStrip();
             callMenu.Items.Add("무작위", null, delegate { app.SpawnFromUi(-1); RefreshRoster(); });
             for (int i = 0; i < CharacterArt.Count; i++) { int id = i; callMenu.Items.Add(CharacterArt.Infos[i].Name, null, delegate { app.SpawnFromUi(id); RefreshRoster(); }); }
             bCall.Click += delegate { callMenu.Show(bCall, new Point(0, bCall.Height)); };
-            col.Controls.Add(bCall);
-            col.Controls.Add(FriendUI.Button("선택한 친구 보내기", delegate { if (rosterList.SelectedIndex >= 0) { app.RemoveByIndex(rosterList.SelectedIndex); RefreshRoster(); } }));
-            col.Controls.Add(FriendUI.Button("모두 숨기기 / 보이기", delegate { app.ToggleHidden(); }));
-            col.Controls.Add(FriendUI.Button("화면 가운데로 다시 부르기", delegate { app.RecoverVisible(); }));
-            Note(r, "마지막에 불러 둔 구성은 다음 실행에도 그대로 나와요.");
+            btnRow1.Controls.Add(bCall);
 
-            var gDex = Group(f, "캐릭터 도감  ★ 시그니처 기술"); var d = In(gDex);
-            var pick = Row(d); pick.Controls.Add(Cap("캐릭터"));
-            dexChar = Combo(CharacterArt.Infos.Select(i => i.Name).ToArray(), 0, 150); pick.Controls.Add(dexChar);
-            var head = Row(d);
-            dexPic = new PictureBox { Width = 76, Height = 76, SizeMode = PictureBoxSizeMode.Zoom, Margin = new Padding(4) }; head.Controls.Add(dexPic);
-            var txt = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false }; head.Controls.Add(txt);
-            dexTitle = new Label { AutoSize = true, Font = new Font("Malgun Gothic", 11f, FontStyle.Bold), ForeColor = FriendUI.Ink, Margin = new Padding(3, 4, 3, 2) }; txt.Controls.Add(dexTitle);
-            dexTraits = new Label { AutoSize = true, ForeColor = Color.DimGray, MaximumSize = new Size(380, 0), Margin = new Padding(3, 0, 3, 3) }; txt.Controls.Add(dexTraits);
-            d.Controls.Add(new Label { Text = "★ 시그니처 기술 (미리보기 단추를 누르면 바로 보여줘요)", AutoSize = true, ForeColor = Color.FromArgb(176, 108, 14), Font = new Font("Malgun Gothic", 9f, FontStyle.Bold), Margin = new Padding(3, 8, 3, 2) });
+            bDismissFriend = FriendUI.Button("선택한 친구 보내기", delegate
+            {
+                if (rosterList.SelectedIndex >= 0) { app.RemoveByIndex(rosterList.SelectedIndex); RefreshRoster(); }
+            });
+            btnRow1.Controls.Add(bDismissFriend);
+            btnCol.Controls.Add(btnRow1);
+
+            var btnRow2 = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, WrapContents = false, Margin = new Padding(0) };
+            btnRow2.Controls.Add(FriendUI.Button("모두 숨기기 / 보이기", delegate { app.ToggleHidden(); }));
+            var bCenter = FriendUI.Button("화면 가운데로", delegate { app.RecoverVisible(); });
+            tips.SetToolTip(bCenter, "화면 밖으로 나갔거나 가려진 친구들을 화면 한가운데로 다시 모아요.");
+            btnRow2.Controls.Add(bCenter);
+            btnCol.Controls.Add(btnRow2);
+
+            Note(m, "마지막에 불러 둔 구성은 다음 실행에도 그대로 나와요.");
+
+            // 2) 구분선 (은은한 분리)
+            var div = new Panel { Height = 1, Width = 470, BackColor = Color.FromArgb(222, 230, 242), Margin = new Padding(3, 8, 3, 8) };
+            m.Controls.Add(div);
+
+            // 3) 캐릭터 도감 & ★ 시그니처 기술
+            int initChar = app.LiveWindows.Count > 0 ? app.LiveWindows[0].Pet.Art.Id : 0;
+            var pick = Row(m);
+            pick.Controls.Add(new Label { Text = "캐릭터 도감", AutoSize = true, Font = new Font("Malgun Gothic", 9.2f, FontStyle.Bold), ForeColor = FriendUI.BlueDark, Margin = new Padding(3, 6, 6, 2) });
+            dexChar = Combo(CharacterArt.Infos.Select(i => i.Name).ToArray(), initChar, 120);
+            pick.Controls.Add(dexChar);
+            var bSpawnThis = FriendUI.Button("+ 화면에 부르기", delegate { app.SpawnFromUi(dexChar.SelectedIndex); RefreshRoster(); });
+            tips.SetToolTip(bSpawnThis, "현재 선택한 캐릭터를 바탕화면에 바로 불러요.");
+            pick.Controls.Add(bSpawnThis);
+            dexStatus = new Label { AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(6, 7, 3, 2) };
+            pick.Controls.Add(dexStatus);
+
+            var head = Row(m);
+            dexPic = new PictureBox { Width = 72, Height = 72, SizeMode = PictureBoxSizeMode.Zoom, Margin = new Padding(4) };
+            head.Controls.Add(dexPic);
+            var txt = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false };
+            head.Controls.Add(txt);
+            dexTitle = new Label { AutoSize = true, Font = new Font("Malgun Gothic", 11f, FontStyle.Bold), ForeColor = FriendUI.Ink, Margin = new Padding(3, 3, 3, 2) };
+            txt.Controls.Add(dexTitle);
+            dexTraits = new Label { AutoSize = true, ForeColor = Color.DimGray, MaximumSize = new Size(380, 0), Margin = new Padding(3, 0, 3, 3) };
+            txt.Controls.Add(dexTraits);
+
+            m.Controls.Add(new Label { Text = "★ 시그니처 기술 (미리보기 단추를 누르면 바로 보여줘요)", AutoSize = true, ForeColor = Color.FromArgb(176, 108, 14), Font = new Font("Malgun Gothic", 9f, FontStyle.Bold), Margin = new Padding(3, 8, 3, 2) });
             for (int i = 0; i < 3; i++)
             {
-                int idx = i; var row = Row(d);
+                int idx = i; var row = Row(m);
                 var star = new Label { Text = "★", AutoSize = true, ForeColor = FriendUI.Gold, Font = new Font("Malgun Gothic", 14f, FontStyle.Bold), Margin = new Padding(3, 0, 0, 0) };
                 var box = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Width = 330 };
                 sigName[i] = new Label { AutoSize = true, Font = new Font("Malgun Gothic", 9.5f, FontStyle.Bold), ForeColor = FriendUI.Ink, Margin = new Padding(3, 2, 3, 0) };
@@ -250,7 +292,22 @@ namespace SuperHeroes
                 var play = FriendUI.Button("▶ 미리보기", delegate { app.PreviewSignature(dexChar.SelectedIndex, idx); });
                 row.Controls.Add(star); row.Controls.Add(box); row.Controls.Add(play);
             }
+
             dexChar.SelectedIndexChanged += delegate { UpdateDex(); };
+            rosterList.SelectedIndexChanged += delegate
+            {
+                if (bDismissFriend != null) bDismissFriend.Enabled = rosterList.SelectedIndex >= 0;
+                if (refreshingRoster) return;
+                if (rosterList.SelectedIndex >= 0 && rosterList.SelectedIndex < app.LiveWindows.Count)
+                {
+                    var pet = app.LiveWindows[rosterList.SelectedIndex].Pet;
+                    int charIdx = pet.Art.Id;
+                    if (charIdx >= 0 && charIdx < CharacterArt.Count && dexChar.SelectedIndex != charIdx)
+                    {
+                        dexChar.SelectedIndex = charIdx;
+                    }
+                }
+            };
             UpdateDex();
 
             var gSig = Group(f, "★ 시그니처 자동 재생"); var s = In(gSig);
@@ -268,6 +325,7 @@ namespace SuperHeroes
 
         private void UpdateDex()
         {
+            if (dexChar == null || dexChar.SelectedIndex < 0) return;
             int c = Math.Max(0, dexChar.SelectedIndex); var info = CharacterArt.Infos[c];
             if (dexPic.Image != null) { var old = dexPic.Image; dexPic.Image = null; old.Dispose(); }
             dexPic.Image = CharacterArt.IconBitmap(c, 96);
@@ -279,16 +337,43 @@ namespace SuperHeroes
                 sigName[i].Text = sigs[i].Label;
                 sigDesc[i].Text = sigs[i].Desc;
             }
+            UpdateDexStatus();
+        }
+
+        private void UpdateDexStatus()
+        {
+            if (dexStatus == null || dexChar == null || dexChar.SelectedIndex < 0) return;
+            int c = Math.Max(0, dexChar.SelectedIndex);
+            int count = app.LiveWindows.Count(w => w.Pet.Art.Id == c);
+            dexStatus.Text = count > 0 ? string.Format("(화면에 {0}명 활성)", count) : "(화면에 없음)";
+            dexStatus.ForeColor = count > 0 ? FriendUI.BlueDark : Color.DimGray;
         }
 
         private void RefreshRoster()
         {
             if (rosterList == null) return;
             var names = app.LiveWindows.Select(w => w.Pet.Art.Info.Name).ToList();
+            if (rosterTitle != null)
+            {
+                rosterTitle.Text = names.Count > 0 ? string.Format("지금 화면에 있는 친구들 ({0}명)", names.Count) : "지금 화면에 있는 친구들 (비어 있음)";
+            }
+            if (bDismissFriend != null) bDismissFriend.Enabled = rosterList.SelectedIndex >= 0;
             int sel = rosterList.SelectedIndex;
-            if (rosterList.Items.Count == names.Count && names.Select((n, i) => (string)rosterList.Items[i] == n).All(b => b)) return;
-            rosterList.Items.Clear(); foreach (var n in names) rosterList.Items.Add(n);
-            if (sel >= 0 && sel < names.Count) rosterList.SelectedIndex = sel;
+            if (rosterList.Items.Count == names.Count && names.Select((n, i) => (string)rosterList.Items[i] == n).All(b => b))
+            {
+                UpdateDexStatus();
+                return;
+            }
+            refreshingRoster = true;
+            try
+            {
+                rosterList.Items.Clear(); foreach (var n in names) rosterList.Items.Add(n);
+                if (sel >= 0 && sel < names.Count) rosterList.SelectedIndex = sel;
+                else if (names.Count > 0 && rosterList.SelectedIndex < 0) rosterList.SelectedIndex = 0;
+                if (bDismissFriend != null) bDismissFriend.Enabled = rosterList.SelectedIndex >= 0;
+            }
+            finally { refreshingRoster = false; }
+            UpdateDexStatus();
         }
 
         // ───────── 2. 움직임 ─────────

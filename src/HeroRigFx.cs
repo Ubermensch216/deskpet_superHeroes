@@ -260,8 +260,11 @@ namespace SuperHeroes
             float bx = p.BodyX, by = p.BodyY;
 
             // 1. 묠니르 풍차 회전 (Mjolnir Whirlwind)
-            if (p.MjolnirSpin > 0.05f)
+            bool whirl = p.MjolnirSpin > 0.05f && p.SpinT > 0.0005f;
+            if (whirl) DrawMjolnirWhirl();
+            else if (p.MjolnirSpin > 0.05f)
             {
+                // 비행 자세 등에서 쓰는 간단한 회전 고리
                 PointF hand = wrist[1];
                 float radius = 55f;
 
@@ -279,18 +282,8 @@ namespace SuperHeroes
             if (p.Lightning > 0.05f) DrawThunderSummon();
 
             // 3. 지면 강타 충격파 (Ground Slam)
-            if (p.GroundCrush > 0.05f)
-            {
-                float gX = 200 + bx, gY = 565 + by;
-                using (var pn = Pn(Color.FromArgb((int)(220 * p.GroundCrush), 100, 190, 255), 4f))
-                {
-                    // 지면 크랙
-                    g.DrawLine(pn, gX, gY, gX - 70, gY - 6);
-                    g.DrawLine(pn, gX - 70, gY - 6, gX - 130, gY + 4);
-                    g.DrawLine(pn, gX, gY, gX + 70, gY - 6);
-                    g.DrawLine(pn, gX + 70, gY - 6, gX + 130, gY + 4);
-                }
-            }
+            bool slam = p.GroundCrush > 0.05f && p.CrushT > 0.0005f;
+            if (slam) DrawGroundSlam();
 
             // 4. 묠니르 투척 (Mjolnir Throw)
             if (p.HammerThrow > 0.05f)
@@ -317,9 +310,9 @@ namespace SuperHeroes
                     g.DrawLine(pn, wrist[1].X, wrist[1].Y, mX, mY);
                 }
             }
-            else
+            else if (!whirl && !slam)
             {
-                // 평소 손에 쥔 묠니르 망치 그리기
+                // 평소 손에 쥔 묠니르 망치 그리기(회전·강타 중에는 각 연출이 직접 그린다)
                 DrawDefaultMjolnir();
             }
         }

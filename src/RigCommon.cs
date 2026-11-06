@@ -87,6 +87,8 @@ namespace SuperHeroes
         public float Raise;                    // 토르: 해머 든 팔을 하늘로 쭉 뻗어 올린 정도 (0..1)
         public float LightningT;              // 토르: 번개 소환 시작 후 경과 초 (구름·충전·낙뢰 타이밍)
         public float GroundCrush;              // 토르: 지면 강타 충격파 (0..1)
+        public float SpinT;                    // 토르: 풍차 회전 시작 후 경과 초 (회전각·속도)
+        public float CrushT;                   // 토르: 지면 강타 시그니처 경과 초 (충전·도약·강타·여진 타이밍)
         public float HammerThrow;              // 토르: 묠니르 투척 (0..1)
 
         public float Bracers;                  // 원더우먼: 은팔찌 방어 — 총알을 튕기는 중 (0..1)
@@ -125,7 +127,7 @@ namespace SuperHeroes
                 add(CapeWing, 10); add(CapeWind, 5); add(HeatLaser, 10); add(FreezeMist, 10); add(ShirtOpen, 10); add(SonicGlow, 10); add(Disguise, 10); add(Transform, 10);
                 add(Batarang, 10); add(Grapnel, 10); add(SmokeBomb, 10);
                 add(WebSwing, 10); add(SpiderSense, 10); add(WebNet, 10);
-                add(MjolnirSpin, 10); add(Lightning, 10); add(LightningT, 30); add(Raise, 20); add(GroundCrush, 10); add(HammerThrow, 10);
+                add(MjolnirSpin, 10); add(Lightning, 10); add(LightningT, 30); add(Raise, 20); add(GroundCrush, 10); add(HammerThrow, 10); add(SpinT, 30); add(CrushT, 30);
                 add(Bracers, 10); add(BracerT, 30); add(LassoSpin, 10); add(LassoT, 30); add(SwordSlash, 20); add(ShieldGuard, 10); add(AmazonFlight, 10); add(FlightT, 30);
                 add(Aura, 10); add(Lie, 10);
                 return h;
