@@ -216,6 +216,7 @@ namespace SuperHeroes
             float phase = (float)(t / sigDuration);
             P.SigAct = sigIndex;
             P.SigPhase = phase;
+            P.SigT = (float)Math.Max(.001, t);
 
             switch (Art.Persona)
             {
@@ -244,14 +245,18 @@ namespace SuperHeroes
                 case 0: // 히트 비전
                     if (t < 1.5)
                     {
+                        float ch = (float)(t / 1.5);
                         P.Brow = 0.6f; P.Eyes = EyeStyle.Narrow; P.Mouth = MouthStyle.Neutral;
-                        P.HeatLaser = (float)(t / 1.5) * 0.4f;
+                        P.HeatLaser = ch * 0.4f; P.BodyX = (float)(Math.Sin(t * 60) * 1.3 * ch);
+                        P.Aura = .5f * ch; P.AuraColor = Color.FromArgb(255, 90, 50);
                     }
                     else if (t < 5.0)
                     {
-                        P.Brow = 0.9f; P.Mouth = MouthStyle.Open;
-                        P.HeatLaser = 1.0f;
-                        P.Reach = Reach.Flex;
+                        // 열선을 뿜는 동안 몸이 반동으로 떨리고 눈은 붉게 타오른다
+                        P.Brow = 0.9f; P.Mouth = MouthStyle.Grit;
+                        P.HeatLaser = Smooth((t - 1.5) / .2);
+                        P.Reach = Reach.Flex; P.CapeWind = 26f;
+                        P.BodyX = (float)(Math.Sin(t * 70) * 1.8); P.Aura = .55f; P.AuraColor = Color.FromArgb(255, 90, 50);
                     }
                     else
                     {
@@ -263,13 +268,16 @@ namespace SuperHeroes
                 case 1: // 냉기 입김
                     if (t < 1.8)
                     {
+                        // 가슴을 한껏 부풀리며 숨을 들이마신다(몸이 뒤로 젖혀진다)
+                        float ch = Smooth(t / 1.8);
                         P.Breath = (float)(t / 1.8); P.Mouth = MouthStyle.Open;
-                        P.Reach = Reach.Chest;
+                        P.Reach = Reach.Chest; P.HeadTilt = 5f * ch; P.Aura = .4f * ch; P.AuraColor = Color.FromArgb(150, 215, 255);
                     }
                     else if (t < 4.8)
                     {
                         P.Mouth = MouthStyle.Pout; P.FreezeMist = 1.0f;
-                        P.HeadTilt = -4f;
+                        P.HeadTilt = -5f; P.CapeWind = 16f; P.Aura = .45f; P.AuraColor = Color.FromArgb(150, 215, 255);
+                        P.BodyX = (float)(Math.Sin(t * 40) * 1.0);
                     }
                     else
                     {
@@ -278,25 +286,38 @@ namespace SuperHeroes
                     }
                     break;
 
-                case 2: // 초음속 펀치
-                    if (t < 1.5)
+                case 2: // 초음속 펀치: 웅크려 기를 모음 → 도약 → 초음속 비행 → 주먹 → 착지
                     {
-                        P.Reach = Reach.Hips; P.BodyY = 15;
-                    }
-                    else if (t < 3.8)
-                    {
-                        P.BodyY = -80; P.SonicGlow = 1.0f;
-                        P.Reach = Reach.Overhead;
-                        P.CapeWind = 30f;
-                    }
-                    else if (t < 5.5)
-                    {
-                        P.BodyY = 20; P.Reach = Reach.Flex;
-                        P.Mouth = MouthStyle.Open;
-                    }
-                    else
-                    {
-                        P.Reach = Reach.Hips; P.Mouth = MouthStyle.Smile;
+                        float tt = (float)t;
+                        float crouch = Smooth(tt / 1.3) * (1 - Smooth((tt - 1.45) / .12));
+                        float rise = Smooth((tt - 1.5) / .35), land = Smooth((tt - 4.2) / .8);
+                        float alt = -100f * rise * (1 - land);
+                        if (tt >= 2.0f && tt < 4.0f) alt += (float)Math.Sin((tt - 2.0) * 3) * 5;
+                        P.BodyY = 26f * crouch + alt;
+                        P.SonicGlow = rise * (1 - Smooth((tt - 4.0) / .5));
+                        P.HandL = HandStyle.Fist; P.HandR = HandStyle.Fist;
+                        if (tt < 1.5f)
+                        {
+                            P.Reach = Reach.Lap; P.Brow = .7f; P.Mouth = MouthStyle.Grit;
+                            P.HandRTo = new PointF(262, 326); P.HandLTo = new PointF(132, 332);   // 주먹을 뒤로 당긴다
+                            P.BodyX = (float)(Math.Sin(t * 55) * 1.6 * crouch); P.Knee = 1.4f * crouch;
+                            P.Aura = .7f * crouch; P.AuraColor = Color.FromArgb(150, 215, 255);
+                        }
+                        else if (tt < 5.5f)
+                        {
+                            float punch = Smooth((tt - 3.45) / .3) * (1 - Smooth((tt - 4.2) / .5));
+                            P.Reach = Reach.Lap;
+                            P.HandRTo = new PointF(95 - 80 * punch, 252 + 34 * punch); P.HandLTo = new PointF(290, 300);
+                            P.FootLY = P.FootRY = Math.Min(0f, P.BodyY * .85f); P.FootLX = -10; P.FootRX = 18;
+                            P.CapeWind = 46f * rise * (1 - land) + 8f; P.HeadTilt = -5f * rise * (1 - land);
+                            P.Mouth = MouthStyle.Open; P.Brow = .9f;
+                            P.Aura = .8f * rise * (1 - land); P.AuraColor = Color.FromArgb(160, 220, 255);
+                            if (tt > 3.8f && tt < 4.3f) P.BodyX = (float)(Math.Sin(t * 80) * 4.0 * (1 - (tt - 3.8) / .5));
+                        }
+                        else
+                        {
+                            P.Reach = Reach.Hips; P.Mouth = MouthStyle.Smile;
+                        }
                     }
                     break;
 
@@ -337,68 +358,82 @@ namespace SuperHeroes
             switch (sigIndex)
             {
                 case 0: // 배트랭 투척
-                    if (t < 1.4)
                     {
-                        P.Reach = Reach.Hips; P.Brow = 0.5f;
-                    }
-                    else if (t < 4.2)
-                    {
-                        P.Reach = Reach.Flex;
-                        P.Batarang = (float)((t - 1.4) / 2.8);
-                    }
-                    else
-                    {
-                        P.Reach = Reach.Cross; P.Mouth = MouthStyle.Neutral;
-                    }
-                    break;
-
-                case 1: // 그래플건
-                    if (t < 1.5)
-                    {
-                        P.Reach = Reach.Front; P.HeadTilt = -15f;
-                    }
-                    else if (t < 4.5)
-                    {
-                        P.Grapnel = 1.0f; P.BodyY = -50;
-                        P.CapeWind = 25f;
-                    }
-                    else
-                    {
-                        P.BodyY = 0; P.Reach = Reach.Hips;
+                        // 조준(락온) → 팔을 뒤로 젖혔다가 휘둘러 던짐 → 팔짱 끼고 지켜봄 → 되돌아온 배트랭을 척 받는다
+                        float tt = (float)t;
+                        float wind = Smooth((tt - 1.15) / .3), thrust = Smooth((tt - 1.45) / .12), catchUp = Smooth((tt - 3.45) / .3) * (1 - Smooth((tt - 3.95) / .35));
+                        P.HandL = HandStyle.Fist; P.HandR = HandStyle.Fist;
+                        if (tt < 1.15f) { P.Reach = Reach.Hips; P.Brow = .6f; P.HeadTilt = -4f * Smooth(tt / 1f); P.Mouth = MouthStyle.Neutral; }
+                        else if (tt < 3.45f)
+                        {
+                            P.Reach = Reach.Lap; P.Brow = .8f; P.Mouth = MouthStyle.Grit;
+                            P.HandRTo = new PointF(262 + (92 - 262) * thrust, 224 + (270 - 224) * thrust);   // 뒤로 젖힌 팔 → 앞으로 휘두름
+                            P.HandLTo = new PointF(246, 346);
+                            P.BodyX = -7f * thrust + (tt > 1.45f && tt < 1.9f ? (float)Math.Sin(t * 70) * 1.5f : 0f);
+                            P.Aura = .0f;
+                        }
+                        else if (tt < 4.3f)
+                        {
+                            P.Reach = Reach.Lap; P.Brow = .6f;
+                            P.HandRTo = new PointF(250 - 158 * catchUp, 330 - 60 * catchUp); P.HandLTo = new PointF(246, 346);
+                            P.CapeWind = 10f * catchUp;
+                        }
+                        else { P.Reach = Reach.Cross; P.Mouth = MouthStyle.Neutral; }
+                        P.Batarang = (tt >= 1.45f && tt < 4.0f) ? 1f : 0f;
                     }
                     break;
 
-                case 2: // 연막탄
-                    if (t < 1.2)
+                case 1: // 그래플건: 겨냥 → 발사 → 끌려 올라감 → 옥상 안착
                     {
-                        P.Reach = Reach.Lap;
-                    }
-                    else if (t < 4.8)
-                    {
-                        P.SmokeBomb = (float)((t - 1.2) / 3.6);
-                        P.Reach = Reach.Cross;
-                    }
-                    else
-                    {
-                        P.SmokeBomb = (float)Math.Max(0, 1 - (t - 4.8) / 2.0);
-                        P.Reach = Reach.Cross;
+                        float tt = (float)t;
+                        float rise = Smooth((tt - 2.1) / 1.2), settle = Smooth((tt - 3.9) / .5);
+                        float alt = -100f * rise * (1 - settle);
+                        if (tt < 1.5f)
+                        {
+                            P.Reach = Reach.Lap; P.HeadTilt = -10f * Smooth(tt / 1.2); P.Brow = .6f;
+                            P.HandRTo = new PointF(160 - 20 * Smooth(tt / 1.4), 250 - 40 * Smooth(tt / 1.4)); P.HandLTo = new PointF(256, 340);   // 위를 겨냥
+                        }
+                        else if (tt < 4.5f)
+                        {
+                            P.Grapnel = 1f; P.Reach = Reach.Lap;
+                            P.HandRTo = new PointF(140, 206); P.HandLTo = new PointF(176, 214);     // 두 손으로 총을 꽉 쥔다
+                            P.BodyY = alt; P.FootLY = P.FootRY = alt * .85f; P.FootLX = -8; P.FootRX = 10;
+                            P.BodyX = -10f * rise * (1 - settle) + (float)Math.Sin(tt * 3.2) * 4f * rise * (1 - settle);
+                            P.CapeWind = 30f * rise; P.CapeWing = .5f * rise * (1 - settle); P.Brow = .8f; P.Mouth = MouthStyle.Grit;
+                        }
+                        else { P.BodyY = 0; P.Reach = Reach.Hips; P.Mouth = MouthStyle.Neutral; }
                     }
                     break;
 
-                case 3: // 가고일 응시
-                    if (t < 1.8)
+                case 2: // 연막탄: 툭 던져 터뜨리고 → 망토로 몸을 감싸며 연기 속으로 사라진다
                     {
-                        P.BodyY = 30; P.Knee = 1.2f;
+                        float tt = (float)t;
+                        float cover = Smooth((tt - 1.55) / 1.5) * Smooth((6.3 - tt) / 1.5);
+                        P.SmokeBomb = tt >= 1.2f ? Math.Min(1f, Smooth((tt - 1.2) / .6) * Smooth((7.0 - tt) / 1.4)) : 0f;
+                        if (tt < 1.2f) { P.Reach = Reach.Hips; P.Brow = .5f; P.HandRTo = null; }
+                        else if (tt < 1.7f)
+                        {
+                            float th = Smooth((tt - 1.2) / .25);
+                            P.Reach = Reach.Lap; P.HandRTo = new PointF(250 - 110 * th, 300 + 80 * th); P.HandLTo = new PointF(250, 350); P.BodyY = 8f * th; P.Brow = .7f;
+                        }
+                        else
+                        {
+                            P.Reach = Reach.Cross; P.CapeWing = .85f * cover; P.CapeWind = 22f * cover; P.BodyY = 10f * cover; P.Brow = .7f;
+                            P.BodyX = (float)Math.Sin(t * 2.2) * 3f * cover;
+                        }
                     }
-                    else if (t < 5.5)
+                    break;
+
+                case 3: // 가고일 응시: 비 내리는 옥상 난간에 웅크려 고담의 밤을 굽어본다
                     {
-                        P.BodyY = 35; P.CapeWing = 1.0f;
-                        P.Brow = 0.7f;
-                    }
-                    else
-                    {
-                        P.CapeWing = (float)Math.Max(0, 1 - (t - 5.5) / 1.8);
-                        P.BodyY = 0;
+                        float tt = (float)t, perch = Smooth(tt / 1.4), rel = Smooth((tt - 6.4) / 1.0);
+                        P.BodyY = 35f * perch * (1 - rel); P.Knee = 1.2f * perch * (1 - rel);
+                        P.CapeWing = Math.Min(1f, Smooth((tt - 1.0) / 1.0)) * (1 - Smooth((tt - 6.4) / 1.4));
+                        P.Brow = .7f * perch; P.Mouth = MouthStyle.Neutral;
+                        P.HeadTilt = (float)(Math.Sin(tt * .9) * 7.0 * perch * (1 - rel));
+                        P.CapeWind = 14f * perch;
+                        P.Aura = .25f * perch * (1 - rel); P.AuraColor = Color.FromArgb(130, 150, 220);
+                        if (tt >= 1.9f && tt < 2.3f) P.BodyX = (float)Math.Sin(t * 90) * 1.5f;
                     }
                     break;
             }
@@ -409,69 +444,93 @@ namespace SuperHeroes
             switch (sigIndex)
             {
                 case 0: // 웹 스윙
-                    if (t < 1.2)
                     {
-                        P.Reach = Reach.WebThrow; P.HandR = HandStyle.Web;
-                    }
-                    else if (t < 4.5)
-                    {
-                        P.WebSwing = 1.0f;
-                        float sw = (float)Math.Sin((t - 1.2) * 2.5);
-                        P.BodyY = -35 + sw * 25;
-                        P.Lean = sw * 20;
-                    }
-                    else
-                    {
-                        P.BodyY = 15; P.Knee = 1.4f;
-                    }
-                    break;
-
-                case 1: // 스파이더 센스
-                    if (t < 1.8)
-                    {
-                        P.SpiderSense = 1.0f; P.Eyes = EyeStyle.Shock;
-                        P.HeadTilt = (float)Math.Sin(t * 20) * 8f;
-                    }
-                    else if (t < 4.2)
-                    {
-                        P.BodyY = -40; P.Lean = (float)((t - 1.8) * 180);
-                    }
-                    else
-                    {
-                        P.Eyes = EyeStyle.Happy; P.Reach = Reach.Chin;
+                        // 손목으로 거미줄을 쏘고(THWIP!) → 시계추처럼 크게 흔들리며 스윙 → 가볍게 착지
+                        float tt = (float)t, ramp = SpiderMoves.SwingRamp(tt);
+                        if (tt < .95f) { P.Reach = Reach.WebThrow; P.HandR = HandStyle.Web; P.Brow = .5f; P.HeadTilt = -3f * Smooth(tt / .8); }
+                        else if (tt < 4.5f)
+                        {
+                            P.WebSwing = 1.0f; P.Reach = Reach.Lap; P.HandR = HandStyle.Web;
+                            float dx = SpiderMoves.SwingDx(tt), dy = SpiderMoves.SwingDy(tt), sw = SpiderMoves.SwingSin(tt);
+                            P.BodyX = dx; P.BodyY = dy;
+                            P.HandRTo = new PointF(112 + dx * .35f, 232 + dy * .6f);          // 줄을 쥔 팔을 위로 쭉 뻗는다
+                            P.HandLTo = new PointF(262 - sw * 14f, 330 + dy * .3f);
+                            P.FootLY = P.FootRY = dy * .85f; P.FootLX = -14 + sw * 10; P.FootRX = 18 + sw * 10; P.FootLRot = P.FootRRot = -14f * sw;
+                            P.Knee = 1.2f * ramp; P.HeadTilt = -8f * sw; P.Mouth = MouthStyle.Open; P.Eyes = EyeStyle.Happy;
+                        }
+                        else if (tt < 5.4f)
+                        {
+                            float land = 1 - Smooth((tt - 4.55) / .8);
+                            P.BodyY = 16f * land; P.Knee = 1.4f * land; P.Reach = Reach.Hips; P.Mouth = MouthStyle.Smile;
+                        }
+                        else { P.Reach = Reach.Hips; P.Mouth = MouthStyle.Smile; }
                     }
                     break;
 
-                case 2: // 거꾸로 매달리기
-                    if (t < 1.4)
+                case 1: // 스파이더 센스: 찌릿 → 수리검 감지 → 백플립 회피 → 안도
                     {
-                        P.Reach = Reach.Overhead;
-                    }
-                    else if (t < 5.0)
-                    {
-                        P.Lie = 1.0f; P.BodyY = -80;
-                        P.HeadTilt = (float)Math.Sin(t * 3) * 12f;
-                        P.Eyes = EyeStyle.Happy;
-                    }
-                    else
-                    {
-                        P.Lie = 0; P.BodyY = 0;
+                        float tt = (float)t, u = (tt - 1.8f) / 1.6f;
+                        if (tt < 1.8f)
+                        {
+                            P.SpiderSense = 1.0f; P.Eyes = EyeStyle.Shock; P.Reach = Reach.Cross;
+                            P.HeadTilt = (float)Math.Sin(t * 22) * 7f; P.BodyX = (float)Math.Sin(t * 45) * 1.8f * Smooth(tt / .3);
+                            P.BodyY = tt > 1.25f ? 12f * Smooth((tt - 1.25) / .5) : 0f; P.Knee = tt > 1.25f ? 1.3f : 0f;   // 웅크려 뛸 준비
+                        }
+                        else if (tt < 3.4f)
+                        {
+                            float arc = (float)Math.Sin(Math.PI * u);
+                            P.SpiderSense = Math.Max(0f, 1f - (tt - 1.8f) / .6f); P.Eyes = EyeStyle.Shock; P.Reach = Reach.Cross;
+                            P.BodyY = 12f * (1 - Smooth((tt - 1.8) / .15)) - 92f * arc; P.Flip = SpiderMoves.FlipAngle(tt);
+                            P.FootLY = P.FootRY = Math.Min(0f, P.BodyY * .85f); P.Knee = 1.6f;
+                        }
+                        else if (tt < 4.2f)
+                        {
+                            float land = 1 - Smooth((tt - 3.45) / .6);
+                            P.BodyY = 22f * land; P.Knee = 1.5f * land; P.Reach = Reach.Hips; P.Eyes = EyeStyle.Happy;
+                        }
+                        else { P.Eyes = EyeStyle.Happy; P.Reach = Reach.Chin; P.Mouth = MouthStyle.Smile; }
                     }
                     break;
 
-                case 3: // 거미줄 네트
-                    if (t < 1.2)
+                case 2: // 거꾸로 매달리기: 천장에 줄을 쏘고 → 거꾸로 뒤집혀 흔들리며 → 피자 냠냠 → 되돌아와 출동
                     {
-                        P.Reach = Reach.Cross;
+                        float tt = (float)t;
+                        float flip = Smooth((tt - 1.25) / .75) * (1 - Smooth((tt - 6.0) / .7));
+                        P.UpsideDown = flip;
+                        if (tt < 1.25f)
+                        {
+                            P.Reach = Reach.Lap; P.HandR = HandStyle.Web; P.HandRTo = new PointF(150, 196 - 70 * Smooth((tt - .3) / .25)); P.HandLTo = new PointF(262, 340);
+                            P.Brow = .5f; P.HeadTilt = -6f * Smooth(tt / 1f);
+                        }
+                        else
+                        {
+                            P.HangSwing = (float)Math.Sin((tt - 1.6) * 2.2) * 13f * flip;
+                            P.Reach = Reach.Lap; P.Eyes = EyeStyle.Happy; P.Mouth = tt > 2.8f && tt < 5.4f ? MouthStyle.Open : MouthStyle.Smile;
+                            // 뒤집힌 몸에서 팔은 머리 쪽(리그 위쪽)으로 늘어진다: 오른손은 피자, 왼손은 흔든다
+                            P.HandRTo = new PointF(248, 140 + (float)Math.Sin(tt * 6) * 4f);
+                            P.HandLTo = new PointF(150 - (float)Math.Sin(tt * 4) * 8f, 120 + (float)Math.Sin(tt * 5) * 14f);
+                            P.HeadTilt = (float)Math.Sin(tt * 3) * 8f;
+                        }
                     }
-                    else if (t < 4.5)
+                    break;
+
+                case 3: // 거미줄 네트: 양손 동시 발사 → 그물이 펼쳐져 달라붙고 → 악당이 버둥대는 걸 팽팽히 당긴다
                     {
-                        P.Reach = Reach.Front; P.WebNet = (float)Math.Min(1, (t - 1.2) / 1.5);
-                    }
-                    else
-                    {
-                        P.WebNet = (float)Math.Max(0, 1 - (t - 4.5) / 1.8);
-                        P.Reach = Reach.Hips;
+                        float tt = (float)t;
+                        float net = tt < 1.2f ? 0f : tt < 6.0f ? 1f : Math.Max(0f, 1f - (tt - 6.0f) / .5f);
+                        if (tt < 1.2f) { P.Reach = Reach.Cross; P.Brow = .6f; }
+                        else if (tt < 4.7f)
+                        {
+                            P.WebNet = net; P.Reach = Reach.Lap; P.HandL = HandStyle.Web; P.HandR = HandStyle.Web;
+                            P.HandLTo = new PointF(116, 300); P.HandRTo = new PointF(100, 286);
+                            P.Brow = .7f; P.Mouth = tt > 2.4f ? MouthStyle.Grit : MouthStyle.Open;
+                            P.BodyX = (tt < 1.5f ? 6f * (1f - (tt - 1.2f) / .3f) : 0f) + (tt > 2.4f ? (float)Math.Sin(t * 13) * 2.2f : 0f);
+                            P.Knee = 1.0f;
+                        }
+                        else
+                        {
+                            P.WebNet = net; P.Reach = Reach.Hips; P.Mouth = MouthStyle.Smile;
+                        }
                     }
                     break;
             }

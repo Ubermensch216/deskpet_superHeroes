@@ -175,6 +175,12 @@ namespace SuperHeroes
             var state = g.Save();
             g.ScaleTransform(faceRight ? -k : k, k);
             g.TranslateTransform(-200, -571);
+            if (p.UpsideDown > .01f)
+            {
+                // 거꾸로 매달리기: 발목(천장 쪽 고정점)을 축으로 좌우로 흔들리며 몸 전체가 180도 뒤집힌다
+                g.TranslateTransform(200, 0); g.RotateTransform(p.HangSwing); g.TranslateTransform(-200, 0);
+                g.TranslateTransform(200, 285); g.RotateTransform(180f * Math.Min(1f, p.UpsideDown)); g.TranslateTransform(-200, -285);
+            }
 
             float ow = Math.Max(3.2f, .9f / k);
             ink = Pn(cInk, ow);
@@ -187,6 +193,13 @@ namespace SuperHeroes
 
             // 손 위치 IK 계산
             SolveArms();
+
+            // 공중제비: 몸(망토·팔다리·머리)만 몸통 중심을 축으로 돈다. 이펙트는 돌리지 않는다.
+            var bodyState = g.Save();
+            if (Math.Abs(p.Flip) > .01f)
+            {
+                g.TranslateTransform(200, 340); g.RotateTransform(p.Flip); g.TranslateTransform(-200, -340);
+            }
 
             // 1. 뒤쪽 망토
             DrawBackCape();
@@ -211,6 +224,7 @@ namespace SuperHeroes
 
             // 8. 머리 & 얼굴 & 투구/카울/마스크
             DrawHead();
+            g.Restore(bodyState);
 
             // 9. 슈퍼히어로 시그니처 FX 및 장비
             DrawHeroSignatureFx();

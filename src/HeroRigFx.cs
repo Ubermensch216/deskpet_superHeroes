@@ -42,7 +42,8 @@ namespace SuperHeroes
             float eyeY = headCy - 8 + by;
 
             // 1. 히트 비전 (Heat Vision)
-            if (p.HeatLaser > 0.05f)
+            if (SigOn(0)) DrawHeatVision();
+            else if (p.HeatLaser > 0.05f)
             {
                 float targetX = 200 - 180 * (faceRight ? -1 : 1);
                 float targetY = 560 + by;
@@ -64,7 +65,8 @@ namespace SuperHeroes
             }
 
             // 2. 냉기 입김 (Freeze Breath)
-            if (p.FreezeMist > 0.05f)
+            if (SigOn(1)) DrawFreezeBreath();
+            else if (p.FreezeMist > 0.05f)
             {
                 float mX = 200 + (faceRight ? 20 : -20) + bx;
                 float mY = headCy + 22 + by;
@@ -100,7 +102,8 @@ namespace SuperHeroes
             }
 
             // 3. 초음속 비행 충격파 (Sonic Flight Punch)
-            if (p.SonicGlow > 0.05f)
+            if (SigOn(2)) DrawSupersonicPunch();
+            else if (p.SonicGlow > 0.05f)
             {
                 using (var pn = Pn(Color.FromArgb((int)(160 * p.SonicGlow), 255, 255, 255), 5f))
                 {
@@ -113,6 +116,7 @@ namespace SuperHeroes
             if (p.Transform > 0.02f) DrawTransformBurst();
 
             // 4. 셔츠 뜯기 광채 (Shirt Rip)
+            if (SigOn(3)) DrawShirtRipBoost();
             if (p.ShirtOpen > 0.05f)
             {
                 float cx = 200 + bx, cy = shY + 60 + by;
@@ -131,8 +135,12 @@ namespace SuperHeroes
         {
             float bx = p.BodyX, by = p.BodyY;
 
+            if (SigOn(1)) DrawGrapnelFx();
+            if (SigOn(3)) DrawGargoyleFx();
+
             // 1. 배트랭 투척 (Batarang Throw)
-            if (p.Batarang > 0.05f)
+            if (SigOn(0)) DrawBatarangFx();
+            else if (p.Batarang > 0.05f)
             {
                 float dist = p.Batarang * 240f;
                 float bX = 200 + (faceRight ? dist : -dist) + bx;
@@ -163,7 +171,7 @@ namespace SuperHeroes
             }
 
             // 2. 그래플건 발사 (Grapnel Gun)
-            if (p.Grapnel > 0.05f)
+            if (p.Grapnel > 0.05f && !SigOn(1))
             {
                 PointF gunPos = wrist[1];
                 PointF targetPos = Pt(gunPos.X + (faceRight ? 140 : -140), 20);
@@ -178,7 +186,8 @@ namespace SuperHeroes
             }
 
             // 3. 연막탄 은신 (Smoke Pellet)
-            if (p.SmokeBomb > 0.05f)
+            if (SigOn(2)) DrawSmokeFx();
+            else if (p.SmokeBomb > 0.05f)
             {
                 float alpha = (float)Math.Sin(p.SmokeBomb * Math.PI);
                 Color smk = Color.FromArgb((int)(180 * alpha), 50, 55, 65);
@@ -192,8 +201,11 @@ namespace SuperHeroes
         {
             float bx = p.BodyX, by = p.BodyY;
 
+            if (SigOn(2)) DrawHangFx();
+
             // 1. 웹 스윙 (Thwip Swing)
-            if (p.WebSwing > 0.05f)
+            if (SigOn(0)) DrawWebSwingFx();
+            else if (p.WebSwing > 0.05f)
             {
                 PointF hand = wrist[1];
                 PointF anchor = Pt(200 + (faceRight ? -120 : 120), 0);
@@ -209,7 +221,8 @@ namespace SuperHeroes
             }
 
             // 2. 스파이더 센스 (Spider-Sense)
-            if (p.SpiderSense > 0.05f)
+            if (SigOn(1)) DrawSpiderSenseFx();
+            else if (p.SpiderSense > 0.05f)
             {
                 float hx = 200 + p.HeadX + bx;
                 float hy = headCy + p.HeadY + by;
@@ -233,7 +246,8 @@ namespace SuperHeroes
             }
 
             // 3. 거미줄 네트 (Web Trap)
-            if (p.WebNet > 0.05f)
+            if (SigOn(3)) DrawWebNetFx();
+            else if (p.WebNet > 0.05f)
             {
                 float nX = 200 + (faceRight ? 140 : -140) + bx;
                 float nY = 360 + by;

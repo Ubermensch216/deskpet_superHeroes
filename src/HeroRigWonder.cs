@@ -241,6 +241,12 @@ namespace SuperHeroes
                     g.FillEllipse(B(Al(Color.White, 240 * fade)), x - 3, y - 3, 6, 6);
                     if (u < .26f)
                     {
+                        // 부딪히는 순간: 황금 충격 고리 + 번쩍임 + "TING!"
+                        float uu = u / .26f, rr = 20 + 84 * uu;
+                        g.DrawEllipse(Pn(Al(Color.FromArgb(255, 220, 110), 200 * (1 - uu) * a), 6f), imp.X - rr, imp.Y + ly * .2f - rr, rr * 2, rr * 2);
+                        g.DrawEllipse(Pn(Al(Color.White, 245 * (1 - uu) * a), 2.2f), imp.X - rr, imp.Y + ly * .2f - rr, rr * 2, rr * 2);
+                        Glint(imp.X, imp.Y + ly * .2f, 30 + 26 * (1 - uu), Color.FromArgb(255, 232, 140), (1 - uu) * a, i * 23f);
+                        if (i % 3 == 0) ComicText("TING!", imp.X + 64, imp.Y - 58 + ly, 26, -8f + i * 4f, Color.FromArgb(255, 200, 60), (1 - uu) * a);
                         // 부딪히는 순간의 불꽃
                         float sr = 12 + 22 * (u / .26f);
                         Star(imp.X, imp.Y + ly * .2f, sr, Al(Color.FromArgb(255, 238, 150), 255 * (1 - u / .26f) * a), false, i * 17f);
@@ -346,6 +352,27 @@ namespace SuperHeroes
                 g.DrawArc(Pn(Al(Color.White, 150), 11f), h.X - 132, h.Y - 132, 264, 264, -90 + a0, swp);
                 g.DrawArc(Pn(Al(Color.FromArgb(255, 222, 110), 230), 4f), h.X - 132, h.Y - 132, 264, 264, -90 + a0, swp);
             }
+            // 방패에 막혀 튀는 충격(1.7~2.5초)과 검기(두 번의 베기에서 날아가는 황금 초승달)
+            float T = p.SigT;
+            if (T >= 1.7f && T < 2.5f)
+            {
+                float u = (T - 1.7f) / .8f, fa = 1 - u;
+                g.DrawEllipse(Pn(Al(Color.FromArgb(255, 220, 110), 200 * fa * sg), 6f), sc.X - r - 26 * u, sc.Y - r - 26 * u, (r + 26 * u) * 2, (r + 26 * u) * 2);
+                for (int i = 0; i < 6; i++) Glint(sc.X + (Hash01(i, 1) * 2 - 1) * r * 1.2f, sc.Y + (Hash01(i, 2) * 2 - 1) * r * 1.2f, 10 + 10 * Hash01(i, 3), Color.FromArgb(255, 232, 140), fa * (float)Math.Abs(Math.Sin(T * 30 + i)), i * 30f);
+            }
+            float[] wave = { 3.25f, 4.55f };
+            for (int i = 0; i < wave.Length; i++)
+            {
+                float u = (T - wave[i]) / .55f; if (T <= 0 || u < 0 || u > 1) continue;
+                float x = h.X - 40 - u * 260f, fa = 1 - u * u;
+                for (int k = 0; k < 3; k++)
+                {
+                    float rad = 70 + k * 12, off = k * 12;
+                    g.DrawArc(Pn(Al(Color.FromArgb(255, 222, 110), (170 - k * 40) * fa), 14f - k * 4), CxClamp(x + off) - rad, h.Y - 30 - rad, rad * 2, rad * 2, 120, 120);
+                    g.DrawArc(Pn(Al(Color.White, (250 - k * 60) * fa), 4f - k), CxClamp(x + off) - rad, h.Y - 30 - rad, rad * 2, rad * 2, 120, 120);
+                }
+                Glow(CxClamp(x), h.Y - 30, 60, 90, Al(Color.FromArgb(255, 226, 130), 110 * fa));
+            }
             var st = g.Save();
             g.TranslateTransform(h.X, h.Y); g.RotateTransform(ang);
             g.FillRectangle(B(Color.FromArgb(120, 76, 44)), -4, -6, 8, 30); g.DrawRectangle(ink, -4, -6, 8, 30);              // 손잡이
@@ -361,6 +388,29 @@ namespace SuperHeroes
         {
             float f = p.AmazonFlight, ft = p.FlightT;
             Glow(200 + bx, 520 + by, 100, 30, Al(Color.FromArgb(255, 220, 110), 100 * f));
+
+            // 이륙·착지 충격파(황금 고리 + 먼지)와 비행 중 황금 속도선
+            if (p.SigT > 0)
+            {
+                float T = p.SigT;
+                foreach (float t0 in new[] { 1.4f, 5.0f })
+                {
+                    float u = (T - t0) / (t0 < 2f ? 1.0f : 1.1f); if (u < 0 || u > 1) continue;
+                    for (int i = 0; i < 2; i++)
+                    {
+                        float ur = u - i * .12f; if (ur <= 0) continue;
+                        GroundRing(200 + bx, 568, 20 + 170 * (float)Math.Sqrt(ur), .17f, Color.FromArgb(255, 214, 100), 1 - ur, 4f - i);
+                    }
+                    for (int sd = -1; sd <= 1; sd += 2) Glow(200 + bx + sd * (30 + 80 * (1 - (float)Math.Exp(-u * 3f))), 556 - 12 * u, 30 + 20 * u, 18, Al(Color.FromArgb(236, 226, 206), 130 * (1 - u)));
+                    if (t0 < 2f) Glow(200 + bx, 520, 110, 90, Al(Color.White, 220 * Math.Max(0f, 1 - u / .2f)));
+                }
+                if (f > .3f && T > 1.8f && T < 5.2f)
+                    for (int i = 0; i < 10; i++)
+                    {
+                        float ph = (T * 2.2f + i * .1f) % 1f, y = 160 + by + Hash01(i, 5) * 360, len = 70 + 90 * Hash01(i, 6), x = 440 - ph * (480 + len);
+                        Stroke(new[] { PtC(x, y), PtC(x + len, y) }, Al(Color.FromArgb(255, 226, 130), 150 * f), 2.4f);
+                    }
+            }
             for (int i = 0; i < 5; i++)
             {
                 float x = 200 + bx + (i - 2) * 30, ph = (ft * 2.2f + i * .21f) % 1f;

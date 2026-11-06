@@ -66,6 +66,9 @@ namespace SuperHeroes
         // ── 수퍼히어로 전용 이펙트 & 시그니처 파라미터 ──
         public int SigAct = -1;                // 현재 실행 중인 시그니처 (0..3)
         public float SigPhase;                 // 시그니처 진행도 (0..1)
+        public float SigT;                     // 시그니처 시작 후 경과 초 (0 = 시그니처 아님) — 각 연출의 세부 타이밍에 쓴다
+        public float HangSwing;                // 스파이더맨: 거꾸로 매달려 흔들리는 각도(도)
+        public float Flip;                     // 스파이더맨: 공중제비 회전각(도, 몸만 돌고 이펙트는 돌지 않는다)
         public float HeatLaser;                // 수퍼맨: 히트 비전 (0..1)
         public float FreezeMist;               // 수퍼맨: 냉기 입김 (0..1)
         public float ShirtOpen;                // 수퍼맨: 셔츠 뜯기 (0..1)
@@ -127,7 +130,7 @@ namespace SuperHeroes
                 add(CapeWing, 10); add(CapeWind, 5); add(HeatLaser, 10); add(FreezeMist, 10); add(ShirtOpen, 10); add(SonicGlow, 10); add(Disguise, 10); add(Transform, 10);
                 add(Batarang, 10); add(Grapnel, 10); add(SmokeBomb, 10);
                 add(WebSwing, 10); add(SpiderSense, 10); add(WebNet, 10);
-                add(MjolnirSpin, 10); add(Lightning, 10); add(LightningT, 30); add(Raise, 20); add(GroundCrush, 10); add(HammerThrow, 10); add(SpinT, 30); add(CrushT, 30);
+                add(MjolnirSpin, 10); add(Lightning, 10); add(LightningT, 30); add(Raise, 20); add(GroundCrush, 10); add(HammerThrow, 10); add(SpinT, 30); add(CrushT, 30); add(SigT, 30); add(HangSwing, 8); add(UpsideDown, 20); add(Flip, 2);
                 add(Bracers, 10); add(BracerT, 30); add(LassoSpin, 10); add(LassoT, 30); add(SwordSlash, 20); add(ShieldGuard, 10); add(AmazonFlight, 10); add(FlightT, 30);
                 add(Aura, 10); add(Lie, 10);
                 return h;
