@@ -71,6 +71,7 @@ namespace SuperHeroes
         public float Flip;                     // 스파이더맨: 공중제비 회전각(도, 몸만 돌고 이펙트는 돌지 않는다)
         public float Hide;                     // 배트맨: 탈것에 탑승해 몸이 보이지 않는 동안 1 (이펙트·탈것은 그대로 그려진다)
         public float Vehicle;                  // 배트맨: 배트모빌·배트포드·배트윙이 화면을 넓게 쓰는 동안 1 (스프라이트 영역 확장용)
+        public float Zoom;                     // 배트맨: 탈것이 나오는 동안 카메라를 뒤로 빼는 배율(0 = 기본 1, .5 = 장면 전체가 절반 크기)
         public float HeatLaser;                // 수퍼맨: 히트 비전 (0..1)
         public float FreezeMist;               // 수퍼맨: 냉기 입김 (0..1)
         public float ShirtOpen;                // 수퍼맨: 셔츠 뜯기 (0..1)
@@ -132,7 +133,7 @@ namespace SuperHeroes
                 add(CapeWing, 10); add(CapeWind, 5); add(HeatLaser, 10); add(FreezeMist, 10); add(ShirtOpen, 10); add(SonicGlow, 10); add(Disguise, 10); add(Transform, 10);
                 add(Batarang, 10); add(Grapnel, 10); add(SmokeBomb, 10);
                 add(WebSwing, 10); add(SpiderSense, 10); add(WebNet, 10);
-                add(MjolnirSpin, 10); add(Lightning, 10); add(LightningT, 30); add(Raise, 20); add(GroundCrush, 10); add(HammerThrow, 10); add(SpinT, 30); add(CrushT, 30); add(SigT, 30); add(HangSwing, 8); add(UpsideDown, 20); add(Flip, 2); add(Hide, 4); add(Vehicle, 4);
+                add(MjolnirSpin, 10); add(Lightning, 10); add(LightningT, 30); add(Raise, 20); add(GroundCrush, 10); add(HammerThrow, 10); add(SpinT, 30); add(CrushT, 30); add(SigT, 30); add(HangSwing, 8); add(UpsideDown, 20); add(Flip, 2); add(Hide, 4); add(Vehicle, 4); add(Zoom, 40);
                 add(Bracers, 10); add(BracerT, 30); add(LassoSpin, 10); add(LassoT, 30); add(SwordSlash, 20); add(ShieldGuard, 10); add(AmazonFlight, 10); add(FlightT, 30);
                 add(Aura, 10); add(Lie, 10);
                 return h;

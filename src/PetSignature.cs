@@ -488,13 +488,13 @@ namespace SuperHeroes
 
                 case 5: // 배트모빌 탑승: 호출 → 도착 → 캐노피 열림 → 도약해 탑승 → 시동 → 질주 → 연기 속에 재등장
                     {
-                        float tt = (float)t; P.Vehicle = 1f; P.HandL = HandStyle.Fist; P.HandR = HandStyle.Fist;
+                        float tt = (float)t; P.Vehicle = 1f; P.HandL = HandStyle.Fist; P.HandR = HandStyle.Fist; P.Zoom = BatZoom(t, .4, 7.0, .5);
                         if (tt < 1.1f) { P.Reach = Reach.Lap; P.HandRTo = new PointF(176, 318); P.HandLTo = new PointF(246, 350); P.Brow = .6f; P.HeadTilt = 6f * Smooth(tt / .6); }
                         else if (tt < 2.0f) { P.Reach = Reach.Hips; P.Brow = .7f; P.CapeWind = 38f * (1f - (float)(tt - 1.1) / .9f); P.HeadTilt = 5f; P.BodyX = tt > 1.6f ? (float)Math.Sin(t * 60) * 1.4f : 0f; }
                         else if (tt < 2.6f) { P.Reach = Reach.Hips; P.BodyX = -30f * Smooth((tt - 2.0) / .6); P.Brow = .7f; }
                         else if (tt < 3.3f)
                         {
-                            float bxx = -30f + (-75f + 30f) * Smooth((tt - 2.6) / .35);
+                            float bxx = -30f + (-95f + 30f) * Smooth((tt - 2.6) / .35);
                             float byy = tt < 2.85f ? -90f * Smooth((tt - 2.6) / .25) : -90f + 420f * Smooth((tt - 2.85) / .45);
                             P.BodyX = bxx; P.BodyY = byy; P.FootLY = P.FootRY = byy; P.Knee = 1.4f; P.CapeWind = 50f;
                             P.Reach = Reach.Lap; P.HandLTo = new PointF(200 + bxx - 30, 170 + byy); P.HandRTo = new PointF(200 + bxx + 30, 170 + byy); P.Brow = .8f;
@@ -507,7 +507,7 @@ namespace SuperHeroes
 
                 case 6: // 배트포드: 터미블러 손상 → 사출 → 자폭 → 엎드려 탑승 → 질주 → 복귀해 뛰어내림
                     {
-                        float tt = (float)t; P.Vehicle = 1f; P.HandL = HandStyle.Fist; P.HandR = HandStyle.Fist;
+                        float tt = (float)t; P.Vehicle = 1f; P.HandL = HandStyle.Fist; P.HandR = HandStyle.Fist; P.Zoom = BatZoom(t, .3, 7.2, .5);
                         float blast = tt > 2.3f ? 3.5f * (float)Math.Exp(-(tt - 2.3f) * 4f) * (float)Math.Sin(t * 90) : 0f;
                         if (tt < .9f) { P.Reach = Reach.Lap; P.HandRTo = new PointF(176, 318); P.HandLTo = new PointF(246, 350); P.Brow = .6f; P.HeadTilt = 6f * Smooth(tt / .6); }
                         else if (tt < 2.9f)
@@ -517,7 +517,7 @@ namespace SuperHeroes
                         else if (tt < 3.2f)
                         {
                             float u = (float)((tt - 2.9) / .3);
-                            P.BodyX = -35f + (-80f + 35f) * Smooth(u);
+                            P.BodyX = -35f + (-160f + 35f) * Smooth(u);
                             P.BodyY = tt < 3.05f ? -70f * Smooth((tt - 2.9) / .15) : -70f + 130f * Smooth((tt - 3.05) / .15);
                             P.FootLY = P.FootRY = P.BodyY * .8f; P.Knee = 1.2f; P.CapeWind = 50f; P.Reach = Reach.Lap;
                             P.HandLTo = new PointF(200 + P.BodyX - 20, 250 + P.BodyY); P.HandRTo = new PointF(200 + P.BodyX - 60, 270 + P.BodyY);
@@ -526,15 +526,15 @@ namespace SuperHeroes
                         else if (tt < 7.5f)
                         {
                             float u = (float)((tt - 6.95) / .45);
-                            P.BodyX = -80f + 40f * Smooth(u); P.BodyY = -50f * (float)Math.Sin(Math.PI * Math.Min(1f, u)); P.Knee = 1f * (1f - Math.Min(1f, u)); P.Reach = Reach.Hips; P.CapeWind = 30f; P.Brow = .7f;
+                            P.BodyX = -150f + 50f * Smooth(u); P.BodyY = -50f * (float)Math.Sin(Math.PI * Math.Min(1f, u)); P.Knee = 1f * (1f - Math.Min(1f, u)); P.Reach = Reach.Hips; P.CapeWind = 30f; P.Brow = .7f;
                         }
-                        else { P.Reach = Reach.Cross; P.BodyX = -40f * (1f - Smooth((tt - 7.5) / .5)); P.Mouth = MouthStyle.Neutral; }
+                        else { P.Reach = Reach.Cross; P.BodyX = -100f * (1f - Smooth((tt - 7.2) / .7)); P.Mouth = MouthStyle.Neutral; }
                     }
                     break;
 
                 case 7: // 배트윙 탑승 출격: 배트 시그널 → 회전날개 바람 속에 착륙 호출 → 윈치에 매달려 탑승 → 하늘로 출격 → 망토 글라이더로 강하
                     {
-                        float tt = (float)t; P.Vehicle = 1f; P.HandL = HandStyle.Fist; P.HandR = HandStyle.Fist;
+                        float tt = (float)t; P.Vehicle = 1f; P.HandL = HandStyle.Fist; P.HandR = HandStyle.Fist; P.Zoom = BatZoom(t, .2, 7.4, .5);
                         if (tt < 1.2f) { P.Reach = Reach.Lap; P.HandRTo = new PointF(176, 318); P.HandLTo = new PointF(246, 350); P.Brow = .6f; P.HeadTilt = -6f * Smooth(tt / .6); }
                         else if (tt < 3.3f)
                         {
@@ -544,14 +544,14 @@ namespace SuperHeroes
                         }
                         else if (tt < 4.12f)
                         {
-                            float u = Smooth((tt - 3.3) / .8); float byy = -300f * u;
+                            float u = Smooth((tt - 3.3) / .8); float byy = -230f * u;
                             P.BodyY = byy; P.FootLY = P.FootRY = byy * .9f; P.Reach = Reach.Lap; P.CapeWind = 50f; P.Knee = .6f;
                             P.HandRTo = new PointF(205, 150 + byy); P.HandLTo = new PointF(180, 170 + byy); P.Brow = .8f;
                         }
                         else if (tt < 6.3f) { P.Hide = 1f; }
                         else if (tt < 7.4f)
                         {
-                            float u = Smooth((tt - 6.3) / 1.1); float byy = -330f * (1f - u);
+                            float u = Smooth((tt - 6.3) / 1.1); float byy = -480f * (1f - u);
                             P.BodyY = byy; P.FootLY = P.FootRY = byy * .9f; P.CapeWing = 1f; P.CapeWind = 34f; P.Reach = Reach.Lap;
                             P.HandLTo = new PointF(70, 280 + byy); P.HandRTo = new PointF(330, 280 + byy); P.Brow = .7f; P.HeadTilt = -4f;
                         }
@@ -785,6 +785,9 @@ namespace SuperHeroes
         }
 
         private static float Smooth(double x) { float v = (float)Math.Max(0, Math.Min(1, x)); return v * v * (3 - 2 * v); }
+
+        /// <summary>탈것 연출용 카메라 줌아웃: inT 부터 target 배율까지 서서히 물러났다가 outT 부터 원래 크기로 돌아온다.</summary>
+        private static float BatZoom(double t, double inT, double outT, double target) { return (float)(1 - (1 - target) * Smooth((t - inT) / .6) * (1 - Smooth((t - outT) / .7))); }
 
         private void ApplyWonderSig(Pose P, ref Look L, double t)
         {

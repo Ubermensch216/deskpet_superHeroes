@@ -10,7 +10,9 @@ namespace SuperHeroes
     internal sealed partial class HeroPainter
     {
         private static float Ease01(float x) { x = Math.Max(0f, Math.Min(1f, x)); return x * x * (3 - 2 * x); }
-        private static float CxClamp(float x) { return Math.Max(-40f, Math.Min(440f, x)); }
+        // 스프라이트 창의 가로 범위(리그 좌표). 카메라가 줌아웃되면(HeroRig.Run) 넓어진다.
+        private static float clampLo = -40f, clampHi = 440f;
+        private static float CxClamp(float x) { return Math.Max(clampLo, Math.Min(clampHi, x)); }
         private static PointF PtC(float x, float y) { return new PointF(CxClamp(x), y); }
 
         /// <summary>묠니르 머리 한가운데(손잡이 쥔 곳에서 머리 쪽으로 29*sc). angDeg 는 시계 방향 회전각(0 = 머리가 위).</summary>

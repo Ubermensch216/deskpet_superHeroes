@@ -11,9 +11,13 @@ namespace SuperHeroes
     //  · 아캄 나이트 배트모빌: 슬라이딩 캐노피, 청·적으로 번갈아 켜지는 LED 헤드라이트, 호출하면 달려옴, 후미 애프터버너.
     //  · 배트포드: 20인치 거대 타이어 두 개, 엎드려서 타고 손은 방패 뒤 손잡이, 쌍기관포.
     //  · 배트윙: 1939년 배트자이로/배트콥터는 회전날개, 1989년 배트윙은 박쥐 날개, 다크 나이트 라이즈의 더 배트는 탠덤 콕핏 VTOL.
+    //
+    // 비율: 탈것은 키 505(리그 단위)인 배트맨에 맞춰 크게 그리고(배트모빌 높이 ≈ 키의 절반, 배트포드 바퀴 반지름 ≈ 키의 14%, 배트윙은 지붕보다 높이 떠 있음),
+    // 창 폭을 넘는 만큼은 카메라를 뒤로 빼서(Pose.Zoom → HeroRig.Run 에서 장면 전체를 축소) 담는다. 그래서 이 파일의 좌표는 줌 0.5 기준으로 넓게 잡혀 있다.
     internal sealed partial class HeroPainter
     {
         private static readonly Color cBody = Color.FromArgb(34, 38, 48), cBodyHi = Color.FromArgb(92, 102, 128), cGlass = Color.FromArgb(70, 120, 172);
+        private const float CarS = 1.9f, PodS = 1.6f, TumS = 1.7f, WingS = 1.8f, TxS = 1.8f;   // 배트모빌·배트포드·터미블러·배트윙 배율, 줌아웃 보정용 글씨 배율
 
         private void DrawWheel(float cx, float cy, float r, float rotDeg, bool knobby)
         {
@@ -35,12 +39,13 @@ namespace SuperHeroes
             g.FillEllipse(B(Color.FromArgb(205, 62, 52)), cx - r * .15f, cy - r * .15f, r * .3f, r * .3f);
         }
 
-        private void DustPuffs(float x, float y, float age, float a, int n, float dir)
+        /// <summary>바닥에서 피어오르는 먼지·연기. sc 배로 키운다.</summary>
+        private void DustPuffs(float x, float y, float age, float a, int n, float dir, float sc = 1f)
         {
             if (a <= .02f) return;
             for (int i = 0; i < n; i++)
             {
-                float ph = (age * 1.3f + i / (float)n) % 1f, px = x + dir * (14 + ph * (60 + 70 * Hash01(i, 1))), py = y - 8 - ph * (24 + 40 * Hash01(i, 2)), r = 8 + 26 * ph;
+                float ph = (age * 1.3f + i / (float)n) % 1f, px = x + dir * (14 + ph * (60 + 70 * Hash01(i, 1))) * sc, py = y - (8 + ph * (24 + 40 * Hash01(i, 2))) * sc, r = (8 + 26 * ph) * sc;
                 g.FillEllipse(B(Al(Color.FromArgb(214, 214, 224), 150 * (1 - ph) * a)), CxClamp(px) - r, py - r * .8f, r * 2, r * 1.6f);
             }
         }
@@ -60,14 +65,14 @@ namespace SuperHeroes
             }
             for (int i = 0; i < 12; i++)   // 파편
             {
-                float vx = (Hash01(i + seed, 5) * 2 - 1) * 300f, vy = -(120f + Hash01(i + seed, 6) * 360f), s0 = 5 + 8 * Hash01(i + seed, 7);
-                float px = x + vx * u, py = y - 30 * sc + vy * u + 620f * u * u;
-                if (py > 570f || u > 1.6f || px < -40 || px > 440) continue;
+                float vx = (Hash01(i + seed, 5) * 2 - 1) * 300f * sc, vy = -(120f + Hash01(i + seed, 6) * 360f) * sc, s0 = (5 + 8 * Hash01(i + seed, 7)) * sc * .8f;
+                float px = x + vx * u, py = y - 30 * sc + vy * u + 620f * sc * u * u;
+                if (py > 570f || u > 1.6f || px < clampLo || px > clampHi) continue;
                 double ra = (u * 600 * (Hash01(i + seed, 8) - .5f)) * Math.PI / 180; float cs = (float)Math.Cos(ra), sn = (float)Math.Sin(ra);
                 var ch = new[] { Pt(px + (-1 * cs + .6f * sn) * s0, py + (-1 * sn - .6f * cs) * s0), Pt(px + (1 * cs + .8f * sn) * s0, py + (1 * sn - .8f * cs) * s0), Pt(px + (1 * cs - .5f * sn) * s0, py + (1 * sn + .5f * cs) * s0), Pt(px + (-.5f * cs - 1 * sn) * s0, py + (-.5f * sn + 1 * cs) * s0) };
                 g.FillPolygon(B(Al(Color.FromArgb(40, 44, 54), 255 * (1 - u / 1.6f))), ch);
             }
-            GroundRing(x, 568, 20 + 190 * (float)Math.Sqrt(u), .17f, Color.FromArgb(255, 180, 90), Math.Max(0f, 1 - u * .9f), 4f);
+            GroundRing(x, 568, (20 + 190 * (float)Math.Sqrt(u)) * sc * .8f, .17f, Color.FromArgb(255, 180, 90), Math.Max(0f, 1 - u * .9f), 4f * sc);
         }
 
         // ───────── 터미블러형 배트모빌(옆모습, 앞 = 왼쪽) ─────────
@@ -130,88 +135,88 @@ namespace SuperHeroes
 
         private static float BatmobileX(float T)
         {
-            const float park = 125f;
-            if (T < .9f) return 640f;
-            if (T < 2.0f) { float u = (T - .9f) / 1.1f; return 640f + (park - 640f) * (1 - (float)Math.Pow(1 - u, 3)); }
+            const float park = 60f;
+            if (T < .9f) return 1100f;
+            if (T < 2.0f) { float u = (T - .9f) / 1.1f; return 1100f + (park - 1100f) * (1 - (float)Math.Pow(1 - u, 3)); }
             if (T < 4.5f) return park;
-            if (T < 5.7f) { float u = (T - 4.5f) / 1.2f; return park - 1000f * (float)Math.Pow(u, 2.2); }
-            return -600f;
+            if (T < 5.7f) { float u = (T - 4.5f) / 1.2f; return park - 1900f * (float)Math.Pow(u, 2.2); }
+            return -1900f;
         }
 
         private void DrawBatmobileFx()
         {
             float T = p.SigT, bx = p.BodyX, by = p.BodyY;
-            const float gy = 568f;
+            const float gy = 568f; const float S = CarS;
             float cx = BatmobileX(T);
             float arrive = T >= .9f && T < 2.0f ? 1 - (T - .9f) / 1.1f : 0f;
             float rev = T >= 3.7f && T < 4.5f ? 1f : 0f, launch = T >= 4.5f && T < 5.7f ? (T - 4.5f) / 1.2f : 0f;
             float flame = arrive > 0 ? .55f + .7f * arrive : rev > 0 ? .8f + .35f * (float)Math.Sin(T * 34) : launch > 0 ? 1.5f + launch : 0f;
             float open = Ease01((T - 2.0f) / .5f) * (1 - Ease01((T - 3.3f) / .5f));
             float lights = T >= 3.4f && T < 5.5f ? 1f : 0f;
-            float shake = rev > 0 ? (float)Math.Sin(T * 70) * 1.6f : 0f;
+            float shake = rev > 0 ? (float)Math.Sin(T * 70) * 1.6f * S : 0f;
             float pitch = (T >= 1.7f && T < 2.15f ? -4f * (float)Math.Sin((T - 1.7f) / .45f * Math.PI) : 0f) + (launch > 0 ? 5f * Math.Min(1f, launch * 4f) : 0f);
-            float wheelDeg = cx / 40f * 57.3f;
+            float wheelDeg = cx / (40f * S) * 57.3f;
 
             // 1. 호출: 건틀릿에서 퍼지는 신호 파동
             if (T < 1.1f)
             {
                 PointF w = wrist[1]; float a = Ease01(T / .2f) * Ease01((1.1f - T) / .3f);
-                Glow(w.X, w.Y, 36, 30, Al(Color.FromArgb(120, 220, 255), 200 * a));
-                for (int i = 0; i < 3; i++) { float ph = (T * 2.2f + i / 3f) % 1f, r = 16 + 70 * ph; g.DrawEllipse(Pn(Al(Color.FromArgb(120, 220, 255), 200 * (1 - ph) * a), 3f), w.X - r, w.Y - r, r * 2, r * 2); }
-                HudText("BATMOBILE", w.X + 14, w.Y - 54, 15, Color.FromArgb(120, 230, 255), a); HudText("CALLING...", w.X + 14, w.Y - 38, 13, Color.FromArgb(255, 210, 90), a);
+                Glow(w.X, w.Y, 54, 46, Al(Color.FromArgb(120, 220, 255), 200 * a));
+                for (int i = 0; i < 3; i++) { float ph = (T * 2.2f + i / 3f) % 1f, r = 20 + 110 * ph; g.DrawEllipse(Pn(Al(Color.FromArgb(120, 220, 255), 200 * (1 - ph) * a), 4f), w.X - r, w.Y - r, r * 2, r * 2); }
+                HudText("BATMOBILE", w.X + 20, w.Y - 84, 15 * TxS, Color.FromArgb(120, 230, 255), a); HudText("CALLING...", w.X + 20, w.Y - 56, 13 * TxS, Color.FromArgb(255, 210, 90), a);
             }
 
-            // 2. 타이어 자국 + 진동하는 바닥
+            // 2. 타이어 자국 + 접근하는 속도선
             if (T >= 1.0f)
             {
                 float ma = Ease01((6.8f - T) / .8f) * .5f;
-                if (cx < 440f && T < 5.7f) { foreach (float oy in new[] { -2f, 6f }) Stroke(new[] { PtC(cx + 100, gy + oy), PtC(440, gy + oy) }, Al(Color.FromArgb(20, 22, 28), 255 * ma), 4f); }
+                if (cx < 760f && T < 5.7f) { foreach (float oy in new[] { -2f * S, 6f * S }) Stroke(new[] { PtC(cx + 100 * S, gy + oy), PtC(760, gy + oy) }, Al(Color.FromArgb(20, 22, 28), 255 * ma), 4f * S); }
             }
-            if (T >= .8f && T < 2.0f) for (int i = 0; i < 12; i++) { float y = 380 + 190 * Hash01(i, 3), len = 90 + 90 * Hash01(i, 4), ph = (T * 3.6f + i * .083f) % 1f, x = 460 - ph * 560; Stroke(new[] { PtC(x, y), PtC(x + len, y) }, Al(Color.White, 120 * (1 - Math.Abs(T - 1.4f)) * Math.Max(0f, 1 - Math.Abs(T - 1.4f) * 1.2f)), 2.2f); }
+            if (T >= .8f && T < 2.0f) for (int i = 0; i < 14; i++) { float y = 300 + 270 * Hash01(i, 3), len = 160 + 160 * Hash01(i, 4), ph = (T * 3.6f + i * .071f) % 1f, x = 800 - ph * 1100; Stroke(new[] { PtC(x, y), PtC(x + len, y) }, Al(Color.White, 120 * Math.Max(0f, 1 - Math.Abs(T - 1.4f) * 1.2f)), 2.6f); }
 
             // 3. 차: 도착 · 대기 · 탑승 · 시동 · 질주
-            if (cx > -340f && cx < 660f)
+            if (cx > -1000f && cx < 1500f)
             {
                 // 질주 중 후미 화염 꼬리
                 if (launch > 0f)
                 {
                     var trail = new List<PointF>();
-                    for (int j = 0; j < 22; j++) { float tj = T - j * .02f; if (tj < 4.5f) break; trail.Add(PtC(BatmobileX(tj) + 195, gy - 50)); }
-                    if (trail.Count > 1) { var tr = trail.ToArray(); Stroke(tr, Al(Color.FromArgb(255, 120, 40), 150), 34f); Stroke(tr, Al(Color.FromArgb(255, 220, 130), 230), 14f); Stroke(tr, Al(Color.White, 255), 4f); }
+                    for (int j = 0; j < 22; j++) { float tj = T - j * .02f; if (tj < 4.5f) break; trail.Add(PtC(BatmobileX(tj) + 195 * S, gy - 50 * S)); }
+                    if (trail.Count > 1) { var tr = trail.ToArray(); Stroke(tr, Al(Color.FromArgb(255, 120, 40), 150), 34f * S); Stroke(tr, Al(Color.FromArgb(255, 220, 130), 230), 14f * S); Stroke(tr, Al(Color.White, 255), 4f * S); }
                 }
-                DrawBatmobileCar(cx + shake * .2f, gy + shake, 1f, wheelDeg, open, lights, flame, pitch, 1f, false, T);
-                if (lights > 0f) GradCone(Pt(cx - 170, gy - 66), Pt(cx - 170 - 340, gy - 66 - 80), Pt(cx - 170 - 340, gy - 66 + 80), Color.FromArgb(235, 240, 255), 130, 0);
+                DrawBatmobileCar(cx + shake * .2f, gy + shake, S, wheelDeg, open, lights, flame, pitch, 1f, false, T);
+                if (lights > 0f) { PointF tip = Pt(cx - 170 * S, gy - 66 * S); GradCone(tip, Pt(tip.X - 900, tip.Y - 190), Pt(tip.X - 900, tip.Y + 190), Color.FromArgb(235, 240, 255), 130, 0); }
                 // 급제동: 타이어 연기와 불꽃
-                if (T >= 1.35f && T < 2.5f) { DustPuffs(cx - 104, gy, T - 1.35f, 1f, 7, 1f); DustPuffs(cx + 104, gy, T - 1.35f, 1f, 7, 1f); }
-                if (T >= 1.5f && T < 2.05f) for (int i = 0; i < 9; i++) { float ph = (T * 5f + i * .11f) % 1f; Stroke(new[] { Pt(cx - 80 + ph * 70, gy - 14), PtC(cx - 80 + ph * 70 + 24, gy - 14 + 8 + ph * 12) }, Al(Color.FromArgb(255, 220, 110), 255 * (1 - ph)), 2.6f); }
-                if (rev > 0f) { DustPuffs(cx + 104, gy, T - 3.7f, 1f, 9, 1f); DustPuffs(cx - 104, gy, T - 3.7f, .6f, 6, -1f); ComicText("VROOOM!", cx + 40, gy - 190, 36, -6f, Color.FromArgb(255, 170, 60), Math.Min(1f, (T - 3.7f) * 4f) * Math.Min(1f, (4.5f - T) * 5f)); }
+                if (T >= 1.35f && T < 2.5f) { DustPuffs(cx - 104 * S, gy, T - 1.35f, 1f, 8, 1f, S); DustPuffs(cx + 104 * S, gy, T - 1.35f, 1f, 8, 1f, S); }
+                if (T >= 1.5f && T < 2.05f) for (int i = 0; i < 10; i++) { float ph = (T * 5f + i * .11f) % 1f; Stroke(new[] { Pt(cx - 80 * S + ph * 70 * S, gy - 14 * S), PtC(cx - 80 * S + ph * 70 * S + 24 * S, gy - 14 * S + (8 + ph * 12) * S) }, Al(Color.FromArgb(255, 220, 110), 255 * (1 - ph)), 2.6f * S); }
+                if (rev > 0f) { DustPuffs(cx + 104 * S, gy, T - 3.7f, 1f, 10, 1f, S); DustPuffs(cx - 104 * S, gy, T - 3.7f, .6f, 7, -1f, S); ComicText("VROOOM!", cx + 40 * S, gy - 190 * S, 36 * TxS, -6f, Color.FromArgb(255, 170, 60), Math.Min(1f, (T - 3.7f) * 4f) * Math.Min(1f, (4.5f - T) * 5f)); }
                 if (launch > 0f)
                 {
-                    for (int i = 0; i < 14; i++) { float y = 300 + 270 * Hash01(i, 6), len = 120 + 140 * Hash01(i, 7), ph = (T * 4.2f + i * .071f) % 1f, x = 460 - ph * 640; Stroke(new[] { PtC(x, y), PtC(x + len, y) }, Al(Color.White, 190 * (1 - launch * .5f)), 2.6f); }
-                    DustPuffs(cx + 140, gy, T - 4.5f, 1f, 10, 1f);
+                    for (int i = 0; i < 16; i++) { float y = 280 + 290 * Hash01(i, 6), len = 220 + 260 * Hash01(i, 7), ph = (T * 4.2f + i * .063f) % 1f, x = 800 - ph * 1300; Stroke(new[] { PtC(x, y), PtC(x + len, y) }, Al(Color.White, 190 * (1 - launch * .5f)), 3f); }
+                    DustPuffs(cx + 140 * S, gy, T - 4.5f, 1f, 12, 1f, S);
                 }
             }
-            if (T >= 4.55f && T < 5.5f) { float u = (T - 4.55f) / .95f; GroundRing(130, gy, 20 + 210 * (float)Math.Sqrt(u), .15f, Color.FromArgb(255, 190, 100), 1 - u, 4f); ComicText("ZOOOM!", 300, gy - 210, 38, 8f, Color.FromArgb(255, 220, 80), Math.Min(1f, (5.5f - T) * 2f)); }
+            if (T >= 4.55f && T < 5.5f) { float u = (T - 4.55f) / .95f; GroundRing(130, gy, (20 + 210 * (float)Math.Sqrt(u)) * S, .15f, Color.FromArgb(255, 190, 100), 1 - u, 4f * S); ComicText("ZOOOM!", 330, gy - 330, 38 * TxS, 8f, Color.FromArgb(255, 220, 80), Math.Min(1f, (5.5f - T) * 2f)); }
 
             // 4. 캐노피가 닫히는 순간의 번쩍임, 떠난 자리의 잔불
-            if (T >= 3.25f && T < 3.7f) { float u = (T - 3.25f) / .45f; Glint(cx + 20, gy - 118, 50 * (1 - u * .4f), Color.White, 1 - u, 45); GroundRing(cx + 20, gy - 118, 10 + 60 * u, 1f, Color.FromArgb(160, 230, 255), 1 - u, 2.6f); }
+            if (T >= 3.25f && T < 3.7f) { float u = (T - 3.25f) / .45f; Glint(cx + 25 * S, gy - 118 * S, 80 * (1 - u * .4f), Color.White, 1 - u, 45); GroundRing(cx + 25 * S, gy - 118 * S, (10 + 60 * u) * S, 1f, Color.FromArgb(160, 230, 255), 1 - u, 2.6f * S); }
             if (T >= 5.5f && T < 7.2f)
             {
                 float fa = Ease01((7.0f - T) / .9f);
-                for (int i = 0; i < 7; i++) { float fx = 110 + i * 46, h = (14 + 22 * Hash01(i, 8)) * (.6f + .4f * (float)Math.Sin(T * 17 + i * 2f)) * fa; g.FillPolygon(B(Al(Color.FromArgb(255, 130, 40), 220 * fa)), new[] { Pt(fx - 8, gy), Pt(fx, gy - h), Pt(fx + 8, gy) }); }
+                for (int i = 0; i < 9; i++) { float fx = -80 + i * 70, h = (30 + 46 * Hash01(i, 8)) * (.6f + .4f * (float)Math.Sin(T * 17 + i * 2f)) * fa; g.FillPolygon(B(Al(Color.FromArgb(255, 130, 40), 220 * fa)), new[] { Pt(fx - 16, gy), Pt(fx, gy - h), Pt(fx + 16, gy) }); }
             }
 
             // 5. 출격에서 돌아온 배트맨: 박쥐 연기와 함께 재등장
             if (T >= 5.85f && T < 6.9f)
             {
                 float u = (T - 5.85f) / 1.05f, fl = Math.Max(0f, 1f - u / .25f);
-                Glow(200, 400, 130, 190, Al(Color.White, 190 * fl));
+                Glow(200, 400, 150, 210, Al(Color.White, 190 * fl));
                 for (int i = 0; i < 16; i++)
                 {
                     float hx = 200 + (Hash01(i, 1) * 2 - 1) * 110, hy = 540 - Hash01(i, 2) * 380, r = (26 + 30 * Hash01(i, 3)) * (1 - u * .4f);
                     g.FillEllipse(B(Al(Color.FromArgb(52, 56, 68), 210 * (1 - u))), CxClamp(hx) - r, hy - u * 60 - r * .85f, r * 2, r * 1.7f);
                 }
-                for (int i = 0; i < 4; i++) DrawBat(200 + (i - 1.5f) * 50 * (1 + u * 2), 360 - u * 200, 1f, (float)Math.Sin(T * 17 + i), 1 - u);
+                for (int i = 0; i < 4; i++) DrawBat(200 + (i - 1.5f) * 50 * (1 + u * 2), 360 - u * 200, 1.4f, (float)Math.Sin(T * 17 + i), 1 - u);
             }
         }
 
@@ -260,25 +265,25 @@ namespace SuperHeroes
             if (fire > .02f) Glow(x + (flip ? 128 : -128) * sc, y - 59 * sc, 40 * sc, 30 * sc, Al(Color.FromArgb(255, 230, 150), 220 * fire));
         }
 
-        private static float TumblerX(float T) { return T < .9f ? 640f : T < 1.7f ? 640f + (370f - 640f) * (1 - (float)Math.Pow(1 - (T - .9f) / .8f, 3)) : 370f; }
+        private static float TumblerX(float T) { return T < .9f ? 1300f : T < 1.7f ? 1300f + (560f - 1300f) * (1 - (float)Math.Pow(1 - (T - .9f) / .8f, 3)) : 560f; }
 
         private static float PodX(float T, out bool flip)
         {
             flip = false;
-            if (T < 1.7f) return 250f;
-            if (T < 2.7f) return 250f + (120f - 250f) * (1 - (float)Math.Pow(1 - (T - 1.7f) / 1.0f, 3));
-            if (T < 4.3f) return 120f;
-            if (T < 5.3f) return 120f - 800f * (float)Math.Pow((T - 4.3f) / 1.0f, 2.1);
-            if (T < 6.0f) return -700f;
-            if (T < 6.9f) { flip = true; return -400f + 520f * (1 - (float)Math.Pow(1 - (T - 6.0f) / .9f, 3)); }
-            if (T < 7.5f) { flip = true; return 120f + 700f * (float)Math.Pow((T - 6.9f) / .6f, 2); }
-            return 900f;
+            if (T < 1.7f) return 470f;
+            if (T < 2.7f) return 470f + (40f - 470f) * (1 - (float)Math.Pow(1 - (T - 1.7f) / 1.0f, 3));
+            if (T < 4.3f) return 40f;
+            if (T < 5.3f) return 40f - 1700f * (float)Math.Pow((T - 4.3f) / 1.0f, 2.1);
+            if (T < 6.0f) return -1800f;
+            if (T < 6.9f) { flip = true; return -900f + 940f * (1 - (float)Math.Pow(1 - (T - 6.0f) / .9f, 3)); }
+            if (T < 7.5f) { flip = true; return 40f + 1600f * (float)Math.Pow((T - 6.9f) / .6f, 2); }
+            return 1700f;
         }
 
         private void DrawBatpodFx()
         {
             float T = p.SigT, bx = p.BodyX, by = p.BodyY;
-            const float gy = 568f;
+            const float gy = 568f; const float S = PodS;
             bool flip; float px = PodX(T, out flip);
             float tx = TumblerX(T);
             float revv = T >= 3.5f && T < 4.3f ? 1f : 0f, ride = T >= 4.3f && T < 5.3f ? 1f : 0f;
@@ -286,43 +291,43 @@ namespace SuperHeroes
             float flame = revv > 0 ? .7f + .3f * (float)Math.Sin(T * 40) : ride > 0 ? 1.4f : (T >= 6.0f && T < 6.9f ? 1f : 0f);
             float pitch = (revv > 0 ? -14f * Math.Min(1f, (T - 3.5f) / .2f) : 0f) + (ride > 0 ? -8f : 0f);
             bool riderOn = T >= 3.2f && T < 6.95f;
-            float wheelDeg = px / 44f * 57.3f;
+            float wheelDeg = px / (44f * S) * 57.3f;
 
             // 0. 경보: 건틀릿 + 붉은 점멸
             if (T < 1.7f)
             {
                 PointF w = wrist[1]; float a = Ease01(T / .2f);
-                if (T < 1.0f) { Glow(w.X, w.Y, 30, 26, Al(Color.FromArgb(255, 90, 80), 200 * a)); HudText("DAMAGE", w.X + 14, w.Y - 40, 15, cHell, a * (.5f + .5f * (((int)(T * 8)) % 2))); }
-                if (T > .9f) Glow(430, 380, 180, 260, Al(cHell, 30 * (1 + (float)Math.Sin(T * 14))));
+                if (T < 1.0f) { Glow(w.X, w.Y, 44, 38, Al(Color.FromArgb(255, 90, 80), 200 * a)); HudText("DAMAGE", w.X + 20, w.Y - 60, 15 * TxS, cHell, a * (.5f + .5f * (((int)(T * 8)) % 2))); }
+                if (T > .9f) Glow(560, 400, 340, 300, Al(cHell, 30 * (1 + (float)Math.Sin(T * 14))));
             }
 
             // 1. 배트포드(터미블러 앞바퀴 사출) — 터미블러 뒤에서 먼저 그린다
-            if (T >= 1.7f && px > -400 && px < 700) DrawBatpod(px, gy, 1.0f, wheelDeg, pitch, flip, riderOn, fire, flame, T);
-            if (T >= 1.7f && T < 2.7f) { float u = (T - 1.7f) / 1.0f; Glow(250, gy - 40, 100 * (1 - u), 60 * (1 - u), Al(Color.White, 220 * (1 - u))); if (T < 2.1f) ComicText("EJECT!", 322, 392, 42, -8f, Color.FromArgb(255, 230, 70), Math.Min(1f, (2.1f - T) * 4f)); }
-            if (T >= 2.3f && T < 3.1f) { float u = (T - 2.3f) / .8f; DustPuffs(px - 40, gy, T - 2.3f, 1 - u, 7, 1f); DustPuffs(px + 40, gy, T - 2.3f, 1 - u, 7, 1f); }
+            if (T >= 1.7f && px > -700 && px < 1100) DrawBatpod(px, gy, S, wheelDeg, pitch, flip, riderOn, fire, flame, T);
+            if (T >= 1.7f && T < 2.7f) { float u = (T - 1.7f) / 1.0f; Glow(430, gy - 70, 160 * (1 - u), 100 * (1 - u), Al(Color.White, 220 * (1 - u))); if (T < 2.1f) ComicText("EJECT!", 430, 250, 42 * TxS, -8f, Color.FromArgb(255, 230, 70), Math.Min(1f, (2.1f - T) * 4f)); }
+            if (T >= 2.3f && T < 3.1f) { float u = (T - 2.3f) / .8f; DustPuffs(px - 60, gy, T - 2.3f, 1 - u, 8, 1f, S); DustPuffs(px + 60, gy, T - 2.3f, 1 - u, 8, 1f, S); }
 
             // 2. 손상된 터미블러: 연기를 내며 들어와 정차 → 자폭
             if (T >= .9f && T < 2.4f)
             {
-                DrawBatmobileCar(tx, gy, .9f, tx / 40f * 57.3f, 0f, 0f, T < 1.7f ? .6f : 0f, 0f, 1f, true, T);
-                for (int i = 0; i < 8; i++) { float ph = (T * .9f + i * .125f) % 1f, sx = tx + 30 + ph * 60, sy = gy - 140 - ph * 160, r = 12 + 30 * ph; g.FillEllipse(B(Al(Color.FromArgb(40, 42, 50), 190 * (1 - ph))), CxClamp(sx) - r, sy - r * .8f, r * 2, r * 1.6f); }
-                for (int i = 0; i < 4; i++) { float ph = (T * 6f + i * .25f) % 1f; Stroke(new[] { Pt(tx - 30 + i * 30, gy - 130), PtC(tx - 30 + i * 30 + 20, gy - 130 + 30 + ph * 40) }, Al(Color.FromArgb(255, 220, 110), 255 * (1 - ph)), 2.6f); }
+                DrawBatmobileCar(tx, gy, TumS, tx / (40f * TumS) * 57.3f, 0f, 0f, T < 1.7f ? .6f : 0f, 0f, 1f, true, T);
+                for (int i = 0; i < 8; i++) { float ph = (T * .9f + i * .125f) % 1f, sx = tx + 40 + ph * 100, sy = gy - 230 - ph * 260, r = (12 + 30 * ph) * TumS; g.FillEllipse(B(Al(Color.FromArgb(40, 42, 50), 190 * (1 - ph))), CxClamp(sx) - r, sy - r * .8f, r * 2, r * 1.6f); }
+                for (int i = 0; i < 4; i++) { float ph = (T * 6f + i * .25f) % 1f; Stroke(new[] { Pt(tx - 60 + i * 50, gy - 220), PtC(tx - 60 + i * 50 + 34, gy - 220 + 50 + ph * 70) }, Al(Color.FromArgb(255, 220, 110), 255 * (1 - ph)), 3.4f); }
             }
-            if (T >= 2.3f && T < 4.2f) { Fireball(370, gy, T - 2.3f, 1.1f, 7); if (T < 2.9f) ComicText("BOOM!", 330, 360, 46, 7f, Color.FromArgb(255, 200, 60), Math.Min(1f, (2.9f - T) * 3f)); }
-            if (T >= 4.2f && T < 6.2f) { float fa = Ease01((6.0f - T) / 1.5f); for (int i = 0; i < 6; i++) { float fx = 320 + i * 22, h = (18 + 26 * Hash01(i, 8)) * (.6f + .4f * (float)Math.Sin(T * 17 + i * 2f)) * fa; g.FillPolygon(B(Al(Color.FromArgb(255, 120, 40), 220 * fa)), new[] { Pt(fx - 9, gy), Pt(fx, gy - h), Pt(fx + 9, gy) }); } }
+            if (T >= 2.3f && T < 4.2f) { Fireball(560, gy, T - 2.3f, 2.4f, 7); if (T < 2.9f) ComicText("BOOM!", 500, 220, 46 * TxS, 7f, Color.FromArgb(255, 200, 60), Math.Min(1f, (2.9f - T) * 3f)); }
+            if (T >= 4.2f && T < 6.2f) { float fa = Ease01((6.0f - T) / 1.5f); for (int i = 0; i < 7; i++) { float fx = 440 + i * 40, h = (36 + 50 * Hash01(i, 8)) * (.6f + .4f * (float)Math.Sin(T * 17 + i * 2f)) * fa; g.FillPolygon(B(Al(Color.FromArgb(255, 120, 40), 220 * fa)), new[] { Pt(fx - 17, gy), Pt(fx, gy - h), Pt(fx + 17, gy) }); } }
 
             // 3. 탑승·질주·복귀의 효과
-            if (T >= 3.0f && T < 3.5f) { float u = (T - 3.0f) / .5f; Glint(px, gy - 70, 56 * (1 - u * .4f), Color.White, 1 - u, 45); GroundRing(px, gy - 70, 10 + 70 * u, 1f, Color.FromArgb(255, 220, 120), 1 - u, 2.6f); }
-            if (revv > 0f) { DustPuffs(px + 78, gy, T - 3.5f, 1f, 8, 1f); ComicText("VRRRM!", px + 60, gy - 190, 34, -6f, Color.FromArgb(255, 170, 60), Math.Min(1f, (T - 3.5f) * 4f) * Math.Min(1f, (4.3f - T) * 5f)); }
-            if (T >= 3.7f && T < 5.2f) for (int i = 0; i < 4; i++) { float ph = (T * 3f + i * .25f) % 1f; Stroke(new[] { PtC(px - 150 - ph * 360, gy - 59 + (i - 1.5f) * 6), PtC(px - 150 - ph * 360 - 26, gy - 59 + (i - 1.5f) * 6) }, Al(Color.FromArgb(255, 240, 170), 255 * (1 - ph)), 3f); }
+            if (T >= 3.0f && T < 3.5f) { float u = (T - 3.0f) / .5f; Glint(px, gy - 120, 90 * (1 - u * .4f), Color.White, 1 - u, 45); GroundRing(px, gy - 120, (10 + 70 * u) * S, 1f, Color.FromArgb(255, 220, 120), 1 - u, 2.6f * S); }
+            if (revv > 0f) { DustPuffs(px + 78 * S, gy, T - 3.5f, 1f, 9, 1f, S); ComicText("VRRRM!", px + 60 * S, gy - 190 * S, 34 * TxS, -6f, Color.FromArgb(255, 170, 60), Math.Min(1f, (T - 3.5f) * 4f) * Math.Min(1f, (4.3f - T) * 5f)); }
+            if (T >= 3.7f && T < 5.2f) for (int i = 0; i < 5; i++) { float ph = (T * 3f + i * .2f) % 1f; Stroke(new[] { PtC(px - 150 * S - ph * 700, gy - 59 * S + (i - 2f) * 10), PtC(px - 150 * S - ph * 700 - 46, gy - 59 * S + (i - 2f) * 10) }, Al(Color.FromArgb(255, 240, 170), 255 * (1 - ph)), 4f); }
             if (ride > 0f)
             {
-                for (int i = 0; i < 14; i++) { float y = 300 + 270 * Hash01(i, 6), len = 120 + 140 * Hash01(i, 7), ph = (T * 4.2f + i * .071f) % 1f, x = 460 - ph * 640; Stroke(new[] { PtC(x, y), PtC(x + len, y) }, Al(Color.White, 190), 2.6f); }
-                DustPuffs(px + 120, gy, T - 4.3f, 1f, 10, 1f);
-                if (T < 5.0f) ComicText("ZOOOM!", 300, gy - 200, 36, 8f, Color.FromArgb(255, 220, 80), Math.Min(1f, (5.0f - T) * 3f));
+                for (int i = 0; i < 16; i++) { float y = 280 + 290 * Hash01(i, 6), len = 220 + 260 * Hash01(i, 7), ph = (T * 4.2f + i * .063f) % 1f, x = 800 - ph * 1300; Stroke(new[] { PtC(x, y), PtC(x + len, y) }, Al(Color.White, 190), 3f); }
+                DustPuffs(px + 120 * S, gy, T - 4.3f, 1f, 12, 1f, S);
+                if (T < 5.0f) ComicText("ZOOOM!", 330, gy - 330, 36 * TxS, 8f, Color.FromArgb(255, 220, 80), Math.Min(1f, (5.0f - T) * 3f));
             }
-            if (T >= 6.0f && T < 6.9f) { DustPuffs(px + (flip ? -90 : 90), gy, T - 6.0f, 1f, 8, flip ? -1f : 1f); if (T > 6.5f) { float u = (T - 6.5f) / .4f; GroundRing(px, gy, 10 + 130 * u, .17f, Color.FromArgb(220, 230, 245), 1 - u, 3f); } }
-            if (T >= 6.9f && T < 7.6f) { Glint(120, gy - 100, 50 * (1 - (T - 6.9f) / .7f), Color.White, 1 - (T - 6.9f) / .7f, 45); }
+            if (T >= 6.0f && T < 6.9f) { DustPuffs(px + (flip ? -90 : 90) * S, gy, T - 6.0f, 1f, 9, flip ? -1f : 1f, S); if (T > 6.5f) { float u = (T - 6.5f) / .4f; GroundRing(px, gy, (10 + 130 * u) * S, .17f, Color.FromArgb(220, 230, 245), 1 - u, 3f * S); } }
+            if (T >= 6.9f && T < 7.6f) { Glint(40, gy - 160, 90 * (1 - (T - 6.9f) / .7f), Color.White, 1 - (T - 6.9f) / .7f, 45); }
         }
 
         // ───────── 배트윙(헬리콥터형) ─────────
@@ -383,46 +388,47 @@ namespace SuperHeroes
             if (lightOn > .02f) Glow(x - 124 * sc, y - 46 * sc, 36 * sc, 26 * sc, Al(Color.White, 220 * lightOn * alpha));
         }
 
+        /// <summary>배트윙의 위치: 오른쪽 위 하늘에서 내려와 배트맨 머리 위에 정지 비행 → 기수를 숙이고 왼쪽 위로 사라진다.</summary>
         private static void WingPose(float T, out float x, out float y, out float sc, out float tilt)
         {
-            x = 700; y = -400; sc = .95f; tilt = 0;
+            x = 1500; y = -900; sc = WingS; tilt = 0;
             if (T < 1.0f) return;
-            if (T < 2.5f) { float u = (T - 1.0f) / 1.5f, e = 1 - (float)Math.Pow(1 - u, 2.4); x = 440 + (190 - 440) * e; y = -300 + (62 + 300) * e; tilt = 9f * (1 - e); return; }
-            if (T < 4.2f) { x = 190 + (float)Math.Sin(T * 2.3f) * 4; y = 62 + (float)Math.Sin(T * 3f) * 3; return; }
-            if (T < 6.0f) { float u = (T - 4.2f) / 1.8f; x = 190 - 380 * (float)Math.Pow(u, 1.7); y = 62 - 460 * (float)Math.Pow(u, 1.4); sc = .95f - .45f * u; tilt = -14f * Math.Min(1f, u * 3f); return; }
+            if (T < 2.5f) { float u = (T - 1.0f) / 1.5f, e = 1 - (float)Math.Pow(1 - u, 2.4); x = 1000 + (196 - 1000) * e; y = -800 + (56 + 800) * e; tilt = 9f * (1 - e); return; }
+            if (T < 4.2f) { x = 196 + (float)Math.Sin(T * 2.3f) * 5; y = 56 + (float)Math.Sin(T * 3f) * 4; return; }
+            if (T < 6.0f) { float u = (T - 4.2f) / 1.8f; x = 196 - 900 * (float)Math.Pow(u, 1.7); y = 56 - 1100 * (float)Math.Pow(u, 1.4); sc = WingS - .95f * u; tilt = -14f * Math.Min(1f, u * 3f); return; }
         }
 
         private void DrawBatwingFx()
         {
             float T = p.SigT, bx = p.BodyX, by = p.BodyY;
-            const float gy = 568f;
+            const float gy = 568f; const float S = WingS;
             float wx, wy, wsc, wtilt; WingPose(T, out wx, out wy, out wsc, out wtilt);
-            bool air = T >= 1.0f && T < 6.0f && wx > -300;
+            bool air = T >= 1.0f && T < 6.0f && wx > -900;
             float rotBlur = Ease01((T - 1.0f) / .9f), phase = T * 28f;
 
             // 1. 배트 시그널: 하늘에 노랗게 박쥐 문양이 켜지고 빛줄기가 내려온다
             if (T < 2.0f)
             {
                 float a = Ease01((T - .1f) / .4f) * Ease01((2.0f - T) / .5f);
-                PointF sg = Pt(330, -40);
-                GradCone(sg, Pt(260, 330), Pt(150, 330), Color.FromArgb(255, 240, 150), 100 * a, 0);
-                Glow(sg.X, sg.Y, 90, 56, Al(Color.FromArgb(255, 236, 130), 200 * a));
-                g.FillEllipse(B(Al(Color.FromArgb(255, 228, 90), 255 * a)), sg.X - 62, sg.Y - 36, 124, 72);
-                DrawBat(sg.X, sg.Y + 4, 2.2f, 0f, a);
-                PointF w = wrist[1]; if (T < .9f) { Glow(w.X, w.Y, 28, 24, Al(Color.FromArgb(255, 226, 100), 200 * a)); HudText("BAT-SIGNAL", w.X + 14, w.Y - 36, 14, Color.FromArgb(255, 226, 100), a); }
+                PointF sg = Pt(470, -280);
+                GradCone(sg, Pt(300, 330), Pt(110, 330), Color.FromArgb(255, 240, 150), 100 * a, 0);
+                Glow(sg.X, sg.Y, 160, 96, Al(Color.FromArgb(255, 236, 130), 200 * a));
+                g.FillEllipse(B(Al(Color.FromArgb(255, 228, 90), 255 * a)), sg.X - 110, sg.Y - 64, 220, 128);
+                DrawBat(sg.X, sg.Y + 8, 3.8f, 0f, a);
+                PointF w = wrist[1]; if (T < .9f) { Glow(w.X, w.Y, 40, 34, Al(Color.FromArgb(255, 226, 100), 200 * a)); HudText("BAT-SIGNAL", w.X + 20, w.Y - 56, 14 * TxS, Color.FromArgb(255, 226, 100), a); }
             }
 
             // 2. 하강: 아래로 퍼지는 회전날개 바람(지면 충격 고리·먼지·날아다니는 잎)
             if (T >= 1.6f && T < 5.0f)
             {
                 float wa = Ease01((T - 1.6f) / .9f) * (T < 4.2f ? 1f : Ease01((5.0f - T) / .8f));
-                for (int i = 0; i < 3; i++) { float ph = (T * 1.7f + i / 3f) % 1f; GroundRing(200, gy, 30 + 170 * ph, .16f, Color.FromArgb(214, 224, 240), (1 - ph) * wa, 3f); }
-                for (int i = 0; i < 16; i++)
+                for (int i = 0; i < 3; i++) { float ph = (T * 1.7f + i / 3f) % 1f; GroundRing(200, gy, (30 + 170 * ph) * S, .16f, Color.FromArgb(214, 224, 240), (1 - ph) * wa, 3f * S); }
+                for (int i = 0; i < 20; i++)
                 {
-                    float ph = (T * 1.4f + i * .0625f) % 1f, sd = i % 2 == 0 ? 1f : -1f, x = 200 + sd * (30 + ph * 170), y = gy - 8 - 30 * ph * Hash01(i, 3) - (float)Math.Sin(ph * Math.PI) * 24, s = 3 + 3 * Hash01(i, 4);
+                    float ph = (T * 1.4f + i * .05f) % 1f, sd = i % 2 == 0 ? 1f : -1f, x = 200 + sd * (30 + ph * 330), y = gy - 8 - 50 * ph * Hash01(i, 3) - (float)Math.Sin(ph * Math.PI) * 44, s = 5 + 5 * Hash01(i, 4);
                     g.FillEllipse(B(Al(i % 3 == 0 ? Color.FromArgb(200, 230, 160) : Color.FromArgb(224, 214, 190), 200 * (1 - ph) * wa)), CxClamp(x) - s * 1.6f, y - s * .6f, s * 3.2f, s * 1.2f);
                 }
-                for (int i = 0; i < 12; i++) { float x = 40 + 330 * Hash01(i, 5), ph = (T * 2.6f + i * .083f) % 1f; Stroke(new[] { Pt(x, 120 + ph * 420), Pt(x, 150 + ph * 420) }, Al(Color.White, 130 * wa * (1 - ph)), 2f); }
+                for (int i = 0; i < 16; i++) { float x = -200 + 800 * Hash01(i, 5), ph = (T * 2.6f + i * .0625f) % 1f; Stroke(new[] { Pt(x, 60 + ph * 480), Pt(x, 100 + ph * 480) }, Al(Color.White, 130 * wa * (1 - ph)), 2.4f); }
             }
 
             // 3. 탐조등: 배트윙 콧등에서 땅의 배트맨에게
@@ -430,8 +436,8 @@ namespace SuperHeroes
             {
                 float la = Ease01((T - 2.0f) / .4f) * Ease01((4.6f - T) / .4f);
                 PointF lamp = Pt(wx - 124 * wsc, wy - 46 * wsc);
-                GradCone(lamp, Pt(150, gy), Pt(300, gy), Color.FromArgb(255, 252, 226), 110 * la, 28 * la);
-                Glow(220, gy - 4, 110, 18, Al(Color.FromArgb(255, 252, 226), 150 * la));
+                GradCone(lamp, Pt(120, gy), Pt(300, gy), Color.FromArgb(255, 252, 226), 110 * la, 28 * la);
+                Glow(210, gy - 4, 150, 24, Al(Color.FromArgb(255, 252, 226), 150 * la));
             }
 
             // 4. 배트윙 본체
@@ -443,31 +449,31 @@ namespace SuperHeroes
                 // 윈치 케이블: 해치에서 내려와 배트맨의 손에 걸린다
                 if (T >= 2.7f && T < 4.2f)
                 {
-                    PointF src = Pt(wx, wy - 30 * wsc);
+                    PointF src = Pt(wx + 2 * wsc, wy - 28 * wsc);
                     float lowerU = Ease01((T - 2.7f) / .6f), hookY;
                     float riseY = 150 + by;
                     hookY = T < 3.3f ? src.Y + (330 - src.Y) * lowerU : (T < 3.4f ? 330 + (riseY - 330) * Ease01((T - 3.3f) / .1f) : riseY);
-                    PointF hook = Pt(200 + bx + (T < 3.3f ? 0f : 0f), hookY);
+                    PointF hook = Pt(200 + bx, hookY);
                     var cable = new[] { src, Lerp2(src, hook, .5f), hook };
-                    Stroke(cable, Al(cInk, 255), 5.6f); Stroke(cable, Al(Color.FromArgb(150, 160, 180), 255), 3f);
-                    g.FillPolygon(B(Color.FromArgb(205, 214, 230)), new[] { Pt(hook.X - 9, hook.Y), Pt(hook.X + 9, hook.Y), Pt(hook.X + 6, hook.Y + 14), Pt(hook.X - 6, hook.Y + 14) });
-                    g.DrawPolygon(Pn(cInk, 1.6f), new[] { Pt(hook.X - 9, hook.Y), Pt(hook.X + 9, hook.Y), Pt(hook.X + 6, hook.Y + 14), Pt(hook.X - 6, hook.Y + 14) });
-                    if (T >= 3.3f && T < 3.6f) { float u = (T - 3.3f) / .3f; Glint(hook.X, hook.Y, 40 * (1 - u * .4f), Color.White, 1 - u, 45); }
+                    Stroke(cable, Al(cInk, 255), 7f); Stroke(cable, Al(Color.FromArgb(150, 160, 180), 255), 3.6f);
+                    var hk = new[] { Pt(hook.X - 11, hook.Y), Pt(hook.X + 11, hook.Y), Pt(hook.X + 7, hook.Y + 18), Pt(hook.X - 7, hook.Y + 18) };
+                    g.FillPolygon(B(Color.FromArgb(205, 214, 230)), hk); g.DrawPolygon(Pn(cInk, 2f), hk);
+                    if (T >= 3.3f && T < 3.6f) { float u = (T - 3.3f) / .3f; Glint(hook.X, hook.Y, 60 * (1 - u * .4f), Color.White, 1 - u, 45); }
                 }
-                if (T >= 4.4f && T < 5.8f) for (int i = 0; i < 8; i++) { float ph = (T * 3f + i * .125f) % 1f; Stroke(new[] { PtC(wx + 120 * wsc + ph * 160, wy - 40 * wsc + (i - 3.5f) * 6), PtC(wx + 120 * wsc + ph * 160 + 40, wy - 40 * wsc + (i - 3.5f) * 6) }, Al(Color.White, 150 * (1 - ph)), 2.4f); }
+                if (T >= 4.4f && T < 5.8f) for (int i = 0; i < 8; i++) { float ph = (T * 3f + i * .125f) % 1f; Stroke(new[] { PtC(wx + 120 * wsc + ph * 300, wy - 40 * wsc + (i - 3.5f) * 10), PtC(wx + 120 * wsc + ph * 300 + 70, wy - 40 * wsc + (i - 3.5f) * 10) }, Al(Color.White, 150 * (1 - ph)), 3f); }
             }
 
             // 5. 망토 글라이더로 강하(6.3~7.4) + 착지의 충격 고리
             if (T >= 6.3f && T < 7.5f)
             {
                 float u = (T - 6.3f) / 1.1f;
-                for (int i = 0; i < 10; i++) { float x = 90 + 220 * Hash01(i, 2), y0 = 40 + 480 * Hash01(i, 3), len = 40 + 60 * Hash01(i, 4); float ph = (T * 3f + i * .1f) % 1f; Stroke(new[] { Pt(x, y0 + ph * 120), Pt(x, y0 + ph * 120 + len) }, Al(Color.White, 140 * (1 - u * .7f) * (1 - ph)), 2f); }
+                for (int i = 0; i < 12; i++) { float x = 40 + 330 * Hash01(i, 2), y0 = -300 + 760 * Hash01(i, 3), len = 70 + 100 * Hash01(i, 4); float ph = (T * 3f + i * .08f) % 1f; Stroke(new[] { Pt(x, y0 + ph * 200), Pt(x, y0 + ph * 200 + len) }, Al(Color.White, 140 * (1 - u * .7f) * (1 - ph)), 2.4f); }
             }
             if (T >= 7.35f && T < 8.3f)
             {
                 float u = (T - 7.35f) / .95f;
-                GroundRing(200, gy, 20 + 190 * (float)Math.Sqrt(u), .17f, Color.FromArgb(220, 230, 245), 1 - u, 3.4f);
-                for (int sd = -1; sd <= 1; sd += 2) Glow(200 + sd * (30 + 100 * (1 - (float)Math.Exp(-u * 3f))), 552 - 12 * u, 34 + 20 * u, 18, Al(Color.FromArgb(214, 214, 224), 130 * (1 - u)));
+                GroundRing(200, gy, (20 + 190 * (float)Math.Sqrt(u)) * 1.7f, .17f, Color.FromArgb(220, 230, 245), 1 - u, 5f);
+                for (int sd = -1; sd <= 1; sd += 2) Glow(200 + sd * (40 + 180 * (1 - (float)Math.Exp(-u * 3f))), 552 - 20 * u, 56 + 30 * u, 28, Al(Color.FromArgb(214, 214, 224), 130 * (1 - u)));
             }
         }
     }

@@ -175,6 +175,10 @@ namespace SuperHeroes
             var state = g.Save();
             g.ScaleTransform(faceRight ? -k : k, k);
             g.TranslateTransform(-200, -571);
+            // 탈것이 나오는 동안은 카메라를 뒤로 빼서(장면 전체 축소) 차·비행기가 키에 맞는 크기로 들어오게 한다. 발바닥 중앙이 기준.
+            float zs = p.Zoom > .05f && p.Zoom < .999f ? p.Zoom : 1f;
+            clampLo = 200 - 240f / zs; clampHi = 200 + 240f / zs;
+            if (zs != 1f) { g.TranslateTransform(200, 571); g.ScaleTransform(zs, zs); g.TranslateTransform(-200, -571); }
             if (p.UpsideDown > .01f)
             {
                 // 거꾸로 매달리기: 발목(천장 쪽 고정점)을 축으로 좌우로 흔들리며 몸 전체가 180도 뒤집힌다
@@ -182,7 +186,7 @@ namespace SuperHeroes
                 g.TranslateTransform(200, 285); g.RotateTransform(180f * Math.Min(1f, p.UpsideDown)); g.TranslateTransform(-200, -285);
             }
 
-            float ow = Math.Max(3.2f, .9f / k);
+            float ow = Math.Max(3.2f, .9f / (k * zs));
             ink = Pn(cInk, ow);
 
             // 어깨 위치 계산

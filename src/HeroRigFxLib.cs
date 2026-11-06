@@ -84,7 +84,7 @@ namespace SuperHeroes
         private void GroundRing(float x, float y, float r, float flat, Color c, float a, float w)
         {
             if (a <= .02f || r < 2f) return;
-            r = Math.Min(r, Math.Min(x + 40f, 440f - x));
+            r = Math.Min(r, Math.Min(x - clampLo, clampHi - x));
             float ry = r * flat + 1.5f;
             g.DrawEllipse(Pn(Al(c, 170 * a), w * 2.2f), x - r, y - ry, r * 2, ry * 2);
             g.DrawEllipse(Pn(Al(Color.White, 245 * a), w), x - r, y - ry, r * 2, ry * 2);

@@ -341,7 +341,7 @@ namespace SuperHeroes
         private void Glow(float x, float y, float rx, float ry, Color c)
         {
             if (c.A < 3 || rx < 1 || ry < 1) return;
-            rx = Math.Min(rx, Math.Min(x + 40, 440 - x));   // 스프라이트 가장자리에서 잘리지 않게(리그 x ≈ -48..448)
+            rx = Math.Min(rx, Math.Min(x - clampLo, clampHi - x));   // 스프라이트 가장자리에서 잘리지 않게(리그 x ≈ -48..448, 줌아웃 시 더 넓게)
             if (rx < 4) return;
             var path = new GraphicsPath(); path.AddEllipse(x - rx, y - ry, rx * 2, ry * 2);
             var br = new PathGradientBrush(path) { CenterColor = c, SurroundColors = new[] { Color.FromArgb(0, c.R, c.G, c.B) } };

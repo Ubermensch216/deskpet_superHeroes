@@ -13,7 +13,7 @@ namespace SuperHeroes
         /// <summary>박쥐 실루엣(날갯짓 flap -1..1).</summary>
         private void DrawBat(float x, float y, float sc, float flap, float a)
         {
-            if (a <= .02f || x < -44f || x > 444f) return;
+            if (a <= .02f || x < clampLo - 4f || x > clampHi + 4f) return;
             var wl = new[] { Pt(0, -2), Pt(-10, -6 - 10 * flap), Pt(-24, -2 - 15 * flap), Pt(-19, 2 - 5 * flap), Pt(-13, 0), Pt(-8, 6), Pt(-3, 3) };
             var wr = new PointF[wl.Length];
             for (int i = 0; i < wl.Length; i++) wr[i] = Pt(-wl[i].X, wl[i].Y);
