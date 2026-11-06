@@ -528,6 +528,39 @@ namespace SuperHeroes
             using (var p = new GraphicsPath()) { p.AddPolygon(new[] { Pt(r, .58f, .06f), Pt(r, .74f, .06f), Pt(r, .74f, .32f), Pt(r, .66f, .25f), Pt(r, .58f, .32f) }); using (var br = new SolidBrush(FriendUI.Gold)) g.FillPath(br, p); }
         }
 
+        /// <summary>눈 모양: 모두 숨기기 / 보이기</summary>
+        internal static void Eye(Graphics g, RectangleF r, Color ink)
+        {
+            using (var pen = Line(r, ink, .09f))
+            {
+                using (var path = new GraphicsPath())
+                {
+                    path.AddBezier(Pt(r, .10f, .50f), Pt(r, .32f, .22f), Pt(r, .68f, .22f), Pt(r, .90f, .50f));
+                    path.AddBezier(Pt(r, .90f, .50f), Pt(r, .68f, .78f), Pt(r, .32f, .78f), Pt(r, .10f, .50f));
+                    path.CloseFigure();
+                    g.DrawPath(pen, path);
+                }
+                float d = r.Width * .26f;
+                using (var br = new SolidBrush(ink))
+                    g.FillEllipse(br, X(r, .50f) - d / 2, Y(r, .50f) - d / 2, d, d);
+            }
+        }
+
+        /// <summary>화면과 중심점 모양: 화면 가운데로 모으기</summary>
+        internal static void CenterScreen(Graphics g, RectangleF r, Color ink)
+        {
+            using (var pen = Line(r, ink, .09f))
+            {
+                var box = Box(r, .12f, .16f, .88f, .72f);
+                using (var path = Round(box, 3f)) g.DrawPath(pen, path);
+                g.DrawLine(pen, Pt(r, .50f, .72f), Pt(r, .50f, .88f));
+                g.DrawLine(pen, Pt(r, .32f, .88f), Pt(r, .68f, .88f));
+                float d = r.Width * .16f;
+                using (var br = new SolidBrush(ink))
+                    g.FillEllipse(br, X(r, .50f) - d / 2, Y(r, .44f) - d / 2, d, d);
+            }
+        }
+
         /// <summary>상자에서 나가는 화살표: 열기</summary>
         internal static void OpenOut(Graphics g, RectangleF r, Color ink)
         {

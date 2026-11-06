@@ -31,6 +31,188 @@ namespace SuperHeroes
     }
 
     /// <summary>
+    /// 바탕화면 캐릭터 토글 카드. 클릭 시 바탕화면 소환/퇴장 토글 및 도감 선택.
+    /// 화면에 나와 있으면 컬러, 없으면 흑백(비활성)으로 표시된다.
+    /// </summary>
+    internal sealed class HeroToggleCard : Control
+    {
+        internal readonly int CharId;
+        private readonly string heroName;
+        private readonly Bitmap colorBmp;
+        private readonly Bitmap grayBmp;
+        private bool hot, down;
+        internal bool IsActive { get; private set; }
+        internal int Count { get; private set; }
+        internal bool IsSelected { get; private set; }
+
+        internal event EventHandler ToggleClicked;
+
+        internal HeroToggleCard(int charId, ToolTip tips)
+        {
+            SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.Selectable | ControlStyles.StandardClick, true);
+            CharId = charId;
+            heroName = CharacterArt.Infos[charId].Name;
+            colorBmp = CharacterArt.IconBitmap(charId, 56);
+            grayBmp = MakeGrayscale(colorBmp);
+            Size = new Size(88, 88);
+            Margin = new Padding(0, 0, 6, 0);
+            Cursor = Cursors.Hand;
+            TabStop = true;
+            AccessibleName = heroName + " 토글";
+            AccessibleRole = AccessibleRole.PushButton;
+            UpdateTip(tips);
+        }
+
+        private void UpdateTip(ToolTip tips)
+        {
+            if (tips != null)
+            {
+                tips.SetToolTip(this, heroName + (IsActive ? " (현재 켜짐)\n클릭하면 화면에서 보내요." : " (현재 꺼짐)\n클릭하면 화면에 불러와요."));
+            }
+        }
+
+        internal void UpdateState(bool active, int count, bool selected, ToolTip tips = null)
+        {
+            if (IsActive != active || Count != count || IsSelected != selected)
+            {
+                IsActive = active;
+                Count = count;
+                IsSelected = selected;
+                if (tips != null) UpdateTip(tips);
+                Invalidate();
+            }
+        }
+
+        private static Bitmap MakeGrayscale(Bitmap src)
+        {
+            var bmp = new Bitmap(src.Width, src.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(bmp))
+            {
+                var cm = new System.Drawing.Imaging.ColorMatrix(new float[][]
+                {
+                    new float[] { 0.299f, 0.299f, 0.299f, 0, 0 },
+                    new float[] { 0.587f, 0.587f, 0.587f, 0, 0 },
+                    new float[] { 0.114f, 0.114f, 0.114f, 0, 0 },
+                    new float[] { 0,      0,      0,      0.50f, 0 },
+                    new float[] { 0,      0,      0,      0, 1 }
+                });
+                using (var ia = new System.Drawing.Imaging.ImageAttributes())
+                {
+                    ia.SetColorMatrix(cm);
+                    g.DrawImage(src, new Rectangle(0, 0, src.Width, src.Height),
+                        0, 0, src.Width, src.Height, GraphicsUnit.Pixel, ia);
+                }
+            }
+            return bmp;
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.Clear(Parent != null ? Parent.BackColor : Color.White);
+
+            float s = DeviceDpi / 96f;
+            var rect = new Rectangle(0, 0, Width - 1, Height - 1);
+            using (var path = ChoiceStrip.RoundRect(rect, (int)Math.Round(7 * s)))
+            {
+                Color bg;
+                if (IsActive) bg = down ? Color.FromArgb(220, 234, 255) : hot ? Color.FromArgb(234, 243, 255) : Color.FromArgb(244, 248, 255);
+                else bg = down ? Color.FromArgb(232, 235, 240) : hot ? Color.FromArgb(240, 243, 247) : Color.FromArgb(247, 248, 250);
+
+                using (var br = new SolidBrush(bg)) g.FillPath(br, path);
+
+                Color border;
+                float borderW = 1f;
+                if (IsActive)
+                {
+                    border = hot || Focused ? FriendUI.BlueDark : FriendUI.Blue;
+                    borderW = 1.5f;
+                }
+                else
+                {
+                    border = hot || Focused ? Color.FromArgb(170, 185, 205) : Color.FromArgb(215, 222, 232);
+                }
+                using (var pen = new Pen(border, borderW)) g.DrawPath(pen, path);
+
+                if (IsSelected)
+                {
+                    using (var selBar = new SolidBrush(FriendUI.Gold))
+                        g.FillRectangle(selBar, (Width - 28) / 2f, 1f, 28f, 2.5f);
+                }
+
+                var avatar = IsActive ? colorBmp : grayBmp;
+                int imgSize = (int)Math.Round(42 * s);
+                int imgX = (Width - imgSize) / 2;
+                int imgY = (int)Math.Round(7 * s);
+                g.DrawImage(avatar, new Rectangle(imgX, imgY, imgSize, imgSize));
+
+                using (var fName = new Font("Malgun Gothic", 9f, FontStyle.Bold))
+                using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                {
+                    Color textCol = IsActive ? FriendUI.Ink : Color.FromArgb(135, 140, 150);
+                    using (var br = new SolidBrush(textCol))
+                        g.DrawString(heroName, fName, br, new RectangleF(0, 51 * s, Width, 18 * s), sf);
+                }
+
+                using (var fStatus = new Font("Malgun Gothic", 7.5f, FontStyle.Regular))
+                using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                {
+                    string statusText = IsActive ? (Count > 1 ? string.Format("● {0}명 켜짐", Count) : "● 켜짐") : "○ 꺼짐";
+                    Color statusCol = IsActive ? Color.FromArgb(18, 138, 56) : Color.FromArgb(160, 165, 175);
+                    using (var br = new SolidBrush(statusCol))
+                        g.DrawString(statusText, fStatus, br, new RectangleF(0, 68 * s, Width, 16 * s), sf);
+                }
+            }
+        }
+
+        protected override void OnMouseEnter(EventArgs e) { base.OnMouseEnter(e); hot = true; Invalidate(); }
+        protected override void OnMouseLeave(EventArgs e) { base.OnMouseLeave(e); hot = down = false; Invalidate(); }
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            base.OnMouseDown(e);
+            if (e.Button == MouseButtons.Left) { Focus(); down = true; Invalidate(); }
+        }
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (down)
+            {
+                down = false;
+                Invalidate();
+                if (ClientRectangle.Contains(e.Location))
+                {
+                    ToggleClicked?.Invoke(this, EventArgs.Empty);
+                }
+            }
+        }
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            if (e.KeyCode == Keys.Space || e.KeyCode == Keys.Enter)
+            {
+                ToggleClicked?.Invoke(this, EventArgs.Empty);
+                e.Handled = true;
+            }
+        }
+        protected override bool IsInputKey(Keys keyData) { return (keyData & Keys.KeyCode) == Keys.Space || base.IsInputKey(keyData); }
+        protected override void OnGotFocus(EventArgs e) { base.OnGotFocus(e); Invalidate(); }
+        protected override void OnLostFocus(EventArgs e) { base.OnLostFocus(e); Invalidate(); }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (colorBmp != null) colorBmp.Dispose();
+                if (grayBmp != null) grayBmp.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+    }
+
+    /// <summary>
     /// 통합 설정창. 흩어져 있던 설정(알림 / 움직임·반응 / 친구 기록·생활 / 화면 / 메모 / AI)을 한 곳에 분류했다.
     ///   캐릭터 · 움직임 · 반응 · 생활 · 알림 · 화면·시스템 · 메모 · AI 대화
     /// 왼쪽에서 분류를 고르고, 저장 한 번으로 모든 분류가 함께 저장된다.
@@ -73,8 +255,8 @@ namespace SuperHeroes
         private FlatButton bChatSetup, bChatSetupCancel; private ProgressBar chatSetupBar;
         private ChatRequest setupHandle;
         // 캐릭터
-        private ListBox rosterList; private ComboBox dexChar, sigFreq, costume; private PictureBox dexPic; private Label dexTitle, dexTraits, rosterTitle, dexStatus;
-        private Button bDismissFriend; private bool refreshingRoster;
+        private readonly HeroToggleCard[] heroCards = new HeroToggleCard[5];
+        private ComboBox dexChar, sigFreq, costume; private PictureBox dexPic; private Label dexTitle, dexTraits, rosterTitle, dexStatus;
         private readonly Label[] sigName = new Label[3]; private readonly Label[] sigDesc = new Label[3];
 
         public SettingsForm(App app, int page = -1)
@@ -216,57 +398,49 @@ namespace SuperHeroes
         {
             FlowLayoutPanel f; var page = NewPage("캐릭터", "함께할 친구를 부르고, 캐릭터별 ★ 시그니처 기술을 구경해요", out f);
 
-            // 하나의 통합 섹션: 화면의 친구 & 캐릭터 도감
+            // 하나의 통합 섹션: 화면의 친구 · 캐릭터 도감
             var gHero = Group(f, "화면의 친구 · 캐릭터 도감"); var m = In(gHero);
 
-            // 1) 지금 화면에 있는 친구들 (상단 컴팩트 관리 영역)
-            rosterTitle = new Label { Text = "지금 화면에 있는 친구들", AutoSize = true, Font = new Font("Malgun Gothic", 9.2f, FontStyle.Bold), ForeColor = FriendUI.BlueDark, Margin = new Padding(3, 4, 3, 3) };
-            m.Controls.Add(rosterTitle);
+            // 1) 상단 바: 제목 + [ 👁 모두 숨기기/보이기 ] [ 🎯 화면 가운데로 ] 플랫 아이콘 단추
+            var headRow = new Panel { Width = 470, Height = 32, Margin = new Padding(2, 2, 2, 4) };
+            rosterTitle = new Label { Text = "지금 화면에 있는 친구들", AutoSize = true, Left = 2, Top = 6, Font = new Font("Malgun Gothic", 9.2f, FontStyle.Bold), ForeColor = FriendUI.BlueDark };
+            headRow.Controls.Add(rosterTitle);
 
-            var rowRoster = Row(m);
-            rosterList = new ListBox { Width = 195, Height = 68, IntegralHeight = false, Margin = new Padding(3, 3, 6, 3) };
-            rowRoster.Controls.Add(rosterList);
+            var bCenter = new FlatButton(FlatIcon.CenterScreen, "화면 가운데로", 34, 28) { Left = 470 - 34, Top = 2 };
+            tips.SetToolTip(bCenter, "화면 가운데로 모으기\n화면 밖으로 나갔거나 가려진 친구들을 화면 한가운데로 다시 모아요.");
+            bCenter.Click += delegate { app.RecoverVisible(); };
+            headRow.Controls.Add(bCenter);
 
-            var btnCol = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = new Padding(0) };
-            rowRoster.Controls.Add(btnCol);
+            var bHide = new FlatButton(FlatIcon.Eye, "모두 숨기기 / 보이기", 34, 28) { Left = 470 - 34 - 38, Top = 2 };
+            tips.SetToolTip(bHide, "모두 숨기기 / 보이기\n화면의 모든 친구를 한 번에 숨기거나 다시 보여줘요.");
+            bHide.Click += delegate { app.ToggleHidden(); RefreshRoster(); };
+            headRow.Controls.Add(bHide);
+            m.Controls.Add(headRow);
 
-            var btnRow1 = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, WrapContents = false, Margin = new Padding(0) };
-            var bCall = FriendUI.Button("친구 부르기 ▼", null);
-            var callMenu = new ContextMenuStrip();
-            callMenu.Items.Add("무작위", null, delegate { app.SpawnFromUi(-1); RefreshRoster(); });
-            for (int i = 0; i < CharacterArt.Count; i++) { int id = i; callMenu.Items.Add(CharacterArt.Infos[i].Name, null, delegate { app.SpawnFromUi(id); RefreshRoster(); }); }
-            bCall.Click += delegate { callMenu.Show(bCall, new Point(0, bCall.Height)); };
-            btnRow1.Controls.Add(bCall);
-
-            bDismissFriend = FriendUI.Button("선택한 친구 보내기", delegate
+            // 2) 5개 캐릭터 토글 카드 행 (화면에 있으면 컬러, 없으면 흑백)
+            var cardsRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 4) };
+            for (int i = 0; i < CharacterArt.Count; i++)
             {
-                if (rosterList.SelectedIndex >= 0) { app.RemoveByIndex(rosterList.SelectedIndex); RefreshRoster(); }
-            });
-            btnRow1.Controls.Add(bDismissFriend);
-            btnCol.Controls.Add(btnRow1);
+                int charId = i;
+                var card = new HeroToggleCard(charId, tips);
+                heroCards[i] = card;
+                card.ToggleClicked += delegate { ToggleHero(charId); };
+                cardsRow.Controls.Add(card);
+            }
+            m.Controls.Add(cardsRow);
 
-            var btnRow2 = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, WrapContents = false, Margin = new Padding(0) };
-            btnRow2.Controls.Add(FriendUI.Button("모두 숨기기 / 보이기", delegate { app.ToggleHidden(); }));
-            var bCenter = FriendUI.Button("화면 가운데로", delegate { app.RecoverVisible(); });
-            tips.SetToolTip(bCenter, "화면 밖으로 나갔거나 가려진 친구들을 화면 한가운데로 다시 모아요.");
-            btnRow2.Controls.Add(bCenter);
-            btnCol.Controls.Add(btnRow2);
+            Note(m, "캐릭터 카드를 클릭하면 바탕화면에서 바로 켜고 끌 수 있어요.");
 
-            Note(m, "마지막에 불러 둔 구성은 다음 실행에도 그대로 나와요.");
-
-            // 2) 구분선 (은은한 분리)
+            // 3) 구분선 (은은한 분리)
             var div = new Panel { Height = 1, Width = 470, BackColor = Color.FromArgb(222, 230, 242), Margin = new Padding(3, 8, 3, 8) };
             m.Controls.Add(div);
 
-            // 3) 캐릭터 도감 & ★ 시그니처 기술
+            // 4) 캐릭터 도감 & ★ 시그니처 기술
             int initChar = app.LiveWindows.Count > 0 ? app.LiveWindows[0].Pet.Art.Id : 0;
             var pick = Row(m);
             pick.Controls.Add(new Label { Text = "캐릭터 도감", AutoSize = true, Font = new Font("Malgun Gothic", 9.2f, FontStyle.Bold), ForeColor = FriendUI.BlueDark, Margin = new Padding(3, 6, 6, 2) });
             dexChar = Combo(CharacterArt.Infos.Select(i => i.Name).ToArray(), initChar, 120);
             pick.Controls.Add(dexChar);
-            var bSpawnThis = FriendUI.Button("+ 화면에 부르기", delegate { app.SpawnFromUi(dexChar.SelectedIndex); RefreshRoster(); });
-            tips.SetToolTip(bSpawnThis, "현재 선택한 캐릭터를 바탕화면에 바로 불러요.");
-            pick.Controls.Add(bSpawnThis);
             dexStatus = new Label { AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(6, 7, 3, 2) };
             pick.Controls.Add(dexStatus);
 
@@ -293,20 +467,10 @@ namespace SuperHeroes
                 row.Controls.Add(star); row.Controls.Add(box); row.Controls.Add(play);
             }
 
-            dexChar.SelectedIndexChanged += delegate { UpdateDex(); };
-            rosterList.SelectedIndexChanged += delegate
+            dexChar.SelectedIndexChanged += delegate
             {
-                if (bDismissFriend != null) bDismissFriend.Enabled = rosterList.SelectedIndex >= 0;
-                if (refreshingRoster) return;
-                if (rosterList.SelectedIndex >= 0 && rosterList.SelectedIndex < app.LiveWindows.Count)
-                {
-                    var pet = app.LiveWindows[rosterList.SelectedIndex].Pet;
-                    int charIdx = pet.Art.Id;
-                    if (charIdx >= 0 && charIdx < CharacterArt.Count && dexChar.SelectedIndex != charIdx)
-                    {
-                        dexChar.SelectedIndex = charIdx;
-                    }
-                }
+                UpdateDex();
+                RefreshRoster();
             };
             UpdateDex();
 
@@ -321,6 +485,24 @@ namespace SuperHeroes
             Note(cs, "기자 차림은 정장 · 붉은 넥타이 · 검은 뿔테 안경이에요. 어느 쪽이든 '셔츠 찢기 (S 각성)'은 기자 차림에서 시작해 수퍼맨으로 변신해요.");
             RefreshRoster();
             return page;
+        }
+
+        private void ToggleHero(int charId)
+        {
+            var live = app.LiveWindows.Where(w => w.Pet.Art.Id == charId).ToList();
+            if (live.Count > 0)
+            {
+                foreach (var w in live) app.Remove(w);
+            }
+            else
+            {
+                app.SpawnFromUi(charId);
+            }
+            if (dexChar != null && charId >= 0 && charId < CharacterArt.Count)
+            {
+                dexChar.SelectedIndex = charId;
+            }
+            RefreshRoster();
         }
 
         private void UpdateDex()
@@ -351,28 +533,20 @@ namespace SuperHeroes
 
         private void RefreshRoster()
         {
-            if (rosterList == null) return;
-            var names = app.LiveWindows.Select(w => w.Pet.Art.Info.Name).ToList();
+            var liveIds = app.LiveWindows.Select(w => w.Pet.Art.Id).ToList();
             if (rosterTitle != null)
             {
-                rosterTitle.Text = names.Count > 0 ? string.Format("지금 화면에 있는 친구들 ({0}명)", names.Count) : "지금 화면에 있는 친구들 (비어 있음)";
+                rosterTitle.Text = liveIds.Count > 0 ? string.Format("지금 화면에 있는 친구들 ({0}명)", liveIds.Count) : "지금 화면에 있는 친구들 (비어 있음)";
             }
-            if (bDismissFriend != null) bDismissFriend.Enabled = rosterList.SelectedIndex >= 0;
-            int sel = rosterList.SelectedIndex;
-            if (rosterList.Items.Count == names.Count && names.Select((n, i) => (string)rosterList.Items[i] == n).All(b => b))
+            int curSel = dexChar != null ? dexChar.SelectedIndex : -1;
+            for (int i = 0; i < heroCards.Length; i++)
             {
-                UpdateDexStatus();
-                return;
+                if (heroCards[i] != null)
+                {
+                    int count = liveIds.Count(id => id == i);
+                    heroCards[i].UpdateState(count > 0, count, curSel == i, tips);
+                }
             }
-            refreshingRoster = true;
-            try
-            {
-                rosterList.Items.Clear(); foreach (var n in names) rosterList.Items.Add(n);
-                if (sel >= 0 && sel < names.Count) rosterList.SelectedIndex = sel;
-                else if (names.Count > 0 && rosterList.SelectedIndex < 0) rosterList.SelectedIndex = 0;
-                if (bDismissFriend != null) bDismissFriend.Enabled = rosterList.SelectedIndex >= 0;
-            }
-            finally { refreshingRoster = false; }
             UpdateDexStatus();
         }
 
