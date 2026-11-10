@@ -513,6 +513,17 @@ namespace SuperHeroes
                 a1.SetState(PetState.Pause, w4); a2.SetState(PetState.Pause, w4); a1.Y = a2.Y = 720;
                 App.ResolveCompanionContacts(w4, new List<Pet> { a1, a2 }, null);
                 check(a2.ContactBody(0).Left - a1.ContactBody(0).Right > -1 || Math.Abs(a1.X - a2.X) > a1.Art.W * .6, "겹친 친구는 서로 떨어짐");
+
+                // 벽에 붙은 친구의 몸통은 X 를 중심으로 하지 않는다: 그 몸통 안쪽에 낀 바닥 친구도 떨어져야 함
+                var w5 = new FakeWorld(); var wallPet = new Pet(w5, 0, 5, 700) { Area = w5.Areas[0] }; var floorPet = new Pet(w5, 1, 60, 720) { Area = w5.Areas[0] };
+                wallPet.Demonstrate(w5, "wall"); floorPet.SetState(PetState.Pause, w5); floorPet.Y = 720;
+                for (double t = 0; t < 3 && wallPet.State != PetState.Wall; t += .03) { w5.Now += .03; wallPet.Update(w5, .03, new List<Pet> { wallPet }, 0); }
+                if (wallPet.State == PetState.Wall)
+                {
+                    wallPet.Y = 690; floorPet.X = wallPet.X + 40;
+                    App.ResolveCompanionContacts(w5, new List<Pet> { wallPet, floorPet }, null);
+                    check(!wallPet.ContactBody(w5.Now).IntersectsWith(floorPet.ContactBody(w5.Now)), "벽에 붙은 친구 몸통 안에 낀 친구도 떨어짐");
+                }
             }
             catch (Exception e) { log.AppendLine("EXCEPTION " + e); failures++; }
             log.AppendLine(failures == 0 ? "ALL PASSED" : failures + " FAILED");

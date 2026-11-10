@@ -894,18 +894,33 @@ namespace SuperHeroes
                         }
                         else
                         {
-                            double needed = (ra.Width + rb.Width) / 2.0 + 3 * S, mid = (a.X + b.X) * .5;
-                            if (a.State == PetState.Drag || wallA) b.X = a.X - sign * needed;
-                            else if (b.State == PetState.Drag || wallB) a.X = b.X + sign * needed;
-                            else { a.X = mid + sign * needed / 2; b.X = mid - sign * needed / 2; }
+                            // X 가 아니라 실제 몸통 영역(ContactBody)의 가장자리로 간격을 잰다.
+                            // 벽에 붙은 자세는 몸통이 X 를 중심으로 하지 않고 벽에서 옆으로 길게 뻗어 있어, X 로 재면 몸통 안쪽에 밀려난 채 계속 겹친다.
+                            if (wallA != wallB && a.State != PetState.Drag && b.State != PetState.Drag)
+                            {
+                                // 벽에 붙은 친구와 바닥 친구: 벽 쪽으로 끼어들지 않게 항상 벽에서 멀어지는 화면 안쪽으로 비킨다
+                                Pet wp = wallA ? a : b;
+                                bool wallOnLeft = wp.X <= wp.Area.Left + wp.Area.Width / 2.0;
+                                sign = wallOnLeft == wallA ? -1 : 1;
+                            }
+                            Pet left = sign < 0 ? a : b, right = sign < 0 ? b : a;
+                            double gap = 3 * S;
+                            Func<double> shortfall = delegate
+                            {
+                                return gap - (right.ContactBody(world.Now).Left - left.ContactBody(world.Now).Right);
+                            };
+                            double need = Math.Max(0, shortfall());
+                            bool aFixed = a.State == PetState.Drag || wallA, bFixed = b.State == PetState.Drag || wallB;
+                            if (aFixed && !bFixed) { if (sign < 0) b.X += need; else b.X -= need; }
+                            else if (bFixed && !aFixed) { if (sign < 0) a.X -= need; else a.X += need; }
+                            else if (!aFixed) { right.X += need / 2; left.X -= need / 2; }
                             a.ClampContact(); b.ClampContact();
                             // 한쪽이 화면 끝에 막혀 못 밀려났으면 남은 간격을 반대쪽이 마저 물러난다(끝에 낀 채 계속 엉키는 것 방지)
-                            Pet left = sign < 0 ? a : b, right = sign < 0 ? b : a;
-                            double shortfall = needed - (right.X - left.X);
-                            if (shortfall > .5)
+                            need = shortfall();
+                            if (need > .5)
                             {
-                                if (right.CanBeShoved) { right.X += shortfall; right.ClampContact(); shortfall = needed - (right.X - left.X); }
-                                if (shortfall > .5 && left.CanBeShoved) { left.X -= shortfall; left.ClampContact(); }
+                                if (right.CanBeShoved) { right.X += need; right.ClampContact(); need = shortfall(); }
+                                if (need > .5 && left.CanBeShoved) { left.X -= need; left.ClampContact(); }
                             }
                         }
                         if (pass == 0) { if (a.State != PetState.Drag) a.Bump(world, sign); if (b.State != PetState.Drag) b.Bump(world, -sign); }
