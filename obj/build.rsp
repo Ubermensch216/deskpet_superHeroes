@@ -16,6 +16,7 @@
 /r:"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Windows.Forms.dll"
 /r:"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Xml.dll"
 /r:"C:\Windows\Microsoft.NET\Framework64\v4.0.30319\System.Xml.Linq.dll"
+"D:\Dev\deskpet_superHeroes\src\AlarmComposer.cs"
 "D:\Dev\deskpet_superHeroes\src\AlertPet.cs"
 "D:\Dev\deskpet_superHeroes\src\App.cs"
 "D:\Dev\deskpet_superHeroes\src\Art.cs"
@@ -72,3 +73,4 @@
 "D:\Dev\deskpet_superHeroes\src\Program.cs"
 "D:\Dev\deskpet_superHeroes\src\RigCommon.cs"
 "D:\Dev\deskpet_superHeroes\src\SettingsArt.cs"
+"D:\Dev\deskpet_superHeroes\src\SettingsBehavior.cs"

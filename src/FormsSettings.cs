@@ -1,8 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
+using System.Text;
 using System.Windows.Forms;
 
 namespace SuperHeroes
@@ -219,31 +220,37 @@ namespace SuperHeroes
     /// </summary>
     internal sealed class SettingsForm : Form
     {
-        internal static readonly string[] PageNames = { "캐릭터", "움직임", "반응", "생활", "알림", "화면 · 시스템", "메모", "AI 대화" };
-        internal static readonly string[] PageHints = { "친구 · 도감 · ★ 기술", "이동 범위 · 속도 · 얌전 모드", "클릭 · 커서 · 숨은 반응", "친밀도 · 간식 · 배고픔", "정각 · 점심 · 퇴근 · 낮잠", "크기 · 투명도 · 자동 시작", "새 메모 기본값 · 단축키", "Ollama · 단축키 · 기억" };
+        // 움직임 · 반응 · 생활은 "행동" 한 쪽으로 합쳤다. 알림 쪽에는 "내 알람"이 들어 있다.
+        internal static readonly string[] PageNames = { "캐릭터", "행동", "알림", "화면 · 시스템", "메모", "AI 대화" };
+        internal static readonly string[] PageHints = { "친구 · 도감 · ★ 기술", "이동 · 반응 · 생활", "정각 · 점심 · 퇴근 · 내 알람", "크기 · 투명도 · 자동 시작", "새 메모 기본값 · 단축키", "Ollama · 단축키 · 기억" };
+        internal const int AlarmPageIndex = 2;
+        private const int AlarmPage = AlarmPageIndex, DisplayPage = 3;
         private static int lastPage;
 
         private readonly App app;
         private readonly ListBox nav;
         private readonly Panel host;
-        private readonly Panel[] pages = new Panel[8];
+        private readonly Panel[] pages = new Panel[6];
         private readonly ToolTip tips = new ToolTip { AutoPopDelay = 12000 };
         private readonly Label status;
         private readonly System.Windows.Forms.Timer live;
 
-        // 움직임
-        private CheckBox cWalls, cCeiling, cWindows, cIdle, cShortRest, cPinned, cFocus, cWork, cFull;
-        private NumericUpDown nSpeed, nFall, nSlide;
-        // 반응
-        private ComboBox clickMode; private RadioButton rEscape, rFollow, rIgnore; private NumericUpDown nDelay; private CheckBox cSecrets;
-        // 생활
-        private NumericUpDown nHunger; private CheckBox cHungerCry, cAffinity;
-        private Label lifeSummary, lifeDetail, secretLabel; private ProgressBar satietyBar; private Button snackButton;
+        // 행동 (움직임 · 반응 · 생활)
+        private ToggleTile cWalls, cCeiling, cWindows, cFull, cIdle, cShortRest, cFocus, cWork, cPinned, cSecrets, cHungerCry, cAffinity;
+        private NumericUpDown nSpeed, nFall, nSlide, nDelay, nHunger;
+        private ChoiceStrip clickMode, cursorMode;
+        private RoundCard lifeCard; private Label lifeSummary, lifeDetail, satietyNum, secretCount; private MeterBar satietyBar; private FlatButton snackButton;
+        private readonly SecretBadge[] secretBadge = new SecretBadge[3];
+        private string lifeTip = "";
         // 알림
         private CheckBox cLunch, cLeave, cNap, cHourly, cPopup, cAlertPet, cGlow, cQuiet;
         private TextBox tLunch, tLunchMsg, tLeave, tLeaveMsg;
         private NumericUpDown nNap, nStart, nEnd;
-        private ChoiceStrip glowTheme, glowWidth, glowStrength;
+        private ChoiceDrop glowTheme, glowWidth, glowStrength;
+        // 내 알람 (시각 + 내용)
+        private sealed class AlarmRow { internal FlowLayoutPanel Host; internal CheckBox On; internal DateTimePicker Time; internal TextBox Msg; internal CheckBox Repeat; internal UserAlarm Source; }
+        private readonly List<AlarmRow> alarmRows = new List<AlarmRow>();
+        private FlowLayoutPanel alarmList; private Label alarmEmpty; private Button bAlarmAdd;
         // 화면·시스템
         private NumericUpDown nSize, nOpacity, nMemoOpacity; private CheckBox cMemoTop, cStartup;
         // 메모
@@ -257,7 +264,7 @@ namespace SuperHeroes
         // 캐릭터
         private readonly HeroToggleCard[] heroCards = new HeroToggleCard[5];
         private ComboBox dexChar, sigFreq, costume; private PictureBox dexPic; private Label dexTitle, dexTraits, rosterTitle, dexStatus;
-        private readonly Label[] sigName = new Label[8]; private readonly Label[] sigDesc = new Label[8]; private readonly FlowLayoutPanel[] sigRow = new FlowLayoutPanel[8];
+        private readonly Label[] sigName = new Label[8]; private readonly Label[] sigDesc = new Label[8]; private readonly RoundCard[] sigCard = new RoundCard[8];
 
         public SettingsForm(App app, int page = -1)
         {
@@ -288,9 +295,8 @@ namespace SuperHeroes
             Controls.Add(host); Controls.Add(nav);
             host.BringToFront();
 
-            pages[0] = BuildCharacterPage(); pages[1] = BuildMovePage(); pages[2] = BuildReactPage();
-            pages[3] = BuildLifePage(); pages[4] = BuildAlarmPage(); pages[5] = BuildDisplayPage();
-            pages[6] = BuildMemoPage(); pages[7] = BuildChatPage();
+            pages[0] = BuildCharacterPage(); pages[1] = BuildBehaviorPage(); pages[2] = BuildAlarmPage();
+            pages[3] = BuildDisplayPage(); pages[4] = BuildMemoPage(); pages[5] = BuildChatPage();
             foreach (var pg in pages) { pg.Dock = DockStyle.Fill; pg.Visible = false; host.Controls.Add(pg); }
             nav.SelectedIndexChanged += delegate { ShowPage(nav.SelectedIndex); };
             nav.SelectedIndex = Math.Max(0, Math.Min(pages.Length - 1, page >= 0 ? page : lastPage));
@@ -312,7 +318,7 @@ namespace SuperHeroes
             if (sel) using (var bar = new SolidBrush(FriendUI.Gold)) e.Graphics.FillRectangle(bar, e.Bounds.Left, e.Bounds.Top, 5, e.Bounds.Height);
             using (var f1 = new Font("Malgun Gothic", 11f, FontStyle.Bold)) using (var f2 = new Font("Malgun Gothic", 7.8f))
             {
-                string[] glyph = { "★", "▶", "☝", "♥", "♪", "▣", "✎", "✦" };
+                string[] glyph = { "★", "▶", "♪", "▣", "✎", "✦" };
                 TextRenderer.DrawText(e.Graphics, glyph[e.Index] + "  " + PageNames[e.Index], f1, new Rectangle(e.Bounds.Left + 14, e.Bounds.Top + 7, e.Bounds.Width - 16, 22), Color.White, TextFormatFlags.Left | TextFormatFlags.NoPrefix);
                 TextRenderer.DrawText(e.Graphics, PageHints[e.Index], f2, new Rectangle(e.Bounds.Left + 14, e.Bounds.Top + 29, e.Bounds.Width - 16, 20), sel ? Color.FromArgb(214, 228, 250) : Color.FromArgb(150, 176, 220), TextFormatFlags.Left | TextFormatFlags.NoPrefix | TextFormatFlags.EndEllipsis);
             }
@@ -394,31 +400,57 @@ namespace SuperHeroes
         { var c = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = width, Margin = new Padding(3) }; c.Items.AddRange(items); c.SelectedIndex = Math.Max(0, Math.Min(items.Length - 1, selected)); return c; }
 
         // ───────── 1. 캐릭터 ─────────
+        // 위에서 아래로 ① 화면의 친구(카드 5장) ② 캐릭터 도감 ③ ★ 시그니처 기술 카드(가로 3장씩) ④ 수퍼맨 커스튬.
+        // 칸막이(그룹 상자) 대신 가는 선 제목으로 나눠 여백을 아낀다. 기술 설명이 길면 카드에는 앞부분만 보이고, 전체는 마우스를 올리면 말풍선으로.
+        private const int CharW = 520;
+
+        // 제목(왼쪽) + 이어지는 가는 선 + 오른쪽 여백(reserveRight: 그 자리에 단추 · 선택칸을 올린다)
+        private Panel SectionHead(FlowLayoutPanel f, Label title, int reserveRight, Color? color = null)
+        {
+            var p = new Panel { Width = CharW, Height = 32, Margin = new Padding(0, 6, 0, 2) };
+            title.AutoSize = true; title.Left = 3; title.Top = 8; title.BackColor = Color.Transparent;
+            title.Font = new Font("Malgun Gothic", 9f, FontStyle.Bold); title.ForeColor = color ?? FriendUI.Blue;
+            p.Controls.Add(title);
+            p.Paint += (o, e) =>
+            {
+                int x0 = title.Right + 8, x1 = p.Width - reserveRight - 3;
+                if (x1 > x0) using (var pen = new Pen(Color.FromArgb(206, 218, 240))) e.Graphics.DrawLine(pen, x0, 16, x1, 16);
+            };
+            title.TextChanged += delegate { p.Invalidate(); };
+            f.Controls.Add(p); return p;
+        }
+
+        // 긴 설명을 말풍선에 넣기 좋게 일정한 글자 수마다 줄바꿈한다.
+        private static string WrapTip(string text, int width)
+        {
+            var sb = new StringBuilder(); int col = 0;
+            foreach (string word in (text ?? "").Split(' '))
+            {
+                if (col > 0 && col + word.Length + 1 > width) { sb.Append('\n'); col = 0; }
+                else if (col > 0) { sb.Append(' '); col++; }
+                sb.Append(word); col += word.Length;
+            }
+            return sb.ToString();
+        }
+
         private Panel BuildCharacterPage()
         {
             FlowLayoutPanel f; var page = NewPage("캐릭터", "함께할 친구를 부르고, 캐릭터별 ★ 시그니처 기술을 구경해요", out f);
+            f.Padding = new Padding(16, 0, 8, 8);
 
-            // 하나의 통합 섹션: 화면의 친구 · 캐릭터 도감
-            var gHero = Group(f, "화면의 친구 · 캐릭터 도감"); var m = In(gHero);
-
-            // 1) 상단 바: 제목 + [ 👁 모두 숨기기/보이기 ] [ 🎯 화면 가운데로 ] 플랫 아이콘 단추
-            var headRow = new Panel { Width = 470, Height = 32, Margin = new Padding(2, 2, 2, 4) };
-            rosterTitle = new Label { Text = "지금 화면에 있는 친구들", AutoSize = true, Left = 2, Top = 6, Font = new Font("Malgun Gothic", 9.2f, FontStyle.Bold), ForeColor = FriendUI.BlueDark };
-            headRow.Controls.Add(rosterTitle);
-
-            var bCenter = new FlatButton(FlatIcon.CenterScreen, "화면 가운데로", 34, 28) { Left = 470 - 34, Top = 2 };
+            // ① 화면의 친구: 제목줄(+ 모두 숨기기 · 화면 가운데로) / 캐릭터 카드 5장
+            rosterTitle = new Label { Text = "지금 화면에 있는 친구들" };
+            var head1 = SectionHead(f, rosterTitle, 80);
+            var bCenter = new FlatButton(FlatIcon.CenterScreen, "화면 가운데로", 34, 28) { Left = CharW - 34, Top = 2 };
             tips.SetToolTip(bCenter, "화면 가운데로 모으기\n화면 밖으로 나갔거나 가려진 친구들을 화면 한가운데로 다시 모아요.");
             bCenter.Click += delegate { app.RecoverVisible(); };
-            headRow.Controls.Add(bCenter);
-
-            var bHide = new FlatButton(FlatIcon.Eye, "모두 숨기기 / 보이기", 34, 28) { Left = 470 - 34 - 38, Top = 2 };
+            var bHide = new FlatButton(FlatIcon.Eye, "모두 숨기기 / 보이기", 34, 28) { Left = CharW - 34 - 38, Top = 2 };
             tips.SetToolTip(bHide, "모두 숨기기 / 보이기\n화면의 모든 친구를 한 번에 숨기거나 다시 보여줘요.");
             bHide.Click += delegate { app.ToggleHidden(); RefreshRoster(); };
-            headRow.Controls.Add(bHide);
-            m.Controls.Add(headRow);
+            head1.Controls.Add(bCenter); head1.Controls.Add(bHide);
+            tips.SetToolTip(rosterTitle, "캐릭터 카드를 누르면 바탕화면에서 바로 켜고 끌 수 있어요.");
 
-            // 2) 5개 캐릭터 토글 카드 행 (화면에 있으면 컬러, 없으면 흑백)
-            var cardsRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 4) };
+            var cardsRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = false, AutoSize = true, Margin = new Padding(3, 0, 0, 4) };
             for (int i = 0; i < CharacterArt.Count; i++)
             {
                 int charId = i;
@@ -427,45 +459,48 @@ namespace SuperHeroes
                 card.ToggleClicked += delegate { ToggleHero(charId); };
                 cardsRow.Controls.Add(card);
             }
-            m.Controls.Add(cardsRow);
+            f.Controls.Add(cardsRow);
 
-            Note(m, "캐릭터 카드를 클릭하면 바탕화면에서 바로 켜고 끌 수 있어요.");
-
-            // 3) 구분선 (은은한 분리)
-            var div = new Panel { Height = 1, Width = 470, BackColor = Color.FromArgb(222, 230, 242), Margin = new Padding(3, 8, 3, 8) };
-            m.Controls.Add(div);
-
-            // 4) 캐릭터 도감 & ★ 시그니처 기술
+            // ② 캐릭터 도감: 제목줄(+ 오른쪽에 캐릭터 고르기) / 그림 · 이름 · 특징
             int initChar = app.LiveWindows.Count > 0 ? app.LiveWindows[0].Pet.Art.Id : 0;
-            var pick = Row(m);
-            pick.Controls.Add(new Label { Text = "캐릭터 도감", AutoSize = true, Font = new Font("Malgun Gothic", 9.2f, FontStyle.Bold), ForeColor = FriendUI.BlueDark, Margin = new Padding(3, 6, 6, 2) });
-            dexChar = Combo(CharacterArt.Infos.Select(i => i.Name).ToArray(), initChar, 120);
-            pick.Controls.Add(dexChar);
-            dexStatus = new Label { AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(6, 7, 3, 2) };
-            pick.Controls.Add(dexStatus);
-
-            var head = Row(m);
-            dexPic = new PictureBox { Width = 72, Height = 72, SizeMode = PictureBoxSizeMode.Zoom, Margin = new Padding(4) };
-            head.Controls.Add(dexPic);
+            var head2 = SectionHead(f, new Label { Text = "캐릭터 도감" }, 232);
+            dexStatus = new Label { AutoSize = true, ForeColor = Color.DimGray, Left = CharW - 232, Top = 8 };
+            dexChar = Combo(CharacterArt.Infos.Select(i => i.Name).ToArray(), initChar, 110); dexChar.Left = CharW - 113; dexChar.Top = 4; dexChar.Margin = Padding.Empty;
+            head2.Controls.Add(dexStatus); head2.Controls.Add(dexChar);
+            var info = Row(f);
+            dexPic = new PictureBox { Width = 64, Height = 64, SizeMode = PictureBoxSizeMode.Zoom, Margin = new Padding(4, 2, 4, 4) };
+            info.Controls.Add(dexPic);
             var txt = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false };
-            head.Controls.Add(txt);
-            dexTitle = new Label { AutoSize = true, Font = new Font("Malgun Gothic", 11f, FontStyle.Bold), ForeColor = FriendUI.Ink, Margin = new Padding(3, 3, 3, 2) };
+            info.Controls.Add(txt);
+            dexTitle = new Label { AutoSize = true, Font = new Font("Malgun Gothic", 10f, FontStyle.Bold), ForeColor = FriendUI.Ink, Margin = new Padding(3, 2, 3, 2) };
             txt.Controls.Add(dexTitle);
-            dexTraits = new Label { AutoSize = true, ForeColor = Color.DimGray, MaximumSize = new Size(380, 0), Margin = new Padding(3, 0, 3, 3) };
+            dexTraits = new Label { AutoSize = true, ForeColor = Color.DimGray, Font = new Font("Malgun Gothic", 8.5f), MaximumSize = new Size(CharW - 90, 0), Margin = new Padding(3, 0, 3, 3) };
             txt.Controls.Add(dexTraits);
 
-            m.Controls.Add(new Label { Text = "★ 시그니처 기술 (미리보기 단추를 누르면 바로 보여줘요)", AutoSize = true, ForeColor = Color.FromArgb(176, 108, 14), Font = new Font("Malgun Gothic", 9f, FontStyle.Bold), Margin = new Padding(3, 8, 3, 2) });
-            for (int i = 0; i < 8; i++)
+            // ③ ★ 시그니처 기술: 카드를 가로로 세 장씩(캐릭터마다 4~8가지). 오른쪽 위에 자동 재생 빈도.
+            var sigTitle = new Label { Text = "★ 시그니처 기술" };
+            var head3 = SectionHead(f, sigTitle, 232, Color.FromArgb(176, 108, 14));
+            var freqLabel = new Label { Text = "가만히 쉴 때 자동 재생", AutoSize = true, ForeColor = FriendUI.Ink, Left = CharW - 226, Top = 8 };
+            sigFreq = Combo(new[] { "끄기", "드물게", "보통", "자주" }, PlayOptions.Current.SigFreq, 80); sigFreq.Left = CharW - 83; sigFreq.Top = 4; sigFreq.Margin = Padding.Empty;
+            tips.SetToolTip(sigFreq, "가만히 쉴 때 저절로 보여주는 빈도\n얌전 모드에서는 자동으로 나오지 않아요. 손으로 보려면 우클릭 → ★ 시그니처 기술.");
+            tips.SetToolTip(freqLabel, tips.GetToolTip(sigFreq));
+            head3.Controls.Add(freqLabel); head3.Controls.Add(sigFreq);
+
+            var sigWrap = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = true, AutoSize = true, Margin = Padding.Empty, MaximumSize = new Size(CharW + 4, 0) };
+            for (int i = 0; i < sigName.Length; i++)
             {
-                int idx = i; var row = Row(m); sigRow[i] = row;
-                var star = new Label { Text = "★", AutoSize = true, ForeColor = FriendUI.Gold, Font = new Font("Malgun Gothic", 14f, FontStyle.Bold), Margin = new Padding(3, 0, 0, 0) };
-                var box = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Width = 330 };
-                sigName[i] = new Label { AutoSize = true, Font = new Font("Malgun Gothic", 9.5f, FontStyle.Bold), ForeColor = FriendUI.Ink, Margin = new Padding(3, 2, 3, 0) };
-                sigDesc[i] = new Label { AutoSize = true, ForeColor = Color.DimGray, MaximumSize = new Size(320, 0), Margin = new Padding(3, 0, 3, 4) };
-                box.Controls.Add(sigName[i]); box.Controls.Add(sigDesc[i]);
-                var play = FriendUI.Button("▶ 미리보기", delegate { app.PreviewSignature(dexChar.SelectedIndex, idx); });
-                row.Controls.Add(star); row.Controls.Add(box); row.Controls.Add(play);
+                int idx = i;
+                var card = new RoundCard(166, 108) { Margin = new Padding(0, 0, i % 3 < 2 ? 11 : 0, 8) };
+                sigCard[i] = card;
+                card.Controls.Add(new Label { Text = "★", AutoSize = true, Left = 8, Top = 5, ForeColor = FriendUI.Gold, Font = new Font("Malgun Gothic", 12f, FontStyle.Bold), BackColor = Color.Transparent });
+                sigName[i] = new Label { AutoSize = false, AutoEllipsis = true, Left = 30, Top = 8, Width = 130, Height = 20, Font = new Font("Malgun Gothic", 9f, FontStyle.Bold), ForeColor = FriendUI.Ink, BackColor = Color.Transparent };
+                sigDesc[i] = new Label { AutoSize = false, AutoEllipsis = true, Left = 10, Top = 30, Width = 148, Height = 46, Font = new Font("Malgun Gothic", 8.5f), ForeColor = Color.DimGray, BackColor = Color.Transparent };
+                var play = new Button { Text = "▶ 미리보기", Left = 10, Top = 78, Width = 146, Height = 24 };
+                play.Click += delegate { app.PreviewSignature(dexChar.SelectedIndex, idx); };
+                card.Controls.Add(sigName[i]); card.Controls.Add(sigDesc[i]); card.Controls.Add(play);
+                sigWrap.Controls.Add(card);
             }
+            f.Controls.Add(sigWrap);
 
             dexChar.SelectedIndexChanged += delegate
             {
@@ -474,15 +509,13 @@ namespace SuperHeroes
             };
             UpdateDex();
 
-            var gSig = Group(f, "★ 시그니처 자동 재생"); var s = In(gSig);
-            var rowS = Row(s); rowS.Controls.Add(Cap("가만히 쉴 때 저절로 보여주기"));
-            sigFreq = Combo(new[] { "끄기", "드물게", "보통", "자주" }, PlayOptions.Current.SigFreq, 90); rowS.Controls.Add(sigFreq);
-            Note(s, "얌전 모드에서는 자동으로 나오지 않아요. 손으로 보려면 우클릭 → ★ 시그니처 기술.");
+            // ④ 수퍼맨 커스튬: 한 줄
+            SectionHead(f, new Label { Text = "수퍼맨 커스튬" }, 0);
+            var rc = Row(f);
+            rc.Controls.Add(Cap("평소 입는 옷", 90));
+            costume = Combo(new[] { "수퍼히어로 수트 (기본)", "기자 (클라크 켄트)" }, PlayOptions.Current.ClarkKent ? 1 : 0, 200); rc.Controls.Add(costume);
+            tips.SetToolTip(costume, "기자 차림은 정장 · 붉은 넥타이 · 검은 뿔테 안경이에요.\n어느 쪽이든 '셔츠 찢기 (S 각성)'은 기자 차림에서 시작해 수퍼맨으로 변신해요.");
 
-            var gCos = Group(f, "수퍼맨 커스튬"); var cs = In(gCos);
-            var rowC = Row(cs); rowC.Controls.Add(Cap("평소 입는 옷", 110));
-            costume = Combo(new[] { "수퍼히어로 수트 (기본)", "기자 (클라크 켄트)" }, PlayOptions.Current.ClarkKent ? 1 : 0, 190); rowC.Controls.Add(costume);
-            Note(cs, "기자 차림은 정장 · 붉은 넥타이 · 검은 뿔테 안경이에요. 어느 쪽이든 '셔츠 찢기 (S 각성)'은 기자 차림에서 시작해 수퍼맨으로 변신해요.");
             RefreshRoster();
             return page;
         }
@@ -517,10 +550,12 @@ namespace SuperHeroes
             for (int i = 0; i < sigName.Length; i++)
             {
                 bool has = i < sigs.Length;
-                if (sigRow[i] != null) sigRow[i].Visible = has;
+                if (sigCard[i] != null) sigCard[i].Visible = has;
                 if (!has) continue;
-                sigName[i].Text = sigs[i].Label;
+                sigName[i].Text = sigs[i].Label.TrimStart('★', ' ');   // 카드에 금색 ★ 가 따로 있다
                 sigDesc[i].Text = sigs[i].Desc;
+                string tip = sigs[i].Label + "\n" + WrapTip(sigs[i].Desc, 30);   // 카드에 다 안 들어가는 긴 설명은 말풍선으로
+                foreach (Control part in new Control[] { sigCard[i], sigName[i], sigDesc[i] }) tips.SetToolTip(part, tip);
             }
             UpdateDexStatus();
         }
@@ -553,73 +588,135 @@ namespace SuperHeroes
             UpdateDexStatus();
         }
 
-        // ───────── 2. 움직임 ─────────
-        private Panel BuildMovePage()
+        // ───────── 2. 행동 (움직임 · 반응 · 생활) ─────────
+        // 글 대신 그림으로: 줄마다 동그란 그림 머리표, 켜고 끄는 값은 그림 카드, 고르는 값은 그림 선택줄, 설명은 마우스를 올리면 말풍선으로.
+        // 위에서 아래로: 지금 상태 → 어디서 → 쉬기 · 조용히 → 속도 → 클릭 → 커서 → 생활 → 숨은 반응. 스크롤 없이 한 화면에 들어간다.
+        private static readonly FlatIcon.Painter[] ClickArt = { FlatIcon.Cycle, FlatIcon.Dice, FlatIcon.Squash, FlatIcon.Tear, FlatIcon.Hop, FlatIcon.Ban };
+        private static readonly FlatIcon.Painter[] CursorArt = { FlatIcon.Escape, FlatIcon.Follow, FlatIcon.Ignore };
+
+        // 그림 머리표가 붙은 한 줄. contentH 는 줄 안 내용의 높이(머리표를 세로 가운데에 맞추는 데 쓴다).
+        private FlowLayoutPanel RailRow(FlowLayoutPanel f, FlatIcon.Painter p, string tip, int contentH)
         {
-            FlowLayoutPanel f; var page = NewPage("움직임", "어디를 돌아다니고 얼마나 빨리 움직일지 정해요", out f);
-            var o = PlayOptions.Current;
-            var g1 = Group(f, "돌아다니는 곳"); var a = In(g1);
-            cWalls = Check(a, "화면 양옆 벽 타기", o.Walls);
-            cCeiling = Check(a, "화면 천장 타기", o.Ceiling);
-            cWindows = Check(a, "열린 창 옆을 올라가고 창 위에서 걷기 · 쉬기", o.Windows);
-            cFull = Check(a, "전체화면 영상 · 게임을 볼 때 자동으로 숨기기", o.Fullscreen);
-            var g2 = Group(f, "쉬는 방법"); var b = In(g2);
-            cIdle = Check(b, "혼자 앉아서 쉬기 (앉기 · 잠자기 · 멍때리기 · 기지개 · ★ 시그니처)", o.Idle);
-            cShortRest = Check(b, "앉아있는 시간 줄이기 (6~11초)", o.ShortRest);
-            var g3 = Group(f, "조용히 지내기"); var c = In(g3);
-            cFocus = Check(c, "얌전 모드: 바닥에만 머물고 도망가지 않기", o.Focus, "벽·천장·창 타기와 ★ 시그니처 자동 재생이 멈춰요.");
-            cWork = Check(c, "평일 09:00~18:00에는 자동으로 얌전 모드", o.WorkFocus);
-            cPinned = Check(c, "친구 위치 고정 (마우스로 옮길 수는 있어요)", o.PositionFixed);
-            var g4 = Group(f, "속도  ·  숫자가 클수록 빨라져요"); var d = In(g4);
-            Func<string, decimal, double, decimal, NumericUpDown> speedRow = (label, max, value, inc) =>
-            { var r = Row(d); r.Controls.Add(Cap(label, 190)); var n = Num(.5m, max, (decimal)value, 1, .1m, 78); r.Controls.Add(n); r.Controls.Add(Cap("배")); return n; };
-            nSpeed = speedRow("걷기 · 기어오르기", 2m, o.Speed, .1m);
-            nFall = speedRow("비행 하강 (기를 모아 내려옴)", 3m, o.FallSpeed, .1m);
-            nSlide = speedRow("질주 (커서를 피해 도망)", 3m, o.SlideSpeed, .1m);
-            return page;
+            var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(0, 0, 0, 6) };
+            var rail = new RailIcon(p) { Margin = new Padding(0, Math.Max(0, (contentH - 36) / 2), 10, 0) };
+            tips.SetToolTip(rail, tip); row.Controls.Add(rail); f.Controls.Add(row);
+            return row;
         }
 
-        // ───────── 3. 반응 ─────────
-        private Panel BuildReactPage()
+        private ToggleTile Tile(FlowLayoutPanel row, FlatIcon.Painter p, string caption, bool value, string tip)
+        { var t = new ToggleTile(p, caption, value); tips.SetToolTip(t, tip); row.Controls.Add(t); return t; }
+
+        // 그림 선택줄 + 카드마다 다른 말풍선
+        private ChoiceStrip IconStrip(string[] labels, string[] descs, int selected, int cellW, FlatIcon.Painter[] art)
         {
-            FlowLayoutPanel f; var page = NewPage("반응", "클릭하거나 커서를 가까이 댔을 때 친구가 어떻게 반응할지 골라요", out f);
-            var o = PlayOptions.Current;
-            var g1 = Group(f, "마우스로 클릭했을 때"); var a = In(g1);
-            clickMode = Combo(new[] { "순서대로: 놀람(발끈) → 달달 떨며 울기 → 폴짝", "무작위 반응", "놀람(발끈)만", "달달 떨며 울기만", "폴짝 뛰기만", "클릭 반응 끄기" }, (int)o.ClickMode, 400);
-            a.Controls.Add(clickMode);
-            Note(a, "배트맨은 경계하며 날카로운 눈빛, 다른 친구들은 당당하게 반응해요. 살짝 놓으면 망토/웹으로 천천히 착지하고, 휙 던지면 히어로 랜딩으로 착지해요.");
-            var g2 = Group(f, "커서가 가까이 왔을 때"); var b = In(g2);
-            rEscape = new RadioButton { Text = "슉! 질주하며 도망가기", AutoSize = true, Checked = o.Escape && !o.Follow, Margin = new Padding(3) };
-            rFollow = new RadioButton { Text = "커서를 졸졸 따라오기", AutoSize = true, Checked = o.Follow && !o.Escape, Margin = new Padding(3) };
-            rIgnore = new RadioButton { Text = "신경 쓰지 않기", AutoSize = true, Checked = !o.Escape && !o.Follow, Margin = new Padding(3) };
-            b.Controls.Add(rEscape); b.Controls.Add(rFollow); b.Controls.Add(rIgnore);
-            var r = Row(b); r.Controls.Add(Cap("도망 반응 대기", 130)); nDelay = Num(.05m, 1m, (decimal)o.EscapeDelay, 2, .05m, 78); r.Controls.Add(nDelay); r.Controls.Add(Cap("초"));
-            var g3 = Group(f, "숨은 반응"); var c = In(g3);
-            cSecrets = Check(c, "숨은 반응 사용", o.Secrets);
-            Note(c, "어질어질: 친구 머리 위에서 마우스를 한 바퀴 빙글빙글.\n몰래 군무: 친구 둘 이상일 때 커서를 떨어뜨리고 4초.\n기 폭발: 같은 친구를 10초 안에 세 번 휙 던지기 (변신하며 천장까지 솟구쳐요).");
-            return page;
+            var s = new ChoiceStrip(labels, selected, cellW, new Size(24, 24),
+                delegate(Graphics g, Rectangle r, int i) { art[Math.Min(i, art.Length - 1)](g, new RectangleF(r.X, r.Y, r.Width, r.Height), FriendUI.BlueDark); });
+            s.Margin = new Padding(0, 3, 3, 3);
+            s.HotChanged += i =>
+            {
+                if (i < 0 || i >= descs.Length) tips.Hide(s);
+                else tips.Show(descs[i], s, Math.Max(0, Math.Min(s.Width - 150, s.PointToClient(Cursor.Position).X - 20)), s.Height + 2, 6000);
+            };
+            return s;
         }
 
-        // ───────── 4. 생활 ─────────
-        private Panel BuildLifePage()
+        private Panel BuildBehaviorPage()
         {
-            FlowLayoutPanel f; var page = NewPage("생활", "친밀도와 포만감, 배고픔 · 숨은 반응 도감", out f);
+            FlowLayoutPanel f; var page = NewPage("행동", "움직임 · 반응 · 생활", out f);
             var o = PlayOptions.Current;
-            var g1 = Group(f, "지금 상태"); var a = In(g1);
-            lifeSummary = new Label { AutoSize = true, Font = new Font("Malgun Gothic", 13f, FontStyle.Bold), ForeColor = FriendUI.Ink, Margin = new Padding(3, 4, 3, 4) }; a.Controls.Add(lifeSummary);
-            var sr = Row(a); sr.Controls.Add(Cap("포만감"));
-            satietyBar = new ProgressBar { Width = 220, Height = 18, Minimum = 0, Maximum = 100, Margin = new Padding(3, 7, 3, 3) }; sr.Controls.Add(satietyBar);
-            snackButton = FriendUI.Button("간식 주기", delegate { app.FeedFirst(); RefreshLive(); }); sr.Controls.Add(snackButton);
-            lifeDetail = new Label { AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(3, 3, 3, 3) }; a.Controls.Add(lifeDetail);
-            Note(a, "간식은 포만감 +25씩(최대 100). 함께한 시간 1분마다 친밀도도 1씩 쌓여요. 100 단위마다 꽃다발!");
-            var g2 = Group(f, "생활 설정"); var b = In(g2);
-            var r = Row(b); r.Controls.Add(Cap("간식 없이 배고파지기까지", 190)); nHunger = Num(0, 360, o.HungerMinutes, 0, 1, 78); r.Controls.Add(nHunger); r.Controls.Add(Cap("분"));
-            Note(b, "0분으로 설정하면 항상 우는 표정을 볼 수 있어요.");
-            cHungerCry = Check(b, "배고프면 계속 우는 표정", o.HungerCry);
-            cAffinity = Check(b, "친구 옆에 친밀도 숫자 표시", o.ShowAffinity);
-            var g3 = Group(f, "발견한 숨은 반응"); var c = In(g3);
-            secretLabel = new Label { AutoSize = true, ForeColor = FriendUI.Ink, MaximumSize = new Size(470, 0), Margin = new Padding(3, 3, 3, 3) }; c.Controls.Add(secretLabel);
-            Note(c, "우클릭 → 동작 보기 → 숨은 반응에서도 확인할 수 있어요.");
+
+            // ① 지금 상태: 친밀도 · 함께한 시간 | 포만감 막대 · 간식
+            lifeCard = new RoundCard(512, 60) { Margin = new Padding(0, 0, 0, 8) };
+            lifeCard.Controls.Add(new IconBox(FlatIcon.Heart, 30) { Left = 14, Top = 15 });
+            lifeSummary = new Label { AutoSize = true, Left = 52, Top = 6, Font = new Font("Malgun Gothic", 14f, FontStyle.Bold), ForeColor = FriendUI.Ink, BackColor = Color.Transparent };
+            lifeDetail = new Label { AutoSize = true, Left = 54, Top = 36, Font = new Font("Malgun Gothic", 8.5f), ForeColor = Color.DimGray, BackColor = Color.Transparent };
+            lifeCard.Controls.Add(lifeSummary); lifeCard.Controls.Add(lifeDetail);
+            lifeCard.Controls.Add(new Panel { Left = 176, Top = 10, Width = 1, Height = 40, BackColor = Color.FromArgb(222, 230, 242) });
+            lifeCard.Controls.Add(new IconBox(FlatIcon.Snack, 30) { Left = 192, Top = 15 });
+            satietyBar = new MeterBar { Left = 232, Top = 23, Width = 170, Height = 14 }; lifeCard.Controls.Add(satietyBar);
+            satietyNum = new Label { AutoSize = false, Left = 408, Top = 17, Width = 40, Height = 26, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Malgun Gothic", 10f, FontStyle.Bold), ForeColor = FriendUI.Ink, BackColor = Color.Transparent };
+            lifeCard.Controls.Add(satietyNum);
+            snackButton = new FlatButton(FlatIcon.Snack, "간식 주기", 40, 36) { Left = 456, Top = 12 };
+            snackButton.Click += delegate { app.FeedFirst(); RefreshLive(); };
+            tips.SetToolTip(snackButton, "간식 주기\n포만감 +25 (최대 100)");
+            lifeCard.Controls.Add(snackButton);
+            f.Controls.Add(lifeCard);
+
+            // ② 어디서
+            var r1 = RailRow(f, FlatIcon.PlacePin, "돌아다니는 곳", 56);
+            cWalls = Tile(r1, FlatIcon.Wall, "벽 타기", o.Walls, "화면 양옆 벽을 타고 올라가요.");
+            cCeiling = Tile(r1, FlatIcon.Ceiling, "천장 타기", o.Ceiling, "화면 천장을 타고 건너가요.");
+            cWindows = Tile(r1, FlatIcon.Window, "창 타기", o.Windows, "열린 창 옆을 올라가고 창 위에서 걷거나 쉬어요.");
+            cFull = Tile(r1, FlatIcon.FullScreen, "전체화면 숨김", o.Fullscreen, "전체화면 영상 · 게임을 볼 때 자동으로 숨어요.");
+
+            // ③ 쉬기 · 조용히
+            var r2 = RailRow(f, FlatIcon.Cup, "쉬는 방법 · 조용히 지내기", 56);
+            cIdle = Tile(r2, FlatIcon.Zzz, "혼자 쉬기", o.Idle, "혼자 앉아서 쉬어요.\n(앉기 · 잠자기 · 멍때리기 · 기지개 · ★ 시그니처)");
+            cShortRest = Tile(r2, FlatIcon.Hourglass, "짧게 앉기", o.ShortRest, "앉아있는 시간을 줄여요. (6~11초)");
+            cFocus = Tile(r2, FlatIcon.Moon, "얌전 모드", o.Focus, "바닥에만 머물고 도망가지 않아요.\n벽·천장·창 타기와 ★ 시그니처 자동 재생이 멈춰요.");
+            cWork = Tile(r2, FlatIcon.Briefcase, "평일 얌전", o.WorkFocus, "평일 09:00~18:00에는 자동으로 얌전 모드예요.");
+            cPinned = Tile(r2, FlatIcon.Pin, "위치 고정", o.PositionFixed, "친구 위치를 고정해요. (마우스로 옮길 수는 있어요)");
+
+            // ④ 속도
+            var r3 = RailRow(f, FlatIcon.Gauge, "속도\n숫자가 클수록 빨라져요.", 36);
+            Func<FlatIcon.Painter, string, decimal, double, NumericUpDown> speed = (p, tip, max, value) =>
+            {
+                var ib = new IconBox(p, 26) { Margin = new Padding(8, 5, 2, 3) };
+                var x = Cap("×"); x.Margin = new Padding(0, 7, 0, 0);
+                var n = Num(.5m, max, (decimal)value, 1, .1m, 62); n.Margin = new Padding(2, 6, 0, 0);
+                tips.SetToolTip(ib, tip); tips.SetToolTip(n, tip);
+                r3.Controls.Add(ib); r3.Controls.Add(x); r3.Controls.Add(n);
+                return n;
+            };
+            nSpeed = speed(FlatIcon.Feet, "걷기 · 기어오르기", 2m, o.Speed);
+            nFall = speed(FlatIcon.Feather, "비행 하강 (기를 모아 내려옴)", 3m, o.FallSpeed);
+            nSlide = speed(FlatIcon.Slide, "질주 (커서를 피해 도망)", 3m, o.SlideSpeed);
+
+            // ⑤ 클릭했을 때
+            var r4 = RailRow(f, FlatIcon.Tap, "마우스로 클릭했을 때\n배트맨은 경계하며 날카로운 눈빛, 다른 친구들은 당당하게 반응해요.\n살짝 놓으면 망토/웹으로 천천히 착지하고, 휙 던지면 히어로 랜딩으로 착지해요.", 62);
+            clickMode = IconStrip(new[] { "순서", "무작위", "놀람", "울음", "폴짝", "끄기" },
+                new[] { "순서대로\n놀람(발끈) → 달달 떨며 울기 → 폴짝", "무작위 반응", "놀람(발끈)만", "달달 떨며 울기만", "폴짝 뛰기만", "클릭 반응 끄기" },
+                (int)o.ClickMode, 76, ClickArt);
+            r4.Controls.Add(clickMode);
+
+            // ⑥ 커서가 가까이 왔을 때 (+ 도망 반응 대기)
+            var r5 = RailRow(f, FlatIcon.CursorRing, "커서가 가까이 왔을 때", 62);
+            cursorMode = IconStrip(new[] { "도망", "졸졸", "무시" }, new[] { "슉! 질주하며 도망가요.", "커서를 졸졸 따라와요.", "신경 쓰지 않아요." },
+                o.Escape && !o.Follow ? 0 : o.Follow && !o.Escape ? 1 : 2, 84, CursorArt);
+            r5.Controls.Add(cursorMode);
+            var dl = new FlowLayoutPanel { AutoSize = true, WrapContents = false, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(14, 14, 0, 0) };
+            var dib = new IconBox(FlatIcon.Clock, 26) { Margin = new Padding(3, 0, 2, 3) };
+            nDelay = Num(.05m, 1m, (decimal)o.EscapeDelay, 2, .05m, 66); nDelay.Margin = new Padding(2, 1, 0, 0);
+            var sec = Cap("초"); sec.Margin = new Padding(3, 4, 0, 0);
+            string delayTip = "도망 반응 대기\n커서가 다가온 뒤 도망치기 시작하기까지의 시간이에요.";
+            tips.SetToolTip(dib, delayTip); tips.SetToolTip(nDelay, delayTip);
+            dl.Controls.Add(dib); dl.Controls.Add(nDelay); dl.Controls.Add(sec); r5.Controls.Add(dl);
+            cursorMode.SelectedIndexChanged += delegate { dl.Enabled = cursorMode.SelectedIndex == 0; }; dl.Enabled = cursorMode.SelectedIndex == 0;
+
+            // ⑦ 생활
+            var r6 = RailRow(f, FlatIcon.Heart, "생활", 56);
+            cHungerCry = Tile(r6, FlatIcon.SadFace, "배고프면 울기", o.HungerCry, "배고프면 계속 우는 표정을 지어요.");
+            cAffinity = Tile(r6, FlatIcon.HeartNumber, "친밀도 표시", o.ShowAffinity, "친구 옆에 친밀도 숫자를 보여 줘요.");
+            var hib = new IconBox(FlatIcon.FoodClock, 32) { Margin = new Padding(14, 12, 2, 0) };
+            nHunger = Num(0, 360, o.HungerMinutes, 0, 1, 66); nHunger.Margin = new Padding(3, 17, 0, 0);
+            var minL = Cap("분"); minL.Margin = new Padding(3, 20, 0, 0);
+            string hungerTip = "간식 없이 배고파지기까지 (분)\n0분이면 항상 우는 표정이에요.";
+            tips.SetToolTip(hib, hungerTip); tips.SetToolTip(nHunger, hungerTip);
+            r6.Controls.Add(hib); r6.Controls.Add(nHunger); r6.Controls.Add(minL);
+
+            // ⑧ 숨은 반응: 켜기 + 도감 칸 세 개
+            var r7 = RailRow(f, FlatIcon.Question, "숨은 반응", 56);
+            cSecrets = Tile(r7, FlatIcon.Spark, "숨은 반응", o.Secrets, "숨은 반응을 켜요.\n찾으면 오른쪽 도감 칸이 채워져요.");
+            string[] secretTip = { "몰래 군무\n친구 둘 이상일 때 커서를 떨어뜨리고 4초.", "어질어질\n친구 머리 위에서 마우스를 한 바퀴 빙글빙글.", "기 폭발\n같은 친구를 10초 안에 세 번 휙 던지기.\n(변신하며 천장까지 솟구쳐요)" };
+            FlatIcon.Painter[] secretArt = { FlatIcon.Dance, FlatIcon.Dizzy, FlatIcon.Bolt };
+            for (int i = 0; i < 3; i++)
+            {
+                secretBadge[i] = new SecretBadge(secretArt[i]) { Margin = new Padding(i == 0 ? 12 : 6, 8, 0, 0) };
+                tips.SetToolTip(secretBadge[i], secretTip[i]); r7.Controls.Add(secretBadge[i]);
+            }
+            secretCount = new Label { AutoSize = true, Text = "0 / 3", Font = new Font("Malgun Gothic", 10f, FontStyle.Bold), ForeColor = FriendUI.BlueDark, Margin = new Padding(10, 19, 0, 0) };
+            tips.SetToolTip(secretCount, "발견한 숨은 반응\n우클릭 → 동작 보기 → 숨은 반응에서도 볼 수 있어요.");
+            r7.Controls.Add(secretCount);
             return page;
         }
 
@@ -653,23 +750,23 @@ namespace SuperHeroes
             // ③ 가장자리 빛
             SubHead(a, "화면 가장자리 빛");
             cGlow = Check(a, "알림창을 닫을 때까지 화면 가장자리 빛 유지", s.EdgeGlow);
-            var glowBox = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Margin = Padding.Empty };
+            // 드롭다운 세 개를 한 줄에: 그림 카드 줄(약 230px)을 약 60px로 줄였다. 펼치면 항목마다 작은 그림이 보인다.
+            var glowBox = new TableLayoutPanel { AutoSize = true, ColumnCount = 3, RowCount = 2, Margin = Padding.Empty };
+            for (int col = 0; col < 3; col++) glowBox.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 156));
             a.Controls.Add(glowBox);
-            glowBox.Controls.Add(Tiny("빛 색상"));
-            glowTheme = new ChoiceStrip(new[] { "파스텔", "노을", "오로라", "무지개" }, s.EdgeGlowTheme, 111, new Size(66, 38), delegate(Graphics g, Rectangle r, int i)
-            { GlowThumb(g, r, EdgeGlowWindow.Palette(i), 7, 255); });
-            tips.SetToolTip(glowTheme, "파스텔: 피치 · 핑크 · 보라 · 하늘");
-            glowBox.Controls.Add(glowTheme);
-            var size = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, RowCount = 2, Margin = Padding.Empty };
-            size.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 232)); size.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 238));
-            glowWidth = new ChoiceStrip(new[] { "보통", "넓게", "아주 넓게" }, s.EdgeGlowWidth, 70, new Size(46, 30), delegate(Graphics g, Rectangle r, int i)
+            var thumb = new Size(40, 24);
+            glowTheme = new ChoiceDrop(new[] { "파스텔", "노을", "오로라", "무지개" }, s.EdgeGlowTheme, 148, thumb, delegate(Graphics g, Rectangle r, int i)
+            { GlowThumb(g, r, EdgeGlowWindow.Palette(i), 6 * r.Width / 46.0, 255); });
+            tips.SetToolTip(glowTheme, "빛 색상\n파스텔: 피치 · 핑크 · 보라 · 하늘");
+            glowWidth = new ChoiceDrop(new[] { "보통", "넓게", "아주 넓게" }, s.EdgeGlowWidth, 148, thumb, delegate(Graphics g, Rectangle r, int i)
             { GlowThumb(g, r, EdgeGlowWindow.Palette(glowTheme.SelectedIndex), (i == 0 ? 3 : i == 1 ? 6 : 10) * r.Width / 46.0, 255); });
-            glowStrength = new ChoiceStrip(new[] { "은은하게", "선명하게", "강하게" }, s.EdgeGlowStrength, 70, new Size(46, 30), delegate(Graphics g, Rectangle r, int i)
+            tips.SetToolTip(glowWidth, "빛이 화면 안쪽으로 퍼지는 폭");
+            glowStrength = new ChoiceDrop(new[] { "은은하게", "선명하게", "강하게" }, s.EdgeGlowStrength, 148, thumb, delegate(Graphics g, Rectangle r, int i)
             { GlowThumb(g, r, EdgeGlowWindow.Palette(glowTheme.SelectedIndex), 6 * r.Width / 46.0, i == 0 ? 85 : i == 1 ? 170 : 255); });
+            tips.SetToolTip(glowStrength, "빛의 진하기");
             glowTheme.SelectedIndexChanged += delegate { glowWidth.Invalidate(); glowStrength.Invalidate(); };
-            size.Controls.Add(Tiny("퍼지는 폭"), 0, 0); size.Controls.Add(Tiny("진하기"), 1, 0);
-            size.Controls.Add(glowWidth, 0, 1); size.Controls.Add(glowStrength, 1, 1);
-            glowBox.Controls.Add(size);
+            glowBox.Controls.Add(Tiny("빛 색상"), 0, 0); glowBox.Controls.Add(Tiny("퍼지는 폭"), 1, 0); glowBox.Controls.Add(Tiny("진하기"), 2, 0);
+            glowBox.Controls.Add(glowTheme, 0, 1); glowBox.Controls.Add(glowWidth, 1, 1); glowBox.Controls.Add(glowStrength, 2, 1);
             cGlow.CheckedChanged += delegate { glowBox.Enabled = cGlow.Checked; }; glowBox.Enabled = cGlow.Checked;
 
             // ④ 조용한 시간 — 한 줄
@@ -695,6 +792,18 @@ namespace SuperHeroes
             rv.Controls.Add(FriendUI.Button("미리보기", delegate { app.PreviewLeave(tLeaveMsg.Text); }));
             Note(b, "시간은 12:00처럼 시:분으로 적어 주세요. 퇴근 10초 전에는 친구들이 화면 가운데로 모여요.");
 
+            // 내 알람: 시각 + 내용을 직접 정하는 알람 (매일 반복)
+            var gA = Group(f, "내 알람"); var al = In(gA);
+            Note(al, "정한 시각에 히어로가 내용을 알려 줘요. 반복 단추를 눌러 둔 알람만 매일 울리고, 아니면 한 번만 울려요.");
+            alarmList = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Margin = Padding.Empty };
+            al.Controls.Add(alarmList);
+            alarmEmpty = new Label { Text = "아직 알람이 없어요. 아래 단추로 추가하거나, 우클릭 → 알람에서 바로 맞춰 보세요.", AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(3, 4, 3, 4) };
+            al.Controls.Add(alarmEmpty);
+            bAlarmAdd = FriendUI.Button("+ 알람 추가", delegate { AddAlarmRow(null); });
+            al.Controls.Add(bAlarmAdd);
+            alarmRows.Clear();
+            foreach (var u in s.Alarms) AddAlarmRow(u);
+
             var g3 = Group(f, "낮잠"); var c = In(g3);
             var rn = Row(c);
             cNap = new CheckBox { Text = "자리를 오래 비우면 낮잠 자기", Checked = s.NapOn, AutoSize = false, Width = 196, Height = 24, Margin = new Padding(3, 6, 3, 3) };
@@ -702,6 +811,49 @@ namespace SuperHeroes
             rn.Controls.Add(cNap); rn.Controls.Add(nNap); rn.Controls.Add(Cap("분 동안 입력이 없을 때"));
             cNap.CheckedChanged += delegate { nNap.Enabled = cNap.Checked; }; nNap.Enabled = cNap.Checked;
             return page;
+        }
+
+        // 내 알람 한 줄: [켜기] [시각] [내용] [미리보기] [삭제]. src 가 null 이면 새 알람(다음 30분 단위 시각).
+        private void AddAlarmRow(UserAlarm src)
+        {
+            if (alarmRows.Count >= Settings.MaxAlarms) { Warn("알람은 최대 " + Settings.MaxAlarms + "개까지 만들 수 있어요."); return; }
+            DateTime when = DateTime.Today;
+            if (src != null) { TimeSpan? p = Settings.ParseTime(src.Time); if (p.HasValue) when = when + p.Value; }
+            else { DateTime n = DateTime.Now.AddMinutes(30); when = DateTime.Today.AddHours(n.Hour).AddMinutes(n.Minute / 30 * 30); }
+            var row = new AlarmRow { Source = src };
+            row.Host = new FlowLayoutPanel { AutoSize = true, WrapContents = false, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(0, 1, 0, 1) };
+            row.On = new CheckBox { Checked = src == null || src.On, AutoSize = false, Width = 22, Height = 24, Margin = new Padding(3, 5, 0, 3) };
+            row.Time = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "HH:mm", ShowUpDown = true, Value = when, Width = 64, Margin = new Padding(3, 4, 3, 3) };
+            row.Msg = new TextBox { Text = src != null ? src.Msg : "", MaxLength = 60, Width = 184, Margin = new Padding(3, 4, 3, 3) };
+            if (src == null) row.Msg.Text = "알람 시간이야!";
+            // 매일 반복: 글자 없이 반복 아이콘만 있는 켜짐/꺼짐 단추. 꺼 두면 다음 그 시각에 한 번만 울리고 알람이 스스로 꺼진다.
+            row.Repeat = new CheckBox { Appearance = Appearance.Button, Checked = src != null && src.Repeat, AutoSize = false, Size = new Size(34, 27), Margin = new Padding(3, 2, 0, 2), FlatStyle = FlatStyle.Standard };   // System 스타일은 이미지를 그리지 않는다
+            var repImg = Glyph('', FriendUI.BlueDark);
+            if (repImg != null) { row.Repeat.Image = repImg; row.Repeat.ImageAlign = ContentAlignment.MiddleCenter; } else { row.Repeat.Text = "↻"; row.Repeat.TextAlign = ContentAlignment.MiddleCenter; }
+            tips.SetToolTip(row.Repeat, "매일 반복\n누르면 매일 이 시각에 울려요.\n꺼 두면 다음 그 시각에 한 번만 울리고 알람이 꺼져요.");
+            var bTry = IconButton('', "", "이 알람을 지금 미리 보기", delegate { app.PreviewAlarm(row.Msg.Text.Trim()); });
+            var bDel = IconButton('', "", "이 알람 지우기", delegate
+            {
+                alarmRows.Remove(row); alarmList.Controls.Remove(row.Host); row.Host.Dispose(); UpdateAlarmEmpty();
+            });
+            if (bTry.Image == null) { bTry.AutoSize = true; bTry.Text = "미리보기"; }
+            if (bDel.Image == null) { bDel.AutoSize = true; bDel.Text = "삭제"; }
+            bTry.Margin = new Padding(6, 2, 0, 2); bDel.Margin = new Padding(2, 2, 0, 2);
+            tips.SetToolTip(row.On, "켜기 / 끄기"); tips.SetToolTip(row.Time, "알람 시각 (위·아래 화살표로 바꿔요)");
+            row.On.CheckedChanged += delegate { row.Time.Enabled = row.Msg.Enabled = row.Repeat.Enabled = row.On.Checked; };
+            row.Time.Enabled = row.Msg.Enabled = row.Repeat.Enabled = row.On.Checked;
+            row.Host.Controls.AddRange(new Control[] { row.On, row.Time, row.Msg, row.Repeat, bTry, bDel });
+            alarmRows.Add(row); alarmList.Controls.Add(row.Host); UpdateAlarmEmpty();
+            if (src == null) row.Msg.Focus();
+        }
+
+        /// <summary>우클릭 메뉴에서 새로 만든 알람을 열려 있는 설정창에도 한 줄로 보여 준다(이미 저장된 알람).</summary>
+        internal void AddAlarmFromOutside(UserAlarm a) { if (alarmList != null) AddAlarmRow(a); }
+
+        private void UpdateAlarmEmpty()
+        {
+            alarmEmpty.Visible = alarmRows.Count == 0;
+            bAlarmAdd.Enabled = alarmRows.Count < Settings.MaxAlarms;
         }
 
         // 작은 제목 + 오른쪽으로 이어지는 가는 선
@@ -1030,13 +1182,24 @@ namespace SuperHeroes
         private void RefreshLive()
         {
             if (lifeSummary == null) return;
+            foreach (var r in alarmRows)   // 한 번만 울리고 스스로 꺼진 알람은 켜기 칸도 함께 끈다
+                if (r.Source != null && r.Source.FiredOff) { r.Source.FiredOff = false; r.On.Checked = false; }
             var d = FriendData.Current;
-            lifeSummary.Text = "♥ 친밀도 " + d.Affinity.ToString("N0") + "   ·   함께 " + FriendData.FormatTogether(d.TogetherSeconds);
-            satietyBar.Value = Math.Max(0, Math.Min(100, (int)Math.Floor(d.Satiety)));
-            lifeDetail.Text = "포만감 " + (int)Math.Floor(d.Satiety) + " / 100   ·   다음 꽃다발: 친밀도 " + ((d.Affinity / 100 + 1) * 100).ToString("N0") + "   ·   " + (d.CanSnack ? "지금 간식을 줄 수 있어요" : "지금은 배가 꽉 찼어요");
+            int sat = Math.Max(0, Math.Min(100, (int)Math.Floor(d.Satiety)));
+            lifeSummary.Text = d.Affinity.ToString("N0"); lifeDetail.Text = FriendData.FormatTogether(d.TogetherSeconds);
+            satietyBar.Value = sat; satietyNum.Text = sat.ToString();
             snackButton.Enabled = d.CanSnack;
-            var names = new[] { new[] { "dance", "몰래 하는 군무" }, new[] { "dizzy", "어질어질" }, new[] { "power", "기 폭발" } };
-            secretLabel.Text = "발견한 숨은 반응 " + names.Count(p => d.Discoveries.Contains(p[0])) + " / 3\n" + string.Join("  ·  ", names.Where(p => d.Discoveries.Contains(p[0])).Select(p => p[1]).ToArray());
+            // 자세한 숫자는 카드 위에 마우스를 올렸을 때의 말풍선으로
+            string tip = "친밀도 " + d.Affinity.ToString("N0") + "  ·  함께 " + FriendData.FormatTogether(d.TogetherSeconds) + "\n포만감 " + sat + " / 100  ·  " + (d.CanSnack ? "지금 간식을 줄 수 있어요" : "지금은 배가 꽉 찼어요")
+                       + "\n다음 꽃다발: 친밀도 " + ((d.Affinity / 100 + 1) * 100).ToString("N0") + "\n(간식 +25씩 · 함께한 시간 1분마다 친밀도 +1)";
+            if (tip != lifeTip)
+            {
+                lifeTip = tip; tips.SetToolTip(lifeCard, tip);
+                foreach (Control c in lifeCard.Controls) if (c != snackButton) tips.SetToolTip(c, tip);
+            }
+            string[] keys = { "dance", "dizzy", "power" }; int found = 0;
+            for (int i = 0; i < keys.Length; i++) { bool ok = d.Discoveries.Contains(keys[i]); secretBadge[i].Found = ok; if (ok) found++; }
+            secretCount.Text = found + " / 3";
             RefreshRoster();
         }
 
@@ -1046,17 +1209,17 @@ namespace SuperHeroes
 
         private bool Apply()
         {
-            if (!Settings.ParseTime(tLunch.Text).HasValue) { nav.SelectedIndex = 4; Warn("점심 시간을 12:00처럼 적어 주세요."); tLunch.Focus(); return false; }
-            if (!Settings.ParseTime(tLeave.Text).HasValue) { nav.SelectedIndex = 4; Warn("퇴근 시간을 18:00처럼 적어 주세요."); tLeave.Focus(); return false; }
+            if (!Settings.ParseTime(tLunch.Text).HasValue) { nav.SelectedIndex = AlarmPage; Warn("점심 시간을 12:00처럼 적어 주세요."); tLunch.Focus(); return false; }
+            if (!Settings.ParseTime(tLeave.Text).HasValue) { nav.SelectedIndex = AlarmPage; Warn("퇴근 시간을 18:00처럼 적어 주세요."); tLeave.Focus(); return false; }
             try { StartupOption.SetEnabled(cStartup.Checked); }
-            catch (Exception ex) { nav.SelectedIndex = 5; Warn("자동 시작 설정을 저장하지 못했어요.\n" + ex.Message); return false; }
+            catch (Exception ex) { nav.SelectedIndex = DisplayPage; Warn("자동 시작 설정을 저장하지 못했어요.\n" + ex.Message); return false; }
 
             var o = PlayOptions.Current; int oldSize = o.SizePercent;
             o.Walls = cWalls.Checked; o.Ceiling = cCeiling.Checked; o.Windows = cWindows.Checked; o.Fullscreen = cFull.Checked;
             o.Idle = cIdle.Checked; o.ShortRest = cShortRest.Checked; o.Focus = cFocus.Checked; o.WorkFocus = cWork.Checked; o.PositionFixed = cPinned.Checked;
             o.Speed = (double)nSpeed.Value; o.FallSpeed = (double)nFall.Value; o.SlideSpeed = (double)nSlide.Value;
-            o.ClickMode = (ClickReaction)clickMode.SelectedIndex;
-            o.Escape = rEscape.Checked; o.Follow = rFollow.Checked; o.EscapeDelay = (double)nDelay.Value; o.Secrets = cSecrets.Checked;
+            o.ClickMode = (ClickReaction)Math.Max(0, clickMode.SelectedIndex);
+            o.Escape = cursorMode.SelectedIndex == 0; o.Follow = cursorMode.SelectedIndex == 1; o.EscapeDelay = (double)nDelay.Value; o.Secrets = cSecrets.Checked;
             o.HungerMinutes = (int)nHunger.Value; o.HungerCry = cHungerCry.Checked; o.ShowAffinity = cAffinity.Checked;
             o.ClarkKent = costume.SelectedIndex == 1;
             o.SigFreq = sigFreq.SelectedIndex; o.SizePercent = (int)nSize.Value; o.PetOpacityPercent = (int)nOpacity.Value;
@@ -1069,6 +1232,16 @@ namespace SuperHeroes
             s.LunchOn = cLunch.Checked; s.LunchTime = Norm(tLunch.Text); s.LunchMsg = tLunchMsg.Text.Trim();
             s.LeaveOn = cLeave.Checked; s.LeaveTime = Norm(tLeave.Text); s.LeaveMsg = tLeaveMsg.Text.Trim();
             s.NapOn = cNap.Checked; s.NapMinutes = (int)nNap.Value;
+            // 내 알람: 시각이 그대로인 알람은 오늘 울렸는지(Done)를 이어받는다
+            var made = new List<UserAlarm>();
+            foreach (var r in alarmRows)
+            {
+                string t = r.Time.Value.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
+                var u = new UserAlarm { On = r.On.Checked, Repeat = r.Repeat.Checked, Time = t, Msg = r.Msg.Text.Trim() };
+                if (r.Source != null && r.Source.Time == t) u.Done = r.Source.Done;
+                r.Source = u; made.Add(u);   // 다음 저장 때 이어받을 수 있게
+            }
+            s.Alarms = made.OrderBy(u => u.Time, StringComparer.Ordinal).ToList();
             if (s.LunchMsg.Length == 0) s.LunchMsg = "점심 먹으러 가자!";
             if (s.LeaveMsg.Length == 0) s.LeaveMsg = "퇴근이다! 오늘도 수고했어";
 

@@ -238,6 +238,7 @@ namespace SuperHeroes
             menu.Items.Add(new ToolStripMenuItem("일기장", null, delegate { ShowDiary(); }));
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(NewNoteItem());
+            menu.Items.Add(AlarmMenu());
             menu.Items.Add(new ToolStripMenuItem("메모 라이브러리", null, delegate { if (Notes != null) Notes.ShowLibrary(); }) { ShortcutKeyDisplayString = "Ctrl+Shift+F" });
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(new ToolStripMenuItem("간식 주기  ·  포만감 " + (int)Math.Floor(FriendData.Current.Satiety) + "/100", null, delegate { FeedFirst(pet); }));
@@ -411,6 +412,63 @@ namespace SuperHeroes
             return new ToolStripMenuItem("새 메모", null, delegate { if (Notes != null) Notes.CreateNote(); }) { ShortcutKeyDisplayString = "Ctrl+Alt+N" };
         }
 
+        // ───────── 알람 (우클릭 메뉴에서 등록) ─────────
+        private AlarmComposer alarmForm;
+
+        /// <summary>알람 ▶ 10분 뒤 · 30분 뒤 · 1시간 뒤 · 직접 정하기… · (다음 알람) · 알람 목록(설정)</summary>
+        private ToolStripMenuItem AlarmMenu()
+        {
+            var root = new ToolStripMenuItem("알람");
+            foreach (int minutes in new[] { 10, 30, 60 })
+            {
+                int m = minutes;
+                root.DropDownItems.Add(m < 60 ? m + "분 뒤" : "1시간 뒤", null, delegate
+                {
+                    DateTime at = DateTime.Now.AddMinutes(m).AddSeconds(30);   // 분 단위로 반올림
+                    RegisterAlarm(new UserAlarm { On = true, Repeat = false, Time = at.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture), Msg = (m < 60 ? m + "분" : "1시간") + "이 지났어!" });
+                });
+            }
+            root.DropDownItems.Add("직접 정하기…", null, delegate { BeginInvokeSafe(ShowAlarmComposer); });
+            root.DropDownItems.Add(new ToolStripSeparator());
+            string next = NextAlarmLabel(DateTime.Now);
+            root.DropDownItems.Add(new ToolStripMenuItem(next ?? "켜 둔 알람이 없어요") { Enabled = false });
+            root.DropDownItems.Add("알람 목록 · 설정…", null, delegate { OpenSettingsPage(SettingsForm.AlarmPageIndex); });
+            return root;
+        }
+
+        private string NextAlarmLabel(DateTime now)
+        {
+            UserAlarm best = null; DateTime bestAt = DateTime.MaxValue;
+            foreach (var al in Settings.Alarms)
+            {
+                TimeSpan? t = Settings.ParseTime(al.Time); if (!al.On || !t.HasValue) continue;
+                DateTime at = now.Date + t.Value;
+                if (al.Done == now.Date || at.AddSeconds(60) <= now) at = at.AddDays(1);   // 오늘 울렸거나 지났으면 내일
+                if (at < bestAt) { best = al; bestAt = at; }
+            }
+            if (best == null) return null;
+            string text = best.Text; if (text.Length > 14) text = text.Substring(0, 14) + "…";
+            return "다음 알람: " + (bestAt.Date > now.Date ? "내일 " : "") + best.Time + "  " + text;
+        }
+
+        internal void ShowAlarmComposer()
+        {
+            if (alarmForm != null && !alarmForm.IsDisposed) { alarmForm.Activate(); return; }
+            alarmForm = new AlarmComposer(TrayIconImage, RegisterAlarm); alarmForm.FormClosed += delegate { alarmForm = null; }; alarmForm.Show(); alarmForm.Activate();
+        }
+
+        /// <summary>메뉴·창에서 만든 알람을 목록에 더하고 바로 저장한다. 열려 있는 설정창에도 한 줄 더한다.</summary>
+        internal bool RegisterAlarm(UserAlarm alarm)
+        {
+            if (Settings.Alarms.Count >= Settings.MaxAlarms) { Announce("알람은 " + Settings.MaxAlarms + "개까지 만들 수 있어. 설정에서 지워 줘!"); return false; }
+            Settings.Alarms.Add(alarm);
+            OnSettingsChanged();   // 이미 지난 시각은 오늘 울린 것으로 쳐서 내일부터 울리게
+            Settings.Save();
+            if (settingsForm != null && !settingsForm.IsDisposed) settingsForm.AddAlarmFromOutside(alarm);
+            Announce("알람을 맞췄어: " + alarm.Time + "  " + alarm.Text);
+            return true;
+        }
+
         internal AlertPetWindow ShowAlert(string message)
         {
             if (string.IsNullOrWhiteSpace(message)) return alert;
@@ -524,6 +582,19 @@ namespace SuperHeroes
             TimeSpan? leave = Settings.ParseTime(Settings.LeaveTime);
             if (leave.HasValue && now.TimeOfDay > leave.Value.Add(TimeSpan.FromSeconds(60))) { leaveDone = now.Date; leaveGatherDone = now.Date; }
             else if (leaveDone == now.Date) { leaveDone = DateTime.MinValue; leaveGatherDone = DateTime.MinValue; }
+            // 내 알람: 이미 지난 시각은 오늘 울린 것으로 친다(저장 직후 다시 울리지 않게)
+            foreach (var al in Settings.Alarms)
+            {
+                TimeSpan? t = Settings.ParseTime(al.Time);
+                if (t.HasValue && now.TimeOfDay > t.Value.Add(TimeSpan.FromSeconds(60))) al.Done = now.Date;
+            }
+        }
+
+        public void PreviewAlarm(string msg)
+        {
+            if (hidden) ToggleHidden();
+            if (windows.Count == 0) Spawn();
+            NoticeAll(string.IsNullOrWhiteSpace(msg) ? "알람 시간이야!" : msg);
         }
 
         public void PreviewLunch(string msg)
@@ -553,6 +624,12 @@ namespace SuperHeroes
 
         private void CheerAll(string msg) { foreach (var w in windows) w.Pet.Cheer(this, msg, 8); }
 
+        // 알림 방식(큰 히어로 배너 / 말풍선)에 맞춰 알린다.
+        private void NoticeAll(string msg)
+        {
+            if (Settings.AlertPet && !string.IsNullOrWhiteSpace(msg)) ShowAlert(msg); else CheerAll(msg);
+        }
+
         private void CheckAlarms(double now)
         {
             if (previewLeaveAt > 0 && now >= previewLeaveAt) { previewLeaveAt = -1; CheerAll(previewLeaveMsg); }
@@ -573,6 +650,12 @@ namespace SuperHeroes
                     if (leaveDone != date && tod >= t.Value && tod < t.Value + TimeSpan.FromSeconds(60))
                     { leaveDone = date; leaveGatherDone = date; napping = false; if (Settings.AlertPet && !string.IsNullOrWhiteSpace(Settings.LeaveMsg)) ShowAlert(Settings.LeaveMsg); else CheerAll(Settings.LeaveMsg); }
                 }
+            }
+            foreach (var al in Settings.Alarms)   // 내 알람 (시각 + 내용, 반복이면 매일)
+            {
+                if (!al.On || al.Done == date) continue;
+                TimeSpan? t = Settings.ParseTime(al.Time);
+                if (t.HasValue && tod >= t.Value && tod < t.Value + TimeSpan.FromSeconds(60)) { al.Done = date; napping = false; NoticeAll(al.Text); if (!al.Repeat) { al.On = false; al.FiredOff = true; Settings.Save(); } }   // 반복이 아니면 한 번 울리고 스스로 꺼진다
             }
             if (OptionsHourlyDue(dt))
             {

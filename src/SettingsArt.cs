@@ -9,7 +9,7 @@ namespace SuperHeroes
     /// 설정창 메모 쪽에서 쓰는 납작한(flat) 벡터 아이콘. 아이콘 글꼴에 기대지 않고 GDI+ 로 직접 그려서 어느 PC 에서나 같게 보인다.
     /// 모든 그림은 받은 사각형 안에서 비율(0~1)로 그리므로 크기와 DPI 에 상관없이 또렷하다. 설정창 전용 색이라 캐릭터 가이드북 색 규정과는 무관하다.
     /// </summary>
-    internal static class FlatIcon
+    internal static partial class FlatIcon
     {
         internal delegate void Painter(Graphics g, RectangleF r, Color ink);
 
