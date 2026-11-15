@@ -277,9 +277,40 @@ namespace SuperHeroes
                 Pt(torsoCx + topW * .5f, waistY + 65),
                 Pt(shR.X - 10, shR.Y + 15)
             };
+            if (p.CapeLift > .01f)
+            {
+                // 하강: 맞바람에 망토가 어깨 뒤에서 하늘 쪽으로 떠올라 펄럭인다 (멈춰 있을 때의 처짐 → 위로 휘날림을 섞는다)
+                float lift = Math.Min(1f, p.CapeLift), cx = (shL.X + shR.X) / 2f;
+                float f1 = (float)Math.Sin(p.CapeT * 13) * 9f, f2 = (float)Math.Sin(p.CapeT * 17 + 1.3) * 7f, f3 = (float)Math.Sin(p.CapeT * 11 + 2.4) * 6f;
+                var hang = new[]
+                {
+                    pts[0], pts[1], Mid(pts[1], pts[2]), pts[2], pts[3], Mid(pts[3], pts[4]), pts[4], pts[5]
+                };
+                var up = new[]
+                {
+                    pts[0],
+                    Pt(shL.X - 26, shL.Y - 95 + f3),
+                    Pt(cx - topW * .85f + f1, 52 + by + f2),
+                    Pt(cx - topW * .32f + f2, 6 + by + f1 * .6f),
+                    Pt(cx + topW * .32f - f2, 0 + by - f1 * .6f),
+                    Pt(cx + topW * .85f - f1, 46 + by - f2),
+                    Pt(shR.X + 26, shR.Y - 95 - f3),
+                    pts[5]
+                };
+                var mix = new PointF[8];
+                for (int i = 0; i < 8; i++) mix[i] = Pt(hang[i].X + (up[i].X - hang[i].X) * lift, hang[i].Y + (up[i].Y - hang[i].Y) * lift);
+                g.FillPolygon(B(cCapeInner), mix);
+                // 천 주름: 어깨에서 위쪽 끝자락으로 뻗는 주름 두 줄
+                g.DrawLine(ink, Pt(cx - topW * .22f, shL.Y + 4), mix[3]);
+                g.DrawLine(ink, Pt(cx + topW * .22f, shR.Y + 4), mix[4]);
+                g.DrawPolygon(ink, mix);
+                return;
+            }
             g.FillPolygon(B(cCapeInner), pts);
             g.DrawPolygon(ink, pts);
         }
+
+        private static PointF Mid(PointF a, PointF b) { return new PointF((a.X + b.X) / 2f, (a.Y + b.Y) / 2f); }
 
         private void DrawFrontCape()
         {

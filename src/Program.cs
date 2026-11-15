@@ -356,6 +356,16 @@ namespace SuperHeroes
                 app.Remove(app.LiveWindows.Last()); pump(.2);
                 if (app.LiveWindows.Count != n) throw new Exception("remove -1 failed");
             });
+            step("정각 알림: 별도 창 없이 활동 중인 캐릭터가 말풍선으로", () =>
+            {
+                int forms = Application.OpenForms.Count;
+                app.BeginHourly("지금은 오후 1시야!"); pump(.4);
+                bool bubbles = app.LiveWindows.Count > 0 && app.LiveWindows.All(w => w.Pet.hourlyBubble == "지금은 오후 1시야!");
+                int formsAfter = Application.OpenForms.Count;
+                app.ClearHourly(); pump(.2);
+                if (!bubbles) throw new Exception("pets did not show hourly bubble");
+                if (formsAfter != forms) throw new Exception("a separate window was opened: " + forms + " -> " + formsAfter);
+            });
             step("도우미 창", () => { FriendData.Current.Todos.Add(new TodoItem { Text = "첫 할 일", Done = true }); FriendData.Current.Todos.Add(new TodoItem { Text = "둘째 할 일" }); var f = new FriendPanel(app); shot(f, "ui_helper"); f.Close(); });
             step("정각 카드 + 가장자리 빛", () =>
             {

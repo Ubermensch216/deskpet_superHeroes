@@ -174,6 +174,8 @@ namespace SuperHeroes
             P.EarL = F(-26 + sh * 6); P.EarR = F(26 - sh * 6);
             P.Tail = F(-20 + sh * 6); P.TailCurl = -16; P.TailWaveAmp = 18; P.TailWavePhase = F(StateT * 24);
             P.Brow = -.3f; P.Sweat = F(StateT);
+            // 던져진 뒤 떨어지는 동안(아래로 향할 때)은 망토가 하늘 쪽으로 휘날린다
+            if (throwVy > 0 && Who != Persona.Spiderman && Who != Persona.WonderWoman) { P.CapeLift = F(Math.Min(1.0, throwVy / (260 * S))); P.CapeT = F(StateT); }
         }
 
         private void FallingPose(Pose P)
@@ -191,11 +193,13 @@ namespace SuperHeroes
             P.Tail = F(-10 + sway * 8); P.TailWaveAmp = 20; P.TailWavePhase = F(t * 9); P.TailCurl = 12;
             P.Mouth = MouthStyle.Neutral; P.MouthOpen = .3f;
             // 슈퍼히어로별 특유의 비행·강하 자세
-            if (Who == Persona.Batman) { P.CapeWing = 1.0f; P.Brow = 0.5f; }
+            if (Who == Persona.Batman) { P.Brow = 0.5f; }   // 망토는 아래 CapeLift 로 하늘 쪽으로 펄럭인다
             else if (Who == Persona.Spiderman) { P.WebSwing = 1.0f; P.Reach = Reach.WebThrow; }
             else if (Who == Persona.Thor) { P.MjolnirSpin = 0.8f; P.Aura = 0.6f; P.AuraColor = Color.FromArgb(120, 200, 255); }
             else if (Who == Persona.WonderWoman) { P.AmazonFlight = 0.8f; P.FlightT = F(t); P.CapeWind = 30f; P.Aura = 0.5f; P.AuraColor = Color.FromArgb(255, 215, 90); }
             else { P.SonicGlow = 0.8f; P.Aura = 0.5f; P.AuraColor = Color.LightSkyBlue; }
+            // 하강하는 망토 히어로: 맞바람에 망토가 하늘 쪽으로 휘날린다 (솟구치는 PowerRise 는 제외)
+            if (!IsPowerFlight && Who != Persona.Spiderman && Who != Persona.WonderWoman) { P.CapeLift = F(Math.Min(1.0, StateT * 3.5) * (.92 + .08 * Math.Sin(t * 6))); P.CapeT = F(t); }
             if (IsPowerFlight)
             {
                 P.Aura = 1; P.AuraColor = Color.Gold; P.AuraT = F(t);

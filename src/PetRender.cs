@@ -344,6 +344,7 @@ namespace SuperHeroes
                 minY = Math.Min(minY, sky[0].Y); spriteTop = Math.Min(spriteTop, sky[0].Y);
             }
             if (ps.CapeWing > 0) fwd = Math.Max(fwd, 160 * K);
+            if (ps.CapeLift > 0) up = Math.Max(up, 110 * K);   // 하강할 때 하늘 쪽으로 뜬 망토
             if (ps.SmokeBomb > 0) { fwd = Math.Max(fwd, 160 * K); }
             if (ps.BeamLen > 1) fwd = Math.Max(fwd, (ps.BeamLen + 280) * K);
             if (ps.Shot >= 0) fwd = Math.Max(fwd, (1000 + 260 + 200) * K);

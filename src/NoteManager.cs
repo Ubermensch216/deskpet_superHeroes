@@ -48,7 +48,7 @@ namespace SuperHeroes
 
         /// <summary>
         /// 켤 때: 저장소를 열고, 도우미에 있던 옛 메모 · 할 일을 메모 한 장으로 옮기고, 열려 있던 메모들을 되살린 뒤,
-        /// 아무것도 안 떴으면 마지막 메모(없으면 빈 메모)를 띄운다. 알림 확인과 단축키는 그 다음에 시작한다.
+        /// 아무것도 안 떴으면 마지막 메모를 띄운다(메모가 없으면 빈 메모를 만들지 않는다). 알림 확인과 단축키는 그 다음에 시작한다.
         /// </summary>
         internal void Start(bool restoreWindows = true)
         {
@@ -61,7 +61,6 @@ namespace SuperHeroes
                 foreach (var note in store.OpenNotes()) Show(note);
                 switch (StartupNotePolicy.Decide(windows.Count, store.Count))
                 {
-                    case StartupNoteAction.CreateFirstNote: CreateNote(); break;
                     case StartupNoteAction.OpenMostRecent: var recent = store.Query(null, null, null, NoteSort.UpdatedDescending, 1).FirstOrDefault(); if (recent != null) Focus(recent.Id); break;
                 }
                 reminderTimer.Tick += delegate { CheckReminders(); }; reminderTimer.Start(); CheckReminders();

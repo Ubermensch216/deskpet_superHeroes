@@ -94,15 +94,15 @@ namespace SuperHeroes
         internal void Forget(Guid noteId) { last.Remove(noteId); }
     }
 
-    internal enum StartupNoteAction { Nothing, OpenMostRecent, CreateFirstNote }
+    internal enum StartupNoteAction { Nothing, OpenMostRecent }
 
-    /// <summary>켤 때 바탕화면에 무엇이 있어야 하는지: 메모가 있으면 그대로, 열린 게 없으면 마지막 메모, 아무것도 없으면 빈 메모 하나.</summary>
+    /// <summary>켤 때 바탕화면에 무엇이 있어야 하는지: 메모가 있으면 그대로, 열린 게 없으면 마지막 메모, 메모가 하나도 없으면 아무것도 만들지 않는다(빈 메모를 자동으로 만들지 않음).</summary>
     internal static class StartupNotePolicy
     {
         internal static StartupNoteAction Decide(int openWindowCount, int liveNoteCount)
         {
             if (openWindowCount > 0) return StartupNoteAction.Nothing;
-            return liveNoteCount > 0 ? StartupNoteAction.OpenMostRecent : StartupNoteAction.CreateFirstNote;
+            return liveNoteCount > 0 ? StartupNoteAction.OpenMostRecent : StartupNoteAction.Nothing;
         }
     }
 }

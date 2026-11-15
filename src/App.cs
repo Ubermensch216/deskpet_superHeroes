@@ -84,7 +84,6 @@ namespace SuperHeroes
         private double previewLeaveAt = -1; private string previewLeaveMsg;
         private DateTime hourlyLast;
         private string hourlyPendingText; private double hourlyPendingExpiry; private int hourlyActivityVersion;
-        private HourlyNotice hourlyNotice;
         private double companionClock = -1, companionSavedAt, danceAwayAt, nextSecretDance;
         private bool danceAwaySeen;
 
@@ -240,29 +239,39 @@ namespace SuperHeroes
         }
 
         // ───────── 메뉴 ─────────
-        // 우클릭 메뉴와 트레이 메뉴는 같은 구조:
-        //   ♥ 친밀도 (표시) / 간식 주기 / ★ 시그니처 기술 ▶ / 동작 보기 ▶ / 친구 ▶ / 빠른 설정 ▶ / 도우미 / 설정 / 종료
+        // 우클릭 메뉴와 트레이 메뉴는 같은 구조. 섹션마다 머리글(MenuSection)과 왼쪽 바 아이콘이 붙는다 (모양은 MenuStyle.cs):
+        //   (하트) 친밀도 표시                                  ← 맨 위
+        //   (말풍선) 교류: 말 걸기 / 대화 모드 / 일기장 / 간식 주기 / 친구
+        //   (가방) 일: 히어로 특징 행동 / 동작 보기 / 새 메모 / 알람 / 메모 라이브러리
+        //   (톱니) 설정: 빠른 설정 / 설정 / ─ 종료
         private ContextMenuStrip BuildMenu(PetWindow w)
         {
             Pet pet = w != null ? w.Pet : null;
             var menu = new ContextMenuStrip();
-            menu.Items.Add(new ToolStripMenuItem("♥ 친밀도 " + FriendData.Current.Affinity.ToString("N0") + "  ·  함께 " + FriendData.FormatTogether(FriendData.Current.TogetherSeconds)) { Enabled = false });
-            menu.Items.Add(new ToolStripSeparator());
+            HeroMenuRenderer.Apply(menu);
+
+            // 친밀도 (맨 위)
+            menu.Items.Add(new MenuSection(MenuKind.Status, "친밀도 " + FriendData.Current.Affinity.ToString("N0") + "  ·  함께 " + FriendData.FormatTogether(FriendData.Current.TogetherSeconds)));
+
+            // 교류: 사용자와 주고받는 것
+            menu.Items.Add(new MenuSection(MenuKind.Social, "교류"));
             menu.Items.Add(new ToolStripMenuItem("말 걸기  (AI 대화)", null, delegate { BeginInvokeSafe(delegate { StartChat(pet); }); }) { Font = new Font(menu.Font, FontStyle.Bold), Enabled = ChatOptions.Current.Enabled, ShortcutKeyDisplayString = ChatOptions.Current.Hotkey ? ChatOptions.Current.HotkeyText : null });
             menu.Items.Add(ModeMenu());
-            menu.Items.Add(new ToolStripMenuItem("일기장", null, delegate { ShowDiary(); }));
-            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add("일기장...", null, delegate { BeginInvokeSafe(ShowDiary); });
+            menu.Items.Add(new ToolStripMenuItem("간식 주기  ·  포만감 " + (int)Math.Floor(FriendData.Current.Satiety) + "/100", null, delegate { FeedFirst(pet); }));
+            menu.Items.Add(FriendsMenu(w));
+
+            // 일: 특징 행동 · 메모 · 알람
+            menu.Items.Add(new MenuSection(MenuKind.Work, "일"));
+            menu.Items.Add(SignatureMenu(pet));
+            menu.Items.Add(DemoMenu(pet));
             menu.Items.Add(NewNoteItem());
             menu.Items.Add(AlarmMenu());
             menu.Items.Add(new ToolStripMenuItem("메모 라이브러리", null, delegate { if (Notes != null) Notes.ShowLibrary(); }) { ShortcutKeyDisplayString = "Ctrl+Shift+F" });
-            menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add(new ToolStripMenuItem("간식 주기  ·  포만감 " + (int)Math.Floor(FriendData.Current.Satiety) + "/100", null, delegate { FeedFirst(pet); }));
-            menu.Items.Add(SignatureMenu(pet));
-            menu.Items.Add(DemoMenu(pet));
-            menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add(FriendsMenu(w));
+
+            // 설정
+            menu.Items.Add(new MenuSection(MenuKind.Settings, "설정"));
             menu.Items.Add(QuickMenu());
-            menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("설정...", null, delegate { OpenSettings(); });
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("종료", null, delegate { Quit(); });
@@ -707,26 +716,23 @@ namespace SuperHeroes
             return Settings.HourAllowed(now);
         }
 
+        /// <summary>정각 알림: 지금 바탕화면에서 활동 중인 캐릭터들이 말풍선으로 알린다(별도 창 없음).
+        /// 알릴 캐릭터가 없으면(펫 전원 꺼짐 · 모두 숨김 · 캐릭터 0명) 놓치지 않게 큰 히어로 알림으로 대신한다.</summary>
         internal void BeginHourly(string message)
-        { if (Settings.HourlyWindow || PetOff) ShowHourWindow(message); else BeginBubbleHourly(message); }
-
-        internal void ShowHourWindow(string message)
         {
-            ClearBubbleHourly();
-            if (Settings.AlertPet) { ShowAlert(message); return; }
-            if (hourlyNotice == null || hourlyNotice.IsDisposed)
-            {
-                hourlyNotice = new HourlyNotice(TrayIconImage);
-                hourlyNotice.SetMessage(message);
-                hourlyNotice.EnableEdgeGlow(Settings.EdgeGlow, Settings.EdgeGlowTheme, Settings.EdgeGlowWidth, Settings.EdgeGlowStrength);
-                hourlyNotice.Show();
-            }
-            else
-            {
-                hourlyNotice.SetMessage(message);
-                hourlyNotice.EnableEdgeGlow(Settings.EdgeGlow, Settings.EdgeGlowTheme, Settings.EdgeGlowWidth, Settings.EdgeGlowStrength);
-                hourlyNotice.Show(); hourlyNotice.BringToFront();
-            }
+            if (HourlyNeedsFallback) { ClearBubbleHourly(); ShowAlert(message); }
+            else BeginBubbleHourly(message);
+        }
+        private bool HourlyNeedsFallback { get { return PetOff || hidden || windows.Count == 0; } }
+
+        /// <summary>설정창의 정각 알림 미리보기: 활동 중인 캐릭터가 정각 말풍선을 잠깐 보여 준다.</summary>
+        internal void PreviewHourly()
+        {
+            if (hidden) ToggleHidden();
+            if (PetOff) SetPetPower(true, false);
+            if (windows.Count == 0) Spawn();
+            string msg = HourlyMessage(DateTime.Now, false, "", "", false, "", "") + "\n(미리보기)";
+            foreach (var w in windows) w.Pet.Cheer(this, msg, 8);
         }
 
         internal void BeginBubbleHourly(string message)
@@ -763,15 +769,12 @@ namespace SuperHeroes
 
         internal void MaintainHourly(double now)
         {
-            if (Settings.HourlyWindow || PetOff) return;
             if (!Settings.HourAllowed(DateTime.Now)) ClearBubbleHourly(); else MaintainBubbleHourly(now);
         }
 
         internal void ClearHourly()
         {
             ClearBubbleHourly();
-            if (hourlyNotice != null && !hourlyNotice.IsDisposed) hourlyNotice.Close();
-            hourlyNotice = null;
         }
 
         // ───────── 틱 ─────────

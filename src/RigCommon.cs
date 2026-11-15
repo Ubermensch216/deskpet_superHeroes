@@ -53,6 +53,7 @@ namespace SuperHeroes
         // 망토 및 꼬리 호환 필드
         public float CapeWing;                 // 망토 넓게 펼치기(배트맨 가고일 등) 0..1
         public float CapeWind;                 // 망토 펄럭임 바람 세기
+        public float CapeLift, CapeT;          // 하강할 때 맞바람에 망토가 하늘 쪽으로 뜨는 정도 0..1, 펄럭임 시간
         public float Tail, TailCurl, TailWaveAmp, TailWavePhase;
         // 장식 효과
         public float Tears = -1;
@@ -130,7 +131,7 @@ namespace SuperHeroes
                 add((int)Reach, 1); add(HandLTo.HasValue ? HandLTo.Value.X : -999, 2); add(HandLTo.HasValue ? HandLTo.Value.Y : -999, 2);
                 add(HandRTo.HasValue ? HandRTo.Value.X : -999, 2); add(HandRTo.HasValue ? HandRTo.Value.Y : -999, 2); add(Clasp ? 1 : 0, 1); add(ArmsFront ? 1 : 0, 1);
                 add(FootLX, 2); add(FootLY, 2); add(FootRX, 2); add(FootRY, 2); add(FootLRot, 2); add(FootRRot, 2); add(Knee, 4);
-                add(CapeWing, 10); add(CapeWind, 5); add(HeatLaser, 10); add(FreezeMist, 10); add(ShirtOpen, 10); add(SonicGlow, 10); add(Disguise, 10); add(Transform, 10);
+                add(CapeWing, 10); add(CapeWind, 5); add(CapeLift, 20); add(CapeT, 30); add(HeatLaser, 10); add(FreezeMist, 10); add(ShirtOpen, 10); add(SonicGlow, 10); add(Disguise, 10); add(Transform, 10);
                 add(Batarang, 10); add(Grapnel, 10); add(SmokeBomb, 10);
                 add(WebSwing, 10); add(SpiderSense, 10); add(WebNet, 10);
                 add(MjolnirSpin, 10); add(Lightning, 10); add(LightningT, 30); add(Raise, 20); add(GroundCrush, 10); add(HammerThrow, 10); add(SpinT, 30); add(CrushT, 30); add(SigT, 30); add(HangSwing, 8); add(UpsideDown, 20); add(Flip, 2); add(Hide, 4); add(Vehicle, 4); add(Zoom, 40);

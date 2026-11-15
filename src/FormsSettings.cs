@@ -243,10 +243,9 @@ namespace SuperHeroes
         private readonly SecretBadge[] secretBadge = new SecretBadge[3];
         private string lifeTip = "";
         // 알림
-        private CheckBox cLunch, cLeave, cNap, cHourly, cPopup, cAlertPet, cGlow, cQuiet;
+        private CheckBox cLunch, cLeave, cNap, cHourly, cAlertPet, cQuiet;
         private TextBox tLunch, tLunchMsg, tLeave, tLeaveMsg;
         private NumericUpDown nNap, nStart, nEnd;
-        private ChoiceDrop glowTheme, glowWidth, glowStrength;
         // 내 알람 (시각 + 내용)
         private sealed class AlarmRow { internal FlowLayoutPanel Host; internal CheckBox On; internal DateTimePicker Time; internal TextBox Msg; internal CheckBox Repeat; internal UserAlarm Source; }
         private readonly List<AlarmRow> alarmRows = new List<AlarmRow>();
@@ -752,59 +751,28 @@ namespace SuperHeroes
         }
 
         // ───────── 5. 알림 ─────────
-        // 스크롤 없이 한 화면에: 위에서 아래로 ① 정각 알림(켜기 · 방식 · 미리보기 한 줄, 조용한 시간 한 줄)
-        // ② 화면 가장자리 빛(드롭다운 세 개 한 줄) ③ 점심 · 퇴근 · 낮잠(한 줄씩) ④ 내 알람 — 남는 높이를 알람 목록이 쓰고, 많아지면 목록 안에서만 스크롤된다.
+        // 위에서 아래로 ① 정각 알림(켜기 · 미리보기 한 줄, 조용한 시간 한 줄) ② 점심 · 퇴근 · 낮잠(한 줄씩) ③ 내 알람 — 남는 높이를 알람 목록이 쓰고, 많아지면 목록 안에서만 스크롤된다.
         private Panel BuildAlarmPage()
         {
             FlowLayoutPanel f; var page = NewPage("알림", "정각 · 점심 · 퇴근 알림, 낮잠, 내 알람", out f);
             f.Padding = new Padding(16, 0, 8, 8);
             Settings s = app.Settings;
 
-            // ① 정각 알림: 켜기 · 알림 방식 · 미리보기를 한 줄에
+            // ① 정각 알림: 지금 바탕화면에서 활동 중인 캐릭터들이 말풍선으로 알려 준다(별도 창 없음)
             SectionHead(f, new Label { Text = "정각 알림" }, 0);
             var top = Row(f);
             cHourly = new CheckBox { Text = "정각 알림", Checked = s.HourlyOn, AutoSize = true, Margin = new Padding(3, 7, 14, 3) };
-            cPopup = new CheckBox { Text = "별도 알림창으로 보기", Checked = s.HourlyWindow, AutoSize = true, Margin = new Padding(3, 7, 14, 3) };
-            tips.SetToolTip(cPopup, "정각 알림을 화면 오른쪽 아래의 알림창으로 띄워요.\n끄면 친구들의 말풍선으로 알려요.");
-            cAlertPet = new CheckBox { Text = "큰 히어로로 보여주기", Checked = s.AlertPet, AutoSize = true, Margin = new Padding(3, 7, 14, 3) };
-            tips.SetToolTip(cAlertPet, "2배 크기 히어로가 네온 빛을 두르고 나와요. 눌러서 닫을 때까지 유지돼요.\n끄면 알림창 · 말풍선을 써요. (메모 알림은 늘 큰 히어로로 나와요)");
-            var bPreview = IconButton('', "미리보기", "정각창 미리보기\n지금 고른 빛 · 폭 · 진하기로 정각 알림창을 미리 봐요", delegate
-            {
-                var n = new HourlyNotice(app.TrayIconImage); n.SetMessage(App.HourlyMessage(DateTime.Now, true, "13:00", "점심 먹으러 가자!", false, "18:00", "x") + "\n(미리보기)");
-                n.EnableEdgeGlow(cGlow.Checked, glowTheme.SelectedIndex, glowWidth.SelectedIndex, glowStrength.SelectedIndex); n.Show();
-            });
+            tips.SetToolTip(cHourly, "정각이 되면 지금 바탕화면에서 활동 중인 캐릭터들이 말풍선으로 알려요.\n마우스나 키보드를 쓰면 잠시 뒤 말풍선이 사라져요.\n캐릭터가 화면에 없을 때(펫 전원 꺼짐 · 모두 숨김)는 큰 히어로 알림으로 대신해요.");
+            var bPreview = IconButton('\ue768', "미리보기", "정각 알림 미리보기\n활동 중인 캐릭터들이 정각 말풍선을 잠깐 보여줘요", delegate
+            { app.PreviewHourly(); });
             bPreview.Margin = new Padding(0, 3, 3, 3);
-            top.Controls.Add(cHourly); top.Controls.Add(cPopup); top.Controls.Add(cAlertPet); top.Controls.Add(bPreview);
+            top.Controls.Add(cHourly); top.Controls.Add(bPreview);
             var rq = Row(f);
             cQuiet = new CheckBox { Text = "평일(월~금) 정각 알림 끄기", Checked = s.QuietWeekdays, AutoSize = true, Margin = new Padding(3, 6, 8, 3) };
             nStart = Num(0, 23, s.QuietStart, 0, 1, 54); nEnd = Num(0, 23, s.QuietEnd, 0, 1, 54);
             rq.Controls.Add(cQuiet); rq.Controls.Add(nStart); rq.Controls.Add(Cap("시 ~")); rq.Controls.Add(nEnd); rq.Controls.Add(Cap("시 (양 끝 정각 포함)"));
-            cQuiet.CheckedChanged += delegate { nStart.Enabled = nEnd.Enabled = cQuiet.Checked; }; nStart.Enabled = nEnd.Enabled = cQuiet.Checked;
-            // 정각 알림을 끄면 알림 방식은 쓸 일이 없으니 함께 흐리게 한다.
-            Action syncHourly = delegate { cPopup.Enabled = cAlertPet.Enabled = cHourly.Checked; };
-            cHourly.CheckedChanged += delegate { syncHourly(); }; syncHourly();
-
-            // ② 화면 가장자리 빛: 제목줄 오른쪽에 켜기, 아래에 드롭다운 세 개
-            var glowHead = SectionHead(f, new Label { Text = "화면 가장자리 빛" }, 196);
-            cGlow = new CheckBox { Text = "알림창을 닫을 때까지 유지", Checked = s.EdgeGlow, AutoSize = true, Left = CharW - 192, Top = 6 };
-            tips.SetToolTip(cGlow, "알림창을 닫을 때까지 화면 가장자리 빛을 유지해요.");
-            glowHead.Controls.Add(cGlow);
-            var glowBox = Row(f);
-            var thumb = new Size(34, 22);
-            glowTheme = new ChoiceDrop(new[] { "파스텔", "노을", "오로라", "무지개" }, s.EdgeGlowTheme, 132, thumb, delegate(Graphics g, Rectangle r, int i)
-            { GlowThumb(g, r, EdgeGlowWindow.Palette(i), 6 * r.Width / 46.0, 255); });
-            tips.SetToolTip(glowTheme, "빛 색상\n파스텔: 피치 · 핑크 · 보라 · 하늘");
-            glowWidth = new ChoiceDrop(new[] { "보통", "넓게", "아주 넓게" }, s.EdgeGlowWidth, 132, thumb, delegate(Graphics g, Rectangle r, int i)
-            { GlowThumb(g, r, EdgeGlowWindow.Palette(glowTheme.SelectedIndex), (i == 0 ? 3 : i == 1 ? 6 : 10) * r.Width / 46.0, 255); });
-            tips.SetToolTip(glowWidth, "빛이 화면 안쪽으로 퍼지는 폭");
-            glowStrength = new ChoiceDrop(new[] { "은은하게", "선명하게", "강하게" }, s.EdgeGlowStrength, 132, thumb, delegate(Graphics g, Rectangle r, int i)
-            { GlowThumb(g, r, EdgeGlowWindow.Palette(glowTheme.SelectedIndex), 6 * r.Width / 46.0, i == 0 ? 85 : i == 1 ? 170 : 255); });
-            tips.SetToolTip(glowStrength, "빛의 진하기");
-            glowTheme.SelectedIndexChanged += delegate { glowWidth.Invalidate(); glowStrength.Invalidate(); };
-            glowBox.Controls.Add(Cap("색상")); glowBox.Controls.Add(glowTheme);
-            glowBox.Controls.Add(Cap("폭")); glowBox.Controls.Add(glowWidth);
-            glowBox.Controls.Add(Cap("진하기")); glowBox.Controls.Add(glowStrength);
-            cGlow.CheckedChanged += delegate { glowBox.Enabled = cGlow.Checked; }; glowBox.Enabled = cGlow.Checked;
+            cQuiet.CheckedChanged += delegate { nStart.Enabled = nEnd.Enabled = cQuiet.Checked && cHourly.Checked; }; nStart.Enabled = nEnd.Enabled = cQuiet.Checked && cHourly.Checked;
+            cHourly.CheckedChanged += delegate { cQuiet.Enabled = cHourly.Checked; nStart.Enabled = nEnd.Enabled = cQuiet.Checked && cHourly.Checked; }; cQuiet.Enabled = cHourly.Checked;
 
             // ③ 점심 · 퇴근 · 낮잠: 한 줄에 켜기 · 시각 · 문구 · 미리보기
             SectionHead(f, new Label { Text = "점심 · 퇴근 · 낮잠" }, 0);
@@ -820,6 +788,9 @@ namespace SuperHeroes
             tLeaveMsg = new TextBox { Text = s.LeaveMsg, Width = 250, Margin = new Padding(3, 4, 3, 3) }; rv.Controls.Add(tLeaveMsg);
             rv.Controls.Add(FriendUI.Button("미리보기", delegate { app.PreviewLeave(tLeaveMsg.Text); }));
             tips.SetToolTip(tLeave, "시각 (18:00처럼)\n퇴근 10초 전에는 친구들이 화면 가운데로 모여요."); tips.SetToolTip(tLeaveMsg, "알림 문구");
+            cAlertPet = new CheckBox { Text = "점심 · 퇴근 · 내 알람은 큰 히어로로 보여주기", Checked = s.AlertPet, AutoSize = true, Margin = new Padding(3, 5, 3, 3) };
+            tips.SetToolTip(cAlertPet, "2배 크기 히어로가 네온 빛을 두르고 나와요. 눌러서 닫을 때까지 유지돼요.\n끄면 캐릭터들의 말풍선으로 알려요. (메모 알림은 늘 큰 히어로로 나와요)");
+            f.Controls.Add(cAlertPet);
             var rn = Row(f);
             cNap = new CheckBox { Text = "자리를 오래 비우면 낮잠 자기", Checked = s.NapOn, AutoSize = false, Width = 196, Height = 24, Margin = new Padding(3, 6, 3, 3) };
             nNap = Num(1, 600, s.NapMinutes, 0, 1, 62);
@@ -914,27 +885,6 @@ namespace SuperHeroes
         }
         private static Label Tiny(string text, int width = 0)
         { var l = new Label { Text = text, AutoSize = width == 0, ForeColor = Color.DimGray, Margin = new Padding(3, 5, 3, 1), Font = new Font("Malgun Gothic", 8.5f) }; if (width > 0) { l.AutoSize = false; l.Width = width; l.Height = 16; } return l; }
-
-        private static void GlowThumb(Graphics g, Rectangle r, Color[] pal, double thick, int alpha)
-        {
-            r = new Rectangle(r.X, r.Y, r.Width - 1, r.Height - 1);
-            using (var path = ChoiceStrip.RoundRect(r, Math.Max(3, r.Height / 8)))
-            {
-                using (var fill = new SolidBrush(Color.FromArgb(250, 251, 255))) g.FillPath(fill, path);
-                g.SetClip(path, CombineMode.Intersect);
-                int steps = Math.Max(2, (int)Math.Round(thick));
-                var blend = new ColorBlend(pal.Length) { Positions = pal.Select((c, i) => i / (float)(pal.Length - 1)).ToArray() };
-                for (int k = 0; k < steps; k++)
-                {
-                    int al = (int)Math.Round(alpha * Math.Pow(1 - k / (double)steps, 1.35));
-                    blend.Colors = pal.Select(c => Color.FromArgb(al, c)).ToArray();
-                    using (var br = new LinearGradientBrush(new Rectangle(r.X, r.Y, Math.Max(2, r.Width), r.Height), Color.White, Color.White, LinearGradientMode.Horizontal) { InterpolationColors = blend })
-                    using (var pen = new Pen(br, 1.5f)) g.DrawRectangle(pen, r.X + k, r.Y + k, r.Width - 2 * k, r.Height - 2 * k);
-                }
-                g.ResetClip();
-                using (var pen = new Pen(Color.FromArgb(150, 165, 195), 1f)) g.DrawPath(pen, path);
-            }
-        }
 
         // ───────── 6. 화면 · 시스템 ─────────
         private Panel BuildDisplayPage()
@@ -1269,8 +1219,7 @@ namespace SuperHeroes
             o.MemoTopMost = cMemoTop.Checked; o.MemoOpacityPercent = (int)nMemoOpacity.Value;
 
             Settings s = app.Settings;
-            s.HourlyOn = cHourly.Checked; s.HourlyWindow = cPopup.Checked; s.AlertPet = cAlertPet.Checked; s.EdgeGlow = cGlow.Checked;
-            s.EdgeGlowTheme = glowTheme.SelectedIndex; s.EdgeGlowWidth = glowWidth.SelectedIndex; s.EdgeGlowStrength = glowStrength.SelectedIndex;
+            s.HourlyOn = cHourly.Checked; s.AlertPet = cAlertPet.Checked;
             s.QuietWeekdays = cQuiet.Checked; s.QuietStart = (int)nStart.Value; s.QuietEnd = (int)nEnd.Value;
             s.LunchOn = cLunch.Checked; s.LunchTime = Norm(tLunch.Text); s.LunchMsg = tLunchMsg.Text.Trim();
             s.LeaveOn = cLeave.Checked; s.LeaveTime = Norm(tLeave.Text); s.LeaveMsg = tLeaveMsg.Text.Trim();
