@@ -97,7 +97,20 @@ namespace SuperHeroes
         private AlertPetWindow alert;
         private PetWindow alertHidden;
         private ChatDiaryForm diaryForm;
-        internal bool AllHidden { get { return hidden || autoHidden; } }
+        internal bool AllHidden { get { return hidden || autoHidden || PetOff; } }
+        /// <summary>펫 전원이 꺼진 상태: 캐릭터는 화면에 없고 움직이지 않지만 알람 · 알림은 그대로 온다.</summary>
+        internal bool PetOff { get { return !PlayOptions.Current.PetPower; } }
+
+        /// <summary>펫 전원을 켜고 끈다. 바로 화면에 반영하고 저장한다. 켜면 숨김 상태도 풀고, 친구가 없으면 한 명 부른다.</summary>
+        internal void SetPetPower(bool on, bool spawnIfEmpty = true)
+        {
+            var o = PlayOptions.Current; if (o.PetPower == on) return;
+            o.PetPower = on; o.Save();
+            if (on && hidden) ToggleHidden();
+            ApplyPetVisibility(Now);
+            if (on && spawnIfEmpty && !hidden && windows.Count == 0) Spawn();
+            lastTick = Now; UpdateMenus();
+        }
         internal bool Paused { get { return paused; } }
 
         public App(bool testMode = false)
@@ -172,10 +185,11 @@ namespace SuperHeroes
             double y = area.Top + art.H * .6;
             var pet = new Pet(this, character, x, y) { Area = area };
             if (PlayOptions.Current.PositionFixed && windows.Count == 0) pet.RestorePinned(this); else pet.SyncPinned(this);
-            pet.Hidden = hidden || autoHidden;
+            bool off = hidden || autoHidden || PetOff;
+            pet.Hidden = off;
             var window = new PetWindow(this, pet);
             windows.Add(window);
-            if (!hidden && !autoHidden) { window.Show(); window.Present(Now); }
+            if (!off) { window.Show(); window.Present(Now); }
             UpdateMenus();
             if (!loadingRoster) SaveRoster();
         }
@@ -209,6 +223,7 @@ namespace SuperHeroes
         /// <summary>화면 가운데 위에서 다시 둥실 내려오게 한다 (숨은 친구 구조).</summary>
         internal void RecoverVisible()
         {
+            if (PetOff) { PlayOptions.Current.PetPower = true; PlayOptions.Current.Save(); }   // 다시 부르면 전원도 켠다
             hidden = false; autoHidden = false; forceVisibleUntil = Now + 15;
             Rectangle area = Screen.PrimaryScreen.WorkingArea;
             if (windows.Count == 0) Spawn();
@@ -305,6 +320,7 @@ namespace SuperHeroes
             var friends = new ToolStripMenuItem("친구");
             friends.DropDownItems.Add(SpawnMenu("한 마리 더 부르기"));
             if (w != null) friends.DropDownItems.Add("이 친구 보내기", null, delegate { Remove(w); });
+            friends.DropDownItems.Add(PetOff ? "펫 전원 켜기" : "펫 전원 끄기 (알림은 계속)", null, delegate { SetPetPower(PetOff); });
             friends.DropDownItems.Add(hidden ? "모두 보이기" : "모두 숨기기", null, delegate { ToggleHidden(); });
             friends.DropDownItems.Add("화면 가운데로 다시 부르기", null, delegate { RecoverVisible(); });
             return friends;
@@ -494,11 +510,11 @@ namespace SuperHeroes
             PetWindow back = alertHidden; alertHidden = null;
             if (back == null) return;
             back.Suppressed = false;
-            if (windows.Contains(back) && !hidden && !autoHidden) { back.Show(); back.Invalidate2(); back.Present(Now); back.KeepOnTop(); }
+            if (windows.Contains(back) && !hidden && !autoHidden && !PetOff) { back.Show(); back.Invalidate2(); back.Present(Now); back.KeepOnTop(); }
         }
 
         // ───────── 설정창에서 쓰는 동작 ─────────
-        internal void SpawnFromUi(int character) { if (hidden) ToggleHidden(); Spawn(character); }
+        internal void SpawnFromUi(int character) { if (hidden) ToggleHidden(); if (PetOff) SetPetPower(true, false); Spawn(character); }
         internal void RemoveByIndex(int index) { if (index >= 0 && index < windows.Count) Remove(windows[index]); }
         internal void FeedFirst(Pet pet = null) { Pet p = pet ?? windows.Select(a => a.Pet).FirstOrDefault(); if (p != null) p.Feed(this); }
 
@@ -506,6 +522,7 @@ namespace SuperHeroes
         internal void PreviewSignature(int character, int idx)
         {
             if (hidden) ToggleHidden();
+            if (PetOff) SetPetPower(true, false);   // 전원이 꺼져 있으면 미리보기를 볼 수 없으니 켠다
             Pet p = windows.Select(a => a.Pet).FirstOrDefault(a => a.Art.Id == character && !a.Hidden);
             if (p == null) { Spawn(character); p = windows.Select(a => a.Pet).LastOrDefault(a => a.Art.Id == character); }
             if (p != null) p.RequestSignature(this, idx);
@@ -601,7 +618,7 @@ namespace SuperHeroes
         {
             if (hidden) ToggleHidden();
             if (windows.Count == 0) Spawn();
-            foreach (var w in windows) w.Pet.Cheer(this, !string.IsNullOrEmpty(msg) ? msg : Settings.LunchMsg, 8);
+            NoticeAll(!string.IsNullOrEmpty(msg) ? msg : Settings.LunchMsg);   // 실제 알림과 같은 방식(큰 배너 / 말풍선)으로 미리 보여 준다
         }
 
         public void PreviewLeave(string msg)
@@ -627,17 +644,17 @@ namespace SuperHeroes
         // 알림 방식(큰 히어로 배너 / 말풍선)에 맞춰 알린다.
         private void NoticeAll(string msg)
         {
-            if (Settings.AlertPet && !string.IsNullOrWhiteSpace(msg)) ShowAlert(msg); else CheerAll(msg);
+            if ((Settings.AlertPet || PetOff) && !string.IsNullOrWhiteSpace(msg)) ShowAlert(msg); else CheerAll(msg);   // 펫 전원이 꺼져 있으면 말풍선을 붙일 캐릭터가 없으니 늘 큰 알림으로
         }
 
         private void CheckAlarms(double now)
         {
-            if (previewLeaveAt > 0 && now >= previewLeaveAt) { previewLeaveAt = -1; CheerAll(previewLeaveMsg); }
+            if (previewLeaveAt > 0 && now >= previewLeaveAt) { previewLeaveAt = -1; NoticeAll(previewLeaveMsg); }
             DateTime dt = DateTime.Now; TimeSpan tod = dt.TimeOfDay; DateTime date = dt.Date;
             if (Settings.LunchOn && lunchDone != date)
             {
                 TimeSpan? t = Settings.ParseTime(Settings.LunchTime);
-                if (t.HasValue && tod >= t.Value && tod < t.Value + TimeSpan.FromSeconds(60)) { lunchDone = date; napping = false; if (Settings.AlertPet && !string.IsNullOrWhiteSpace(Settings.LunchMsg)) ShowAlert(Settings.LunchMsg); else CheerAll(Settings.LunchMsg); }
+                if (t.HasValue && tod >= t.Value && tod < t.Value + TimeSpan.FromSeconds(60)) { lunchDone = date; napping = false; NoticeAll(Settings.LunchMsg); }
             }
             if (Settings.LeaveOn)
             {
@@ -648,7 +665,7 @@ namespace SuperHeroes
                     if (leaveGatherDone != date && tod >= gather && tod < t.Value)
                     { leaveGatherDone = date; napping = false; StartGather(now + (t.Value - tod).TotalSeconds); }
                     if (leaveDone != date && tod >= t.Value && tod < t.Value + TimeSpan.FromSeconds(60))
-                    { leaveDone = date; leaveGatherDone = date; napping = false; if (Settings.AlertPet && !string.IsNullOrWhiteSpace(Settings.LeaveMsg)) ShowAlert(Settings.LeaveMsg); else CheerAll(Settings.LeaveMsg); }
+                    { leaveDone = date; leaveGatherDone = date; napping = false; NoticeAll(Settings.LeaveMsg); }
                 }
             }
             foreach (var al in Settings.Alarms)   // 내 알람 (시각 + 내용, 반복이면 매일)
@@ -691,7 +708,7 @@ namespace SuperHeroes
         }
 
         internal void BeginHourly(string message)
-        { if (Settings.HourlyWindow) ShowHourWindow(message); else BeginBubbleHourly(message); }
+        { if (Settings.HourlyWindow || PetOff) ShowHourWindow(message); else BeginBubbleHourly(message); }
 
         internal void ShowHourWindow(string message)
         {
@@ -746,7 +763,7 @@ namespace SuperHeroes
 
         internal void MaintainHourly(double now)
         {
-            if (Settings.HourlyWindow) return;
+            if (Settings.HourlyWindow || PetOff) return;
             if (!Settings.HourAllowed(DateTime.Now)) ClearBubbleHourly(); else MaintainBubbleHourly(now);
         }
 
@@ -789,17 +806,21 @@ namespace SuperHeroes
         {
             if (now - surfaceRefreshAt > .35) { surfaceRefreshAt = now; DesktopSurfaces.Refresh(); }
             if (hidden || paused) return false;
-            bool hide = now >= forceVisibleUntil && PlayOptions.Current.Fullscreen && DesktopSurfaces.FullscreenActive();
-            if (hide != autoHidden)
-            {
-                autoHidden = hide;
-                foreach (var w in windows)
-                {
-                    w.Pet.Hidden = hide;
-                    if (hide) w.Hide(); else { w.Show(); w.Invalidate2(); w.Present(now); w.KeepOnTop(); }
-                }
-            }
+            ApplyPetVisibility(now);
             return !autoHidden;
+        }
+
+        /// <summary>펫 전원이 꺼졌거나 전체화면이면 캐릭터 창을 숨기고, 아니면 다시 보인다.</summary>
+        private void ApplyPetVisibility(double now)
+        {
+            bool hide = PetOff || (now >= forceVisibleUntil && PlayOptions.Current.Fullscreen && DesktopSurfaces.FullscreenActive());
+            if (hide == autoHidden) return;
+            autoHidden = hide;
+            foreach (var w in windows)
+            {
+                w.Pet.Hidden = hide;
+                if (hide) w.Hide(); else { w.Show(); w.Invalidate2(); w.Present(now); w.KeepOnTop(); }
+            }
         }
 
         private void SlowTick(double now)

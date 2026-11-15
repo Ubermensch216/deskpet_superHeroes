@@ -250,7 +250,7 @@ namespace SuperHeroes
         // 내 알람 (시각 + 내용)
         private sealed class AlarmRow { internal FlowLayoutPanel Host; internal CheckBox On; internal DateTimePicker Time; internal TextBox Msg; internal CheckBox Repeat; internal UserAlarm Source; }
         private readonly List<AlarmRow> alarmRows = new List<AlarmRow>();
-        private FlowLayoutPanel alarmList; private Label alarmEmpty; private Button bAlarmAdd;
+        private FlowLayoutPanel alarmList; private Panel alarmHost; private Button bAlarmAdd;
         // 화면·시스템
         private NumericUpDown nSize, nOpacity, nMemoOpacity; private CheckBox cMemoTop, cStartup;
         // 메모
@@ -264,6 +264,8 @@ namespace SuperHeroes
         // 캐릭터
         private readonly HeroToggleCard[] heroCards = new HeroToggleCard[5];
         private ComboBox dexChar, sigFreq, costume; private PictureBox dexPic; private Label dexTitle, dexTraits, rosterTitle, dexStatus;
+        private FlatButton bPower;
+        private Button bLess, bMore; private Label countLabel;   // 선택한 캐릭터의 마릿수 −/+
         private readonly Label[] sigName = new Label[8]; private readonly Label[] sigDesc = new Label[8]; private readonly RoundCard[] sigCard = new RoundCard[8];
 
         public SettingsForm(App app, int page = -1)
@@ -440,14 +442,18 @@ namespace SuperHeroes
 
             // ① 화면의 친구: 제목줄(+ 모두 숨기기 · 화면 가운데로) / 캐릭터 카드 5장
             rosterTitle = new Label { Text = "지금 화면에 있는 친구들" };
-            var head1 = SectionHead(f, rosterTitle, 80);
+            var head1 = SectionHead(f, rosterTitle, 118);
             var bCenter = new FlatButton(FlatIcon.CenterScreen, "화면 가운데로", 34, 28) { Left = CharW - 34, Top = 2 };
             tips.SetToolTip(bCenter, "화면 가운데로 모으기\n화면 밖으로 나갔거나 가려진 친구들을 화면 한가운데로 다시 모아요.");
             bCenter.Click += delegate { app.RecoverVisible(); };
             var bHide = new FlatButton(FlatIcon.Eye, "모두 숨기기 / 보이기", 34, 28) { Left = CharW - 34 - 38, Top = 2 };
             tips.SetToolTip(bHide, "모두 숨기기 / 보이기\n화면의 모든 친구를 한 번에 숨기거나 다시 보여줘요.");
             bHide.Click += delegate { app.ToggleHidden(); RefreshRoster(); };
-            head1.Controls.Add(bCenter); head1.Controls.Add(bHide);
+            // 펫 전원(그림만): 꺼 두면 캐릭터가 화면에서 사라지고 움직이지 않지만 알람 · 알림은 그대로 온다. 껐다 켜도 기억한다.
+            bPower = new FlatButton(FlatIcon.Power, "펫 전원", 34, 28) { Left = CharW - 34 - 38 - 38, Top = 2, Lit = !app.PetOff };
+            tips.SetToolTip(bPower, "펫 전원 켜기 / 끄기\n켜져 있을 때만 캐릭터가 화면에 나와 움직여요.\n꺼 두면 캐릭터는 안 보이지만 정각 · 점심 · 퇴근 알림과 내 알람은 계속 와요.");
+            bPower.Click += delegate { app.SetPetPower(app.PetOff); RefreshRoster(); };
+            head1.Controls.Add(bCenter); head1.Controls.Add(bHide); head1.Controls.Add(bPower);
             tips.SetToolTip(rosterTitle, "캐릭터 카드를 누르면 바탕화면에서 바로 켜고 끌 수 있어요.");
 
             var cardsRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = false, AutoSize = true, Margin = new Padding(3, 0, 0, 4) };
@@ -476,6 +482,23 @@ namespace SuperHeroes
             txt.Controls.Add(dexTitle);
             dexTraits = new Label { AutoSize = true, ForeColor = Color.DimGray, Font = new Font("Malgun Gothic", 8.5f), MaximumSize = new Size(CharW - 90, 0), Margin = new Padding(3, 0, 3, 3) };
             txt.Controls.Add(dexTraits);
+
+            // 마릿수: 도감에서 고른 캐릭터를 하나 더 부르거나(+) 한 명 줄인다(−). 전체 최대 App.MaxPets.
+            var rcount = Row(f); rcount.Margin = new Padding(0, 2, 0, 2);
+            rcount.Controls.Add(new Label { Text = "마릿수", AutoSize = false, Width = 46, Height = 26, TextAlign = ContentAlignment.MiddleLeft, ForeColor = FriendUI.BlueDark, Font = new Font("Malgun Gothic", 9f, FontStyle.Bold), Margin = new Padding(3, 2, 0, 2) });
+            bLess = new Button { Text = "−", Width = 28, Height = 26, Margin = new Padding(2, 2, 0, 2), Font = new Font("Malgun Gothic", 10f, FontStyle.Bold) };
+            countLabel = new Label { Text = "0", AutoSize = false, Width = 42, Height = 26, TextAlign = ContentAlignment.MiddleCenter, ForeColor = FriendUI.Ink, Font = new Font("Malgun Gothic", 10f, FontStyle.Bold), Margin = new Padding(0, 2, 0, 2) };
+            bMore = new Button { Text = "+", Width = 28, Height = 26, Margin = new Padding(0, 2, 0, 2), Font = new Font("Malgun Gothic", 10f, FontStyle.Bold) };
+            string countTip = "도감에서 고른 캐릭터를 하나 더 부르거나(+) 한 명 줄여요(−).\n전체 최대 " + App.MaxPets + "명까지예요.";
+            tips.SetToolTip(bLess, countTip); tips.SetToolTip(bMore, countTip); tips.SetToolTip(countLabel, countTip);
+            bMore.Click += delegate { if (dexChar.SelectedIndex >= 0 && app.LiveWindows.Count < App.MaxPets) { app.SpawnFromUi(dexChar.SelectedIndex); RefreshRoster(); } };
+            bLess.Click += delegate
+            {
+                var w = app.LiveWindows.LastOrDefault(x => x.Pet.Art.Id == dexChar.SelectedIndex);
+                if (w != null) { app.Remove(w); RefreshRoster(); }
+            };
+            rcount.Controls.Add(bLess); rcount.Controls.Add(countLabel); rcount.Controls.Add(bMore);
+            rcount.Controls.Add(new Label { Text = "위에서 고른 캐릭터를 부르거나 보내요", AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(8, 8, 3, 2) });
 
             // ③ ★ 시그니처 기술: 카드를 가로로 세 장씩(캐릭터마다 4~8가지). 오른쪽 위에 자동 재생 빈도.
             var sigTitle = new Label { Text = "★ 시그니처 기술" };
@@ -574,7 +597,8 @@ namespace SuperHeroes
             var liveIds = app.LiveWindows.Select(w => w.Pet.Art.Id).ToList();
             if (rosterTitle != null)
             {
-                rosterTitle.Text = liveIds.Count > 0 ? string.Format("지금 화면에 있는 친구들 ({0}명)", liveIds.Count) : "지금 화면에 있는 친구들 (비어 있음)";
+                rosterTitle.Text = app.PetOff ? string.Format("지금 화면에 있는 친구들 ({0}명 · 전원 꺼짐)", liveIds.Count)
+                    : liveIds.Count > 0 ? string.Format("지금 화면에 있는 친구들 ({0}명)", liveIds.Count) : "지금 화면에 있는 친구들 (비어 있음)";
             }
             int curSel = dexChar != null ? dexChar.SelectedIndex : -1;
             for (int i = 0; i < heroCards.Length; i++)
@@ -586,6 +610,13 @@ namespace SuperHeroes
                 }
             }
             UpdateDexStatus();
+            if (bPower != null) bPower.Lit = !app.PetOff;
+            if (countLabel != null && dexChar != null && dexChar.SelectedIndex >= 0)
+            {
+                int mine = liveIds.Count(id => id == dexChar.SelectedIndex);
+                countLabel.Text = mine.ToString();
+                bLess.Enabled = mine > 0; bMore.Enabled = liveIds.Count < App.MaxPets;
+            }
         }
 
         // ───────── 2. 행동 (움직임 · 반응 · 생활) ─────────
@@ -721,95 +752,105 @@ namespace SuperHeroes
         }
 
         // ───────── 5. 알림 ─────────
+        // 스크롤 없이 한 화면에: 위에서 아래로 ① 정각 알림(켜기 · 방식 · 미리보기 한 줄, 조용한 시간 한 줄)
+        // ② 화면 가장자리 빛(드롭다운 세 개 한 줄) ③ 점심 · 퇴근 · 낮잠(한 줄씩) ④ 내 알람 — 남는 높이를 알람 목록이 쓰고, 많아지면 목록 안에서만 스크롤된다.
         private Panel BuildAlarmPage()
         {
-            FlowLayoutPanel f; var page = NewPage("알림", "정각 · 점심 · 퇴근 알림과 낮잠", out f);
+            FlowLayoutPanel f; var page = NewPage("알림", "정각 · 점심 · 퇴근 알림, 낮잠, 내 알람", out f);
+            f.Padding = new Padding(16, 0, 8, 8);
             Settings s = app.Settings;
-            var g1 = Group(f, "정각 알림"); var a = In(g1);
 
-            // ① 맨 위: 켜기 + 미리보기
-            var top = Row(a);
-            cHourly = new CheckBox { Text = "정각 알림", Checked = s.HourlyOn, AutoSize = false, Width = 310, Height = 24, Margin = new Padding(3, 8, 3, 3) };
-            top.Controls.Add(cHourly);
-            var bPreview = IconButton('', "정각창 미리보기", "지금 고른 빛 · 폭 · 진하기로 정각 알림창을 미리 봐요", delegate
+            // ① 정각 알림: 켜기 · 알림 방식 · 미리보기를 한 줄에
+            SectionHead(f, new Label { Text = "정각 알림" }, 0);
+            var top = Row(f);
+            cHourly = new CheckBox { Text = "정각 알림", Checked = s.HourlyOn, AutoSize = true, Margin = new Padding(3, 7, 14, 3) };
+            cPopup = new CheckBox { Text = "별도 알림창으로 보기", Checked = s.HourlyWindow, AutoSize = true, Margin = new Padding(3, 7, 14, 3) };
+            tips.SetToolTip(cPopup, "정각 알림을 화면 오른쪽 아래의 알림창으로 띄워요.\n끄면 친구들의 말풍선으로 알려요.");
+            cAlertPet = new CheckBox { Text = "큰 히어로로 보여주기", Checked = s.AlertPet, AutoSize = true, Margin = new Padding(3, 7, 14, 3) };
+            tips.SetToolTip(cAlertPet, "2배 크기 히어로가 네온 빛을 두르고 나와요. 눌러서 닫을 때까지 유지돼요.\n끄면 알림창 · 말풍선을 써요. (메모 알림은 늘 큰 히어로로 나와요)");
+            var bPreview = IconButton('', "미리보기", "정각창 미리보기\n지금 고른 빛 · 폭 · 진하기로 정각 알림창을 미리 봐요", delegate
             {
                 var n = new HourlyNotice(app.TrayIconImage); n.SetMessage(App.HourlyMessage(DateTime.Now, true, "13:00", "점심 먹으러 가자!", false, "18:00", "x") + "\n(미리보기)");
                 n.EnableEdgeGlow(cGlow.Checked, glowTheme.SelectedIndex, glowWidth.SelectedIndex, glowStrength.SelectedIndex); n.Show();
             });
-            bPreview.Margin = new Padding(6, 3, 3, 3); top.Controls.Add(bPreview);
-
-            // ② 알림 방식: 두 가지를 나란히
-            var methods = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, Margin = Padding.Empty };
-            methods.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 240)); methods.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 230));
-            cPopup = new CheckBox { Text = "정각 알림창 띄우기 (화면 오른쪽 아래)", Checked = s.HourlyWindow, AutoSize = true, Margin = new Padding(3, 3, 3, 3) };
-            cAlertPet = new CheckBox { Text = "친구들이 정각 알림 배너 들기", Checked = s.AlertPet, AutoSize = true, Margin = new Padding(3, 3, 3, 3) };
-            methods.Controls.Add(cPopup, 0, 0); methods.Controls.Add(cAlertPet, 1, 0);
-            a.Controls.Add(methods);
-            cHourly.CheckedChanged += delegate { methods.Enabled = cHourly.Checked; }; methods.Enabled = cHourly.Checked;
-
-            // ③ 가장자리 빛
-            SubHead(a, "화면 가장자리 빛");
-            cGlow = Check(a, "알림창을 닫을 때까지 화면 가장자리 빛 유지", s.EdgeGlow);
-            // 드롭다운 세 개를 한 줄에: 그림 카드 줄(약 230px)을 약 60px로 줄였다. 펼치면 항목마다 작은 그림이 보인다.
-            var glowBox = new TableLayoutPanel { AutoSize = true, ColumnCount = 3, RowCount = 2, Margin = Padding.Empty };
-            for (int col = 0; col < 3; col++) glowBox.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 156));
-            a.Controls.Add(glowBox);
-            var thumb = new Size(40, 24);
-            glowTheme = new ChoiceDrop(new[] { "파스텔", "노을", "오로라", "무지개" }, s.EdgeGlowTheme, 148, thumb, delegate(Graphics g, Rectangle r, int i)
-            { GlowThumb(g, r, EdgeGlowWindow.Palette(i), 6 * r.Width / 46.0, 255); });
-            tips.SetToolTip(glowTheme, "빛 색상\n파스텔: 피치 · 핑크 · 보라 · 하늘");
-            glowWidth = new ChoiceDrop(new[] { "보통", "넓게", "아주 넓게" }, s.EdgeGlowWidth, 148, thumb, delegate(Graphics g, Rectangle r, int i)
-            { GlowThumb(g, r, EdgeGlowWindow.Palette(glowTheme.SelectedIndex), (i == 0 ? 3 : i == 1 ? 6 : 10) * r.Width / 46.0, 255); });
-            tips.SetToolTip(glowWidth, "빛이 화면 안쪽으로 퍼지는 폭");
-            glowStrength = new ChoiceDrop(new[] { "은은하게", "선명하게", "강하게" }, s.EdgeGlowStrength, 148, thumb, delegate(Graphics g, Rectangle r, int i)
-            { GlowThumb(g, r, EdgeGlowWindow.Palette(glowTheme.SelectedIndex), 6 * r.Width / 46.0, i == 0 ? 85 : i == 1 ? 170 : 255); });
-            tips.SetToolTip(glowStrength, "빛의 진하기");
-            glowTheme.SelectedIndexChanged += delegate { glowWidth.Invalidate(); glowStrength.Invalidate(); };
-            glowBox.Controls.Add(Tiny("빛 색상"), 0, 0); glowBox.Controls.Add(Tiny("퍼지는 폭"), 1, 0); glowBox.Controls.Add(Tiny("진하기"), 2, 0);
-            glowBox.Controls.Add(glowTheme, 0, 1); glowBox.Controls.Add(glowWidth, 1, 1); glowBox.Controls.Add(glowStrength, 2, 1);
-            cGlow.CheckedChanged += delegate { glowBox.Enabled = cGlow.Checked; }; glowBox.Enabled = cGlow.Checked;
-
-            // ④ 조용한 시간 — 한 줄
-            SubHead(a, "조용한 시간");
-            var rq = Row(a);
-            cQuiet = new CheckBox { Text = "평일(월~금) 정각 알림 끄기", Checked = s.QuietWeekdays, AutoSize = false, Width = 186, Height = 24, Margin = new Padding(3, 6, 3, 3) };
+            bPreview.Margin = new Padding(0, 3, 3, 3);
+            top.Controls.Add(cHourly); top.Controls.Add(cPopup); top.Controls.Add(cAlertPet); top.Controls.Add(bPreview);
+            var rq = Row(f);
+            cQuiet = new CheckBox { Text = "평일(월~금) 정각 알림 끄기", Checked = s.QuietWeekdays, AutoSize = true, Margin = new Padding(3, 6, 8, 3) };
             nStart = Num(0, 23, s.QuietStart, 0, 1, 54); nEnd = Num(0, 23, s.QuietEnd, 0, 1, 54);
             rq.Controls.Add(cQuiet); rq.Controls.Add(nStart); rq.Controls.Add(Cap("시 ~")); rq.Controls.Add(nEnd); rq.Controls.Add(Cap("시 (양 끝 정각 포함)"));
             cQuiet.CheckedChanged += delegate { nStart.Enabled = nEnd.Enabled = cQuiet.Checked; }; nStart.Enabled = nEnd.Enabled = cQuiet.Checked;
+            // 정각 알림을 끄면 알림 방식은 쓸 일이 없으니 함께 흐리게 한다.
+            Action syncHourly = delegate { cPopup.Enabled = cAlertPet.Enabled = cHourly.Checked; };
+            cHourly.CheckedChanged += delegate { syncHourly(); }; syncHourly();
 
-            // 점심 · 퇴근: 한 줄에 켜기 · 시각 · 문구 · 미리보기
-            var g2 = Group(f, "점심 · 퇴근 알림"); var b = In(g2);
-            var head = Row(b); head.Controls.Add(Tiny("", 95)); head.Controls.Add(Tiny("시각", 56)); head.Controls.Add(Tiny("알림 문구"));
-            var rl = Row(b);
+            // ② 화면 가장자리 빛: 제목줄 오른쪽에 켜기, 아래에 드롭다운 세 개
+            var glowHead = SectionHead(f, new Label { Text = "화면 가장자리 빛" }, 196);
+            cGlow = new CheckBox { Text = "알림창을 닫을 때까지 유지", Checked = s.EdgeGlow, AutoSize = true, Left = CharW - 192, Top = 6 };
+            tips.SetToolTip(cGlow, "알림창을 닫을 때까지 화면 가장자리 빛을 유지해요.");
+            glowHead.Controls.Add(cGlow);
+            var glowBox = Row(f);
+            var thumb = new Size(34, 22);
+            glowTheme = new ChoiceDrop(new[] { "파스텔", "노을", "오로라", "무지개" }, s.EdgeGlowTheme, 132, thumb, delegate(Graphics g, Rectangle r, int i)
+            { GlowThumb(g, r, EdgeGlowWindow.Palette(i), 6 * r.Width / 46.0, 255); });
+            tips.SetToolTip(glowTheme, "빛 색상\n파스텔: 피치 · 핑크 · 보라 · 하늘");
+            glowWidth = new ChoiceDrop(new[] { "보통", "넓게", "아주 넓게" }, s.EdgeGlowWidth, 132, thumb, delegate(Graphics g, Rectangle r, int i)
+            { GlowThumb(g, r, EdgeGlowWindow.Palette(glowTheme.SelectedIndex), (i == 0 ? 3 : i == 1 ? 6 : 10) * r.Width / 46.0, 255); });
+            tips.SetToolTip(glowWidth, "빛이 화면 안쪽으로 퍼지는 폭");
+            glowStrength = new ChoiceDrop(new[] { "은은하게", "선명하게", "강하게" }, s.EdgeGlowStrength, 132, thumb, delegate(Graphics g, Rectangle r, int i)
+            { GlowThumb(g, r, EdgeGlowWindow.Palette(glowTheme.SelectedIndex), 6 * r.Width / 46.0, i == 0 ? 85 : i == 1 ? 170 : 255); });
+            tips.SetToolTip(glowStrength, "빛의 진하기");
+            glowTheme.SelectedIndexChanged += delegate { glowWidth.Invalidate(); glowStrength.Invalidate(); };
+            glowBox.Controls.Add(Cap("색상")); glowBox.Controls.Add(glowTheme);
+            glowBox.Controls.Add(Cap("폭")); glowBox.Controls.Add(glowWidth);
+            glowBox.Controls.Add(Cap("진하기")); glowBox.Controls.Add(glowStrength);
+            cGlow.CheckedChanged += delegate { glowBox.Enabled = cGlow.Checked; }; glowBox.Enabled = cGlow.Checked;
+
+            // ③ 점심 · 퇴근 · 낮잠: 한 줄에 켜기 · 시각 · 문구 · 미리보기
+            SectionHead(f, new Label { Text = "점심 · 퇴근 · 낮잠" }, 0);
+            var rl = Row(f);
             cLunch = new CheckBox { Text = "점심 알림", Checked = s.LunchOn, AutoSize = false, Width = 92, Height = 24, Margin = new Padding(3, 6, 3, 3) }; rl.Controls.Add(cLunch);
             tLunch = new TextBox { Text = s.LunchTime, Width = 56, Margin = new Padding(3, 4, 3, 3) }; rl.Controls.Add(tLunch);
-            tLunchMsg = new TextBox { Text = s.LunchMsg, Width = 220, Margin = new Padding(3, 4, 3, 3) }; rl.Controls.Add(tLunchMsg);
+            tLunchMsg = new TextBox { Text = s.LunchMsg, Width = 250, Margin = new Padding(3, 4, 3, 3) }; rl.Controls.Add(tLunchMsg);
             rl.Controls.Add(FriendUI.Button("미리보기", delegate { app.PreviewLunch(tLunchMsg.Text); }));
-            var rv = Row(b);
+            tips.SetToolTip(tLunch, "시각 (12:00처럼)"); tips.SetToolTip(tLunchMsg, "알림 문구");
+            var rv = Row(f);
             cLeave = new CheckBox { Text = "퇴근 알림", Checked = s.LeaveOn, AutoSize = false, Width = 92, Height = 24, Margin = new Padding(3, 6, 3, 3) }; rv.Controls.Add(cLeave);
             tLeave = new TextBox { Text = s.LeaveTime, Width = 56, Margin = new Padding(3, 4, 3, 3) }; rv.Controls.Add(tLeave);
-            tLeaveMsg = new TextBox { Text = s.LeaveMsg, Width = 220, Margin = new Padding(3, 4, 3, 3) }; rv.Controls.Add(tLeaveMsg);
+            tLeaveMsg = new TextBox { Text = s.LeaveMsg, Width = 250, Margin = new Padding(3, 4, 3, 3) }; rv.Controls.Add(tLeaveMsg);
             rv.Controls.Add(FriendUI.Button("미리보기", delegate { app.PreviewLeave(tLeaveMsg.Text); }));
-            Note(b, "시간은 12:00처럼 시:분으로 적어 주세요. 퇴근 10초 전에는 친구들이 화면 가운데로 모여요.");
-
-            // 내 알람: 시각 + 내용을 직접 정하는 알람 (매일 반복)
-            var gA = Group(f, "내 알람"); var al = In(gA);
-            Note(al, "정한 시각에 히어로가 내용을 알려 줘요. 반복 단추를 눌러 둔 알람만 매일 울리고, 아니면 한 번만 울려요.");
-            alarmList = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Margin = Padding.Empty };
-            al.Controls.Add(alarmList);
-            alarmEmpty = new Label { Text = "아직 알람이 없어요. 아래 단추로 추가하거나, 우클릭 → 알람에서 바로 맞춰 보세요.", AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(3, 4, 3, 4) };
-            al.Controls.Add(alarmEmpty);
-            bAlarmAdd = FriendUI.Button("+ 알람 추가", delegate { AddAlarmRow(null); });
-            al.Controls.Add(bAlarmAdd);
-            alarmRows.Clear();
-            foreach (var u in s.Alarms) AddAlarmRow(u);
-
-            var g3 = Group(f, "낮잠"); var c = In(g3);
-            var rn = Row(c);
+            tips.SetToolTip(tLeave, "시각 (18:00처럼)\n퇴근 10초 전에는 친구들이 화면 가운데로 모여요."); tips.SetToolTip(tLeaveMsg, "알림 문구");
+            var rn = Row(f);
             cNap = new CheckBox { Text = "자리를 오래 비우면 낮잠 자기", Checked = s.NapOn, AutoSize = false, Width = 196, Height = 24, Margin = new Padding(3, 6, 3, 3) };
             nNap = Num(1, 600, s.NapMinutes, 0, 1, 62);
             rn.Controls.Add(cNap); rn.Controls.Add(nNap); rn.Controls.Add(Cap("분 동안 입력이 없을 때"));
             cNap.CheckedChanged += delegate { nNap.Enabled = cNap.Checked; }; nNap.Enabled = cNap.Checked;
+
+            // ④ 내 알람: 제목줄 오른쪽에 추가 단추, 남는 높이는 목록이 쓴다(많아지면 목록 안에서만 스크롤)
+            var alarmHead = SectionHead(f, new Label { Text = "내 알람" }, 110);
+            bAlarmAdd = FriendUI.Button("+ 알람 추가", delegate { AddAlarmRow(null); });
+            bAlarmAdd.Margin = Padding.Empty; bAlarmAdd.Location = new Point(CharW - bAlarmAdd.PreferredSize.Width - 2, 2);
+            tips.SetToolTip(bAlarmAdd, "새 알람 한 줄을 만들어요. (최대 " + Settings.MaxAlarms + "개)\n반복 단추를 켠 알람만 매일 울리고, 아니면 한 번만 울리고 꺼져요.\n우클릭 → 알람에서도 바로 맞출 수 있어요.");
+            alarmHead.Controls.Add(bAlarmAdd);
+            alarmHost = new Panel { Width = CharW - 4, Height = 150, AutoScroll = true, BackColor = Color.White, BorderStyle = BorderStyle.FixedSingle, Margin = new Padding(2, 0, 0, 0) };
+            alarmList = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Location = new Point(0, 2), Margin = Padding.Empty };
+            alarmHost.HorizontalScroll.Enabled = false; alarmHost.HorizontalScroll.Visible = false;   // 세로로만 스크롤
+            alarmHost.Paint += (o, e) => { if (alarmRows.Count == 0) TextRenderer.DrawText(e.Graphics, "아직 알람이 없어요. 오른쪽 위 '+ 알람 추가'로 만들어 보세요.", Font, new Point(10, 12), Color.DimGray, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix); };   // 컨트롤 대신 직접 그린다
+            alarmList.BackColor = Color.White;   // 기본 배경색이면 아래에 깔린 안내 글자를 가린다
+            alarmHost.Controls.Add(alarmList);
+            f.Controls.Add(alarmHost);
+            alarmRows.Clear();
+            foreach (var u in s.Alarms) AddAlarmRow(u);
+            UpdateAlarmEmpty();
+            // 알람 목록 높이 = 페이지의 남는 높이(너무 작아지면 페이지가 스크롤된다)
+            EventHandler fit = delegate
+            {
+                if (!f.IsHandleCreated || alarmHost.Top <= 0) return;
+                int h = Math.Max(96, f.ClientSize.Height - alarmHost.Top - 10);
+                if (h != alarmHost.Height) alarmHost.Height = h;
+            };
+            f.SizeChanged += fit; page.VisibleChanged += fit;
+            f.HandleCreated += delegate { f.BeginInvoke(fit, f, EventArgs.Empty); };
             return page;
         }
 
@@ -824,7 +865,7 @@ namespace SuperHeroes
             row.Host = new FlowLayoutPanel { AutoSize = true, WrapContents = false, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(0, 1, 0, 1) };
             row.On = new CheckBox { Checked = src == null || src.On, AutoSize = false, Width = 22, Height = 24, Margin = new Padding(3, 5, 0, 3) };
             row.Time = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "HH:mm", ShowUpDown = true, Value = when, Width = 64, Margin = new Padding(3, 4, 3, 3) };
-            row.Msg = new TextBox { Text = src != null ? src.Msg : "", MaxLength = 60, Width = 184, Margin = new Padding(3, 4, 3, 3) };
+            row.Msg = new TextBox { Text = src != null ? src.Msg : "", MaxLength = 60, Width = 224, Margin = new Padding(3, 4, 3, 3) };
             if (src == null) row.Msg.Text = "알람 시간이야!";
             // 매일 반복: 글자 없이 반복 아이콘만 있는 켜짐/꺼짐 단추. 꺼 두면 다음 그 시각에 한 번만 울리고 알람이 스스로 꺼진다.
             row.Repeat = new CheckBox { Appearance = Appearance.Button, Checked = src != null && src.Repeat, AutoSize = false, Size = new Size(34, 27), Margin = new Padding(3, 2, 0, 2), FlatStyle = FlatStyle.Standard };   // System 스타일은 이미지를 그리지 않는다
@@ -844,7 +885,7 @@ namespace SuperHeroes
             row.Time.Enabled = row.Msg.Enabled = row.Repeat.Enabled = row.On.Checked;
             row.Host.Controls.AddRange(new Control[] { row.On, row.Time, row.Msg, row.Repeat, bTry, bDel });
             alarmRows.Add(row); alarmList.Controls.Add(row.Host); UpdateAlarmEmpty();
-            if (src == null) row.Msg.Focus();
+            if (src == null) { alarmHost.ScrollControlIntoView(row.Host); row.Msg.Focus(); }
         }
 
         /// <summary>우클릭 메뉴에서 새로 만든 알람을 열려 있는 설정창에도 한 줄로 보여 준다(이미 저장된 알람).</summary>
@@ -852,7 +893,7 @@ namespace SuperHeroes
 
         private void UpdateAlarmEmpty()
         {
-            alarmEmpty.Visible = alarmRows.Count == 0;
+            alarmList.Visible = alarmRows.Count > 0; alarmHost.Invalidate();   // 비어 있을 땐 목록 상자가 안내 글자를 가리지 않게 숨긴다
             bAlarmAdd.Enabled = alarmRows.Count < Settings.MaxAlarms;
         }
 
@@ -949,7 +990,7 @@ namespace SuperHeroes
             var rs = Row(a); rs.Controls.Add(Badge(FlatIcon.Resize, "기본 크기"));
             // 크기 카드는 실제 메모 비율로 그리고, 위에서 고른 색으로 칠한다.
             Size[] dims = { new Size(NoteGeometry.SmallW, NoteGeometry.SmallH), new Size(NoteGeometry.MediumW, NoteGeometry.MediumH), new Size(NoteGeometry.LargeW, NoteGeometry.LargeH) };
-            noteSize = new ChoiceStrip(new[] { "작게  240×180", "보통  320×260", "크게  420×360" }, mgr == null ? 1 : (int)mgr.DefaultSize, 140, new Size(38, 30),
+            noteSize = new ChoiceStrip(new[] { "작게  240×180", "보통  320×260", "크게  420×360" }, mgr == null ? 1 : Math.Max(0, Math.Min(2, (int)mgr.DefaultSize)), 112, new Size(48, 40),
                 delegate(Graphics g, Rectangle r, int i)
                 {
                     float w = r.Width * dims[i].Width / (float)NoteGeometry.LargeW, h = r.Height * dims[i].Height / (float)NoteGeometry.LargeH;
@@ -974,26 +1015,28 @@ namespace SuperHeroes
             AddTile(edit, FlatIcon.Underline, "밑줄", new[] { "Ctrl", "U" }, "밑줄", false);
             AddTile(edit, FlatIcon.Strike, "취소선", new[] { "Ctrl", "Shift", "X" }, "취소선", false);
             AddTile(edit, FlatIcon.Link, "링크", new[] { "Ctrl", "K" }, "링크", false);
-            AddTile(edit, FlatIcon.Code, "코드", new[] { "Ctrl", "Shift", "K" }, "코드 블록", false);
-            AddTile(edit, FlatIcon.Heading, "제목", new[] { "Ctrl", "1" }, "제목 1단계 (Ctrl+2, 3으로 2·3단계)", false);
-            AddTile(edit, FlatIcon.Bullets, "글머리", new[] { "Ctrl", "Shift", "L" }, "글머리 기호 목록", false);
-            AddTile(edit, FlatIcon.Checklist, "할 일 목록", new[] { "Ctrl", "Shift", "C" }, "체크리스트 만들기", false);
-            AddTile(edit, FlatIcon.ToggleCheck, "체크 토글", new[] { "Ctrl", "Enter" }, "커서 줄의 체크박스 켜고 끄기", false);
-            AddTile(edit, FlatIcon.EnterKey, "목록 이어쓰기", new[] { "Enter" }, "목록에서 엔터를 치면 다음 줄도 목록 (빈 줄에서 치면 끝)", false);
+            AddTile(edit, FlatIcon.Code, "코드", new[] { "Ctrl", "Shift", "K" }, "코드", false);
+            AddTile(edit, FlatIcon.Heading, "제목", new[] { "Ctrl", "1–3" }, "Ctrl+1 / 2 / 3  제목 1 · 2 · 3", false);
+            AddTile(edit, FlatIcon.Bullets, "글머리", new[] { "Ctrl", "Shift", "L" }, "글머리 목록", false);
+            AddTile(edit, FlatIcon.Checklist, "할 일", new[] { "Ctrl", "Shift", "C" }, "체크리스트 (할 일 목록)", false);
+            AddTile(edit, FlatIcon.ToggleCheck, "체크", new[] { "Ctrl", "Enter" }, "커서가 있는 줄의 체크박스를 켜고 꺼요.", false);
+            AddTile(edit, FlatIcon.EnterKey, "이어쓰기", new[] { "Enter" }, "목록 이어쓰기. 빈 항목에서 Enter 를 누르면 목록이 끝나요.", false);
 
             var g4 = Group(f, "내 메모는 어디에", 520); var d = In(g4);
-            var rWhere = Row(d);
-            rWhere.Controls.Add(Badge(FlatIcon.Folder, "저장 위치"));
-            var infoBox = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, Margin = new Padding(0, 10, 0, 0) };
-            noteInfo = new Label { AutoSize = true, ForeColor = FriendUI.Ink, Text = mgr == null ? "" : mgr.Store.Root + "   (메모 " + mgr.Store.Count.ToString("N0") + "개)" };
-            infoBox.Controls.Add(noteInfo);
-            var btns = Row(infoBox);
-            btns.Controls.Add(IconBtn(FlatIcon.OpenOut, "폴더 열기", delegate { try { if (mgr != null) System.Diagnostics.Process.Start("explorer.exe", "\"" + mgr.Store.Root + "\""); } catch { } }));
-            btns.Controls.Add(IconBtn(FlatIcon.Copy, "백업 안내\n프로그램을 끈 뒤 이 폴더를 통째로 복사해 두면 안전해요.", delegate
-            { MessageBox.Show(this, "백업하는 방법:\n\n1. 프로그램을 끕니다.\n2. 위의 '폴더 열기'로 연 폴더를 다른 디스크나 클라우드에 통째로 복사하세요.\n3. 새 PC 에서는 같은 위치에 덮어쓰면 모든 메모·태그·알림이 그대로 돌아와요.", "수퍼히어로 · 백업", MessageBoxButtons.OK, MessageBoxIcon.Information); }));
-            btns.Controls.Add(IconBtn(FlatIcon.Trash, "삭제 주의\n지운 메모는 휴지통으로 가지 않고 바로 사라져요.", delegate
-            { MessageBox.Show(this, "메모를 지울 때 주의:\n\n· 메모나 노트북을 지우면 휴지통을 거치지 않고 바로 삭제돼요.\n· 되돌릴 수 없으니 중요한 메모는 가끔 백업해 두세요.", "수퍼히어로 · 삭제 주의", MessageBoxButtons.OK, MessageBoxIcon.Warning); }));
-            rWhere.Controls.Add(infoBox);
+            var rp = Row(d); rp.Controls.Add(new IconBox(FlatIcon.Folder, 28) { Margin = new Padding(3, 3, 6, 3) });
+            var path = new Label { AutoSize = true, ForeColor = FriendUI.Ink, Margin = new Padding(0, 6, 3, 3), MaximumSize = new Size(410, 0), Text = mgr == null ? "" : mgr.Store.Root };
+            tips.SetToolTip(path, "메모가 저장되는 폴더"); rp.Controls.Add(path);
+            var rn = Row(d);
+            rn.Controls.Add(new IconBox(FlatIcon.NoteGlyph, 22) { Margin = new Padding(3, 6, 4, 3) });
+            noteInfo = new Label { AutoSize = true, ForeColor = FriendUI.Ink, Font = new Font("Malgun Gothic", 10f, FontStyle.Bold), Margin = new Padding(0, 6, 14, 3), Text = mgr == null ? "" : mgr.Store.Count.ToString("N0") + "개" };
+            tips.SetToolTip(noteInfo, "저장된 메모 수"); rn.Controls.Add(noteInfo);
+            var bOpen = FriendUI.Button("폴더 열기", delegate { try { if (mgr != null) System.Diagnostics.Process.Start("explorer.exe", "\"" + mgr.Store.Root + "\""); } catch { } });
+            int px = Math.Max(16, (int)Math.Round(16 * DeviceDpi / 96.0));
+            bOpen.Image = FlatIcon.Bitmap(FlatIcon.Folder, px, FriendUI.BlueDark); bOpen.TextImageRelation = TextImageRelation.ImageBeforeText; bOpen.ImageAlign = ContentAlignment.MiddleLeft;
+            rn.Controls.Add(bOpen);
+            var rt = Row(d);
+            IconText(rt, FlatIcon.Copy, "폴더째 복사 = 백업", "백업은 프로그램을 끈 뒤 이 폴더를 통째로 복사하면 돼요.\n새 PC 에서는 같은 위치에 덮어쓰면 메모 · 태그 · 알림이 그대로 돌아와요.", Color.DimGray);
+            IconText(rt, FlatIcon.Trash, "삭제는 되돌릴 수 없어요", "휴지통이 없어서, 지운 메모는 돌아오지 않아요.", Color.FromArgb(180, 60, 60));
             return page;
         }
 

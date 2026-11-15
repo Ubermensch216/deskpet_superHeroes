@@ -333,6 +333,29 @@ namespace SuperHeroes
             App app = null;
             step("앱 생성(펫 5마리)", () => { app = new App(true); app.Spawn(0); app.Spawn(1); app.Spawn(2); app.Spawn(3); app.Spawn(4); pump(1); });
             for (int pg = 0; pg < SettingsForm.PageNames.Length; pg++) { int page = pg; step("설정 창 - " + SettingsForm.PageNames[pg], () => { var f = new SettingsForm(app, page); shot(f, "ui_settings_" + page); f.Close(); }); }
+            step("펫 전원: 끄면 캐릭터 창이 숨고 켜면 돌아옴", () =>
+            {
+                bool before = PlayOptions.Current.PetPower;
+                try
+                {
+                    app.SetPetPower(true); pump(.2);
+                    if (app.PetOff || app.LiveWindows.Count == 0 || app.LiveWindows.Any(w => !w.Visible)) throw new Exception("power on: pets not visible");
+                    app.SetPetPower(false); pump(.2);
+                    if (!app.PetOff || !app.AllHidden || app.LiveWindows.Any(w => w.Visible)) throw new Exception("power off: pets still visible");
+                    var f = new SettingsForm(app, 0); shot(f, "ui_settings_power_off"); f.Close();   // 전원이 꺼진 캐릭터 쪽
+                    app.SetPetPower(true); pump(.2);
+                    if (app.PetOff || app.LiveWindows.Any(w => !w.Visible)) throw new Exception("power back on: pets hidden");
+                }
+                finally { if (PlayOptions.Current.PetPower != before) app.SetPetPower(before); }
+            });
+            step("마릿수: 도감에서 고른 캐릭터를 +/−", () =>
+            {
+                int n = app.LiveWindows.Count;
+                app.SpawnFromUi(0); pump(.2);
+                if (app.LiveWindows.Count != n + 1) throw new Exception("spawn +1 failed");
+                app.Remove(app.LiveWindows.Last()); pump(.2);
+                if (app.LiveWindows.Count != n) throw new Exception("remove -1 failed");
+            });
             step("도우미 창", () => { FriendData.Current.Todos.Add(new TodoItem { Text = "첫 할 일", Done = true }); FriendData.Current.Todos.Add(new TodoItem { Text = "둘째 할 일" }); var f = new FriendPanel(app); shot(f, "ui_helper"); f.Close(); });
             step("정각 카드 + 가장자리 빛", () =>
             {
@@ -434,10 +457,11 @@ namespace SuperHeroes
                 check(App.HourlyMessage(new DateTime(2026, 10, 21, 12, 0, 0), true, "12:00", "점심!", true, "18:00", "퇴근!") == "지금은 오후 12시야!\n점심!", "정각 문구+점심 병합");
                 check(App.HourlyText(new DateTime(2026, 10, 21, 0, 0, 0)) == "지금은 오전 12시야!", "정각 문구 0시");
 
-                var o = new PlayOptions { Walls = false, Speed = 1.5, ClickMode = ClickReaction.Cry, HungerMinutes = 30, PetOpacityPercent = 70, FixedX = 123.5, FixedY = 456.25 };
+                var o = new PlayOptions { Walls = false, Speed = 1.5, ClickMode = ClickReaction.Cry, HungerMinutes = 30, PetOpacityPercent = 70, FixedX = 123.5, FixedY = 456.25, PetPower = false };
                 PlayOptions.Current = o; check(o.Save(), "움직임 설정 저장");
                 PlayOptions.Load(); var l = PlayOptions.Current;
                 check(!l.Walls && l.Speed == 1.5 && l.ClickMode == ClickReaction.Cry && l.HungerMinutes == 30 && l.PetOpacityPercent == 70 && l.FixedX == 123.5 && l.FixedY == 456.25, "움직임 설정 불러오기 일치");
+                check(!l.PetPower && new PlayOptions().PetPower, "펫 전원: 기본은 켜짐, 꺼 둔 상태는 저장·불러오기로 유지");
 
                 // 친구 기록
                 PlayOptions.Current = new PlayOptions { HungerMinutes = 60 };

@@ -546,6 +546,18 @@ namespace SuperHeroes
             }
         }
 
+        /// <summary>전원 모양(위가 트인 동그라미 + 세로 막대): 캐릭터 켜기 / 끄기</summary>
+        internal static void Power(Graphics g, RectangleF r, Color ink)
+        {
+            using (var pen = Line(r, ink, .11f))
+            {
+                pen.StartCap = pen.EndCap = LineCap.Round;
+                var ring = Box(r, .17f, .20f, .83f, .86f);
+                g.DrawArc(pen, ring, -52f, 284f);   // 위쪽(-90°) 둘레 약 76°를 비워 둔다
+                g.DrawLine(pen, Pt(r, .50f, .08f), Pt(r, .50f, .48f));
+            }
+        }
+
         /// <summary>화면과 중심점 모양: 화면 가운데로 모으기</summary>
         internal static void CenterScreen(Graphics g, RectangleF r, Color ink)
         {
@@ -576,7 +588,10 @@ namespace SuperHeroes
     /// <summary>그림만 있는 납작한 단추. 이름은 말풍선과 접근성 이름으로만 쓴다.</summary>
     internal sealed class FlatButton : Control
     {
-        private readonly FlatIcon.Painter paint; private bool hot, down;
+        private readonly FlatIcon.Painter paint; private bool hot, down, lit; private bool toggle;
+
+        /// <summary>켜고 끄는 단추로 쓸 때의 켜짐 상태(켜지면 파란 바탕에 흰 그림).</summary>
+        internal bool Lit { get { return lit; } set { toggle = true; if (lit != value) { lit = value; Invalidate(); } } }
 
         internal FlatButton(FlatIcon.Painter paint, string name, int w = 38, int h = 30)
         {
@@ -591,10 +606,12 @@ namespace SuperHeroes
             float s = DeviceDpi / 96f; var card = new Rectangle(0, 0, Width - 1, Height - 1);
             using (var path = ChoiceStrip.RoundRect(card, (int)Math.Round(7 * s)))
             {
-                using (var fill = new SolidBrush(down ? Color.FromArgb(214, 228, 250) : hot ? Color.FromArgb(232, 240, 255) : Color.White)) g.FillPath(fill, path);
-                using (var pen = new Pen(hot || Focused ? FriendUI.Blue : Color.FromArgb(200, 212, 235), 1f)) g.DrawPath(pen, path);
+                bool on = toggle && lit;
+                Color bg = on ? (down ? FriendUI.BlueDark : hot ? Color.FromArgb(46, 128, 224) : FriendUI.Blue) : down ? Color.FromArgb(214, 228, 250) : hot ? Color.FromArgb(232, 240, 255) : Color.White;
+                using (var fill = new SolidBrush(bg)) g.FillPath(fill, path);
+                using (var pen = new Pen(hot || Focused || on ? FriendUI.Blue : Color.FromArgb(200, 212, 235), 1f)) g.DrawPath(pen, path);
                 float d = 18 * s;
-                paint(g, new RectangleF((Width - d) / 2f, (Height - d) / 2f, d, d), FriendUI.BlueDark);
+                paint(g, new RectangleF((Width - d) / 2f, (Height - d) / 2f, d, d), on ? Color.White : toggle ? Color.FromArgb(123, 135, 152) : FriendUI.BlueDark);
                 if (!Enabled) using (var veil = new SolidBrush(Color.FromArgb(165, 248, 250, 255))) g.FillPath(veil, path);
             }
         }
