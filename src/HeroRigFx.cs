@@ -37,6 +37,7 @@ namespace SuperHeroes
         private void DrawSupermanFx()
         {
             float bx = p.BodyX, by = p.BodyY;
+            if (p.Krypto > .01f) DrawKryptoniteFx();
             float eyeX1 = 200 - 24 + bx;
             float eyeX2 = 200 + 24 + bx;
             float eyeY = headCy - 8 + by;

@@ -50,6 +50,7 @@ namespace SuperHeroes
         // 다리
         public float FootLX, FootLY, FootRX, FootRY, FootLRot, FootRRot;
         public float Knee;
+        public float FlyLegs;                  // 수퍼맨 하강: 다리를 모아 곧게 뻗고 발끝을 아래로 (0..1)
         // 망토 및 꼬리 호환 필드
         public float CapeWing;                 // 망토 넓게 펼치기(배트맨 가고일 등) 0..1
         public float CapeWind;                 // 망토 펄럭임 바람 세기
@@ -79,6 +80,9 @@ namespace SuperHeroes
         public float SonicGlow;                // 수퍼맨: 초음속 비행 오라 (0..1)
         public float Disguise;                 // 수퍼맨: 기자(클라크 켄트) 차림 (0 수퍼히어로 수트 .. 1 정장·뿔테 안경)
         public float Transform;                // 수퍼맨: 변신 순간의 섬광 (0..1)
+        public float Krypto;                   // 수퍼맨: 바닥의 크립토나이트 조각과 초록 빛 (0..1)
+        public float KryptoT;                  // 수퍼맨: 크립토나이트 반응 경과 초 (등장·반짝임 위상)
+        public float Sick;                     // 수퍼맨: 크립토나이트에 힘이 빠진 정도 — 얼굴이 창백한 초록빛으로, 땀·핏줄·찡그린 눈 (0..1)
         
         public float Batarang;                 // 배트맨: 배트랭 던지기/날아감 (0..1)
         public float Grapnel;                  // 배트맨: 그래플건 와이어 (0..1)
@@ -130,8 +134,8 @@ namespace SuperHeroes
                 add(Tongue, 8); add(ArmLA, 3); add(ArmLB, 3); add(ArmRA, 3); add(ArmRB, 3); add(ArmLenL, 20); add(ArmLenR, 20); add((int)HandL, 1); add((int)HandR, 1);
                 add((int)Reach, 1); add(HandLTo.HasValue ? HandLTo.Value.X : -999, 2); add(HandLTo.HasValue ? HandLTo.Value.Y : -999, 2);
                 add(HandRTo.HasValue ? HandRTo.Value.X : -999, 2); add(HandRTo.HasValue ? HandRTo.Value.Y : -999, 2); add(Clasp ? 1 : 0, 1); add(ArmsFront ? 1 : 0, 1);
-                add(FootLX, 2); add(FootLY, 2); add(FootRX, 2); add(FootRY, 2); add(FootLRot, 2); add(FootRRot, 2); add(Knee, 4);
-                add(CapeWing, 10); add(CapeWind, 5); add(CapeLift, 20); add(CapeT, 30); add(HeatLaser, 10); add(FreezeMist, 10); add(ShirtOpen, 10); add(SonicGlow, 10); add(Disguise, 10); add(Transform, 10);
+                add(FootLX, 2); add(FootLY, 2); add(FootRX, 2); add(FootRY, 2); add(FootLRot, 2); add(FootRRot, 2); add(Knee, 4); add(FlyLegs, 10);
+                add(CapeWing, 10); add(CapeWind, 5); add(CapeLift, 20); add(CapeT, 30); add(HeatLaser, 10); add(FreezeMist, 10); add(ShirtOpen, 10); add(SonicGlow, 10); add(Disguise, 10); add(Transform, 10); add(Krypto, 10); add(KryptoT, 30); add(Sick, 10);
                 add(Batarang, 10); add(Grapnel, 10); add(SmokeBomb, 10);
                 add(WebSwing, 10); add(SpiderSense, 10); add(WebNet, 10);
                 add(MjolnirSpin, 10); add(Lightning, 10); add(LightningT, 30); add(Raise, 20); add(GroundCrush, 10); add(HammerThrow, 10); add(SpinT, 30); add(CrushT, 30); add(SigT, 30); add(HangSwing, 8); add(UpsideDown, 20); add(Flip, 2); add(Hide, 4); add(Vehicle, 4); add(Zoom, 40);

@@ -121,7 +121,7 @@ namespace SuperHeroes
 
         internal void ClickFeature(IWorld w)
         {
-            if (State == PetState.Drag || State == PetState.Falling || State == PetState.Thrown || State == PetState.PowerRise) return;
+            if (State == PetState.Drag || State == PetState.Falling || State == PetState.Thrown || State == PetState.PowerRise || State == PetState.Kryptonite) return;
             mouseGrace = w.Now + .7; hoverSince = -1;
             if (State == PetState.Wall || State == PetState.Ceiling || State == PetState.WindowClimb || State == PetState.Climb)
             {
@@ -130,6 +130,7 @@ namespace SuperHeroes
             }
             if (State == PetState.Sleep) { SetState(PetState.Waking, w); return; }
             if (State == PetState.Gather || State == PetState.WaitHome || State == PetState.Cheer) return;
+            if (CountKryptoClick(w)) { StartKryptonite(w); FriendData.Current.Like(1); return; }
             if (PlayOptions.Current.ClickMode == ClickReaction.None) return;
             PetState resume = PetState.Walk;
             if (State == PetState.TouchCry || State == PetState.Hop || State == PetState.Squish) resume = AfterReaction;
@@ -191,6 +192,11 @@ namespace SuperHeroes
             }
             if (State == PetState.Falling || State == PetState.Drag || State == PetState.Thrown) return;
             if (kind == "dizzy") { ClearAttachments(); SnapToFloor(w); StartDizzy(w); return; }
+            if (kind == "krypto")
+            {
+                if (Who != Persona.Superman) { Bubble = "크립토나이트는 수퍼맨만 약해져!"; BubbleUntil = w.Now + 3; return; }
+                ClearAttachments(); SnapToFloor(w); krypCooldown = 0; StartKryptonite(w); return;
+            }
             if (kind.StartsWith("sig"))
             {
                 if (State == PetState.Wall || State == PetState.Ceiling || State == PetState.WindowClimb)
@@ -544,6 +550,7 @@ namespace SuperHeroes
             if (Bubble != null && world.Now > BubbleUntil) Bubble = null;
             if (State == PetState.Squish && StateT >= squishDur
                 || (State == PetState.TouchCry || State == PetState.Hop || State == PetState.Eating || State == PetState.IdleCry || State == PetState.Resting) && StateT >= extraDuration
+                || State == PetState.Kryptonite && StateT >= extraDuration
                 || State == PetState.Waking && StateT > stateDur
                 || State == PetState.Cheer && Bubble == null && world.Now > cheerHopUntil)
                 SetState(PetState.Pause, world);

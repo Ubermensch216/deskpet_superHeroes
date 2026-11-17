@@ -168,6 +168,7 @@ namespace SuperHeroes
                     shDx = 72; topW = 140; botW = 108; waistY = 410; hipY = 430; legW = 40; armW = 34; l1 = 66; l2 = 66;
                     break;
             }
+            ApplyKryptoTint();
         }
 
         public void Run()
@@ -272,8 +273,8 @@ namespace SuperHeroes
             {
                 Pt(shL.X + 10, shL.Y + 15),
                 Pt(torsoCx - topW * .6f - wind * .8f, waistY + 60),
-                Pt(torsoCx - topW * .7f - wind * 1.4f, 540 + by),
-                Pt(torsoCx + topW * .4f - wind * .4f, 545 + by),
+                Pt(torsoCx - topW * .7f - wind * 1.4f, Math.Min(540 + by, 566f)),   // 주저앉아도 망토 끝은 바닥 위에
+                Pt(torsoCx + topW * .4f - wind * .4f, Math.Min(545 + by, 569f)),
                 Pt(torsoCx + topW * .5f, waistY + 65),
                 Pt(shR.X - 10, shR.Y + 15)
             };
@@ -352,6 +353,13 @@ namespace SuperHeroes
             PointF h = Pt(hipX, hipYPos);
             PointF knee = Pt((hipX + footBaseX) * .5f + side * p.Knee * 12, (hipYPos + footBaseY) * .5f - 10);
             PointF foot = Pt(footBaseX, footBaseY);
+            bool fly = p.FlyLegs > .5f && who == Persona.Superman && !reporter;
+            if (fly)
+            {
+                // 하강 비행: 다리는 엉덩이에서 발끝까지 곧게(뒤쪽 다리만 무릎을 살짝 굽힘)
+                float bend = front ? 0f : 9f;
+                knee = Pt((hipX + footBaseX) * .5f + side * bend, (hipYPos + footBaseY) * .5f + (front ? 0f : 4f));
+            }
 
             // 다리 윤곽
             var pts = new[]
@@ -380,6 +388,23 @@ namespace SuperHeroes
                 Pt(foot.X + legW * .35f, foot.Y - 12),
                 Pt(bootTopX + legW * .35f, bootTopY)
             };
+            if (fly)
+            {
+                // 발끝을 아래로 쭉 편 부츠: 종아리에서 발목으로 좁아져 뾰족하게 끝난다
+                float toeShift = side * -2f;
+                bootTopY = knee.Y - 8f;   // 부츠는 무릎 바로 아래까지 길게
+                bootPts = new[]
+                {
+                    Pt(knee.X - legW * .36f, bootTopY),
+                    Pt(Lerp(knee.X, foot.X, .55f) - legW * .38f, Lerp(bootTopY, foot.Y, .5f)),
+                    Pt(foot.X - legW * .22f, foot.Y - 14),
+                    Pt(foot.X - legW * .10f + toeShift, foot.Y + 6),
+                    Pt(foot.X + legW * .10f + toeShift, foot.Y + 6),
+                    Pt(foot.X + legW * .22f, foot.Y - 14),
+                    Pt(Lerp(knee.X, foot.X, .55f) + legW * .38f, Lerp(bootTopY, foot.Y, .5f)),
+                    Pt(knee.X + legW * .36f, bootTopY)
+                };
+            }
             Fill(bootPts, cBoots);
 
             if (who == Persona.WonderWoman)

@@ -240,7 +240,7 @@ namespace SuperHeroes
         private NumericUpDown nSpeed, nFall, nSlide, nDelay, nHunger;
         private ChoiceStrip clickMode, cursorMode;
         private RoundCard lifeCard; private Label lifeSummary, lifeDetail, satietyNum, secretCount; private MeterBar satietyBar; private FlatButton snackButton;
-        private readonly SecretBadge[] secretBadge = new SecretBadge[3];
+        private readonly SecretBadge[] secretBadge = new SecretBadge[4];
         private string lifeTip = "";
         // 알림
         private CheckBox cLunch, cLeave, cNap, cHourly, cAlertPet, cQuiet;
@@ -737,14 +737,14 @@ namespace SuperHeroes
             // ⑧ 숨은 반응: 켜기 + 도감 칸 세 개
             var r7 = RailRow(f, FlatIcon.Question, "숨은 반응", 56);
             cSecrets = Tile(r7, FlatIcon.Spark, "숨은 반응", o.Secrets, "숨은 반응을 켜요.\n찾으면 오른쪽 도감 칸이 채워져요.");
-            string[] secretTip = { "몰래 군무\n친구 둘 이상일 때 커서를 떨어뜨리고 4초.", "어질어질\n친구 머리 위에서 마우스를 한 바퀴 빙글빙글.", "기 폭발\n같은 친구를 10초 안에 세 번 휙 던지기.\n(변신하며 천장까지 솟구쳐요)" };
-            FlatIcon.Painter[] secretArt = { FlatIcon.Dance, FlatIcon.Dizzy, FlatIcon.Bolt };
-            for (int i = 0; i < 3; i++)
+            string[] secretTip = { "몰래 군무\n친구 둘 이상일 때 커서를 떨어뜨리고 4초.", "어질어질\n친구 머리 위에서 마우스를 한 바퀴 빙글빙글.", "기 폭발\n같은 친구를 10초 안에 세 번 휙 던지기.\n(변신하며 천장까지 솟구쳐요)", "크립토나이트\n수퍼맨을 1초 간격으로 5번 연달아 클릭.\n(초록 돌 빛에 힘이 빠져 주저앉아요)" };
+            FlatIcon.Painter[] secretArt = { FlatIcon.Dance, FlatIcon.Dizzy, FlatIcon.Bolt, FlatIcon.Kryptonite };
+            for (int i = 0; i < 4; i++)
             {
                 secretBadge[i] = new SecretBadge(secretArt[i]) { Margin = new Padding(i == 0 ? 12 : 6, 8, 0, 0) };
                 tips.SetToolTip(secretBadge[i], secretTip[i]); r7.Controls.Add(secretBadge[i]);
             }
-            secretCount = new Label { AutoSize = true, Text = "0 / 3", Font = new Font("Malgun Gothic", 10f, FontStyle.Bold), ForeColor = FriendUI.BlueDark, Margin = new Padding(10, 19, 0, 0) };
+            secretCount = new Label { AutoSize = true, Text = "0 / 4", Font = new Font("Malgun Gothic", 10f, FontStyle.Bold), ForeColor = FriendUI.BlueDark, Margin = new Padding(10, 19, 0, 0) };
             tips.SetToolTip(secretCount, "발견한 숨은 반응\n우클릭 → 동작 보기 → 숨은 반응에서도 볼 수 있어요.");
             r7.Controls.Add(secretCount);
             return page;
@@ -1190,9 +1190,9 @@ namespace SuperHeroes
                 lifeTip = tip; tips.SetToolTip(lifeCard, tip);
                 foreach (Control c in lifeCard.Controls) if (c != snackButton) tips.SetToolTip(c, tip);
             }
-            string[] keys = { "dance", "dizzy", "power" }; int found = 0;
+            string[] keys = { "dance", "dizzy", "power", "krypto" }; int found = 0;
             for (int i = 0; i < keys.Length; i++) { bool ok = d.Discoveries.Contains(keys[i]); secretBadge[i].Found = ok; if (ok) found++; }
-            secretCount.Text = found + " / 3";
+            secretCount.Text = found + " / 4";
             RefreshRoster();
         }
 

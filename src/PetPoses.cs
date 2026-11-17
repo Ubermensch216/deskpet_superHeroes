@@ -197,7 +197,15 @@ namespace SuperHeroes
             else if (Who == Persona.Spiderman) { P.WebSwing = 1.0f; P.Reach = Reach.WebThrow; }
             else if (Who == Persona.Thor) { P.MjolnirSpin = 0.8f; P.Aura = 0.6f; P.AuraColor = Color.FromArgb(120, 200, 255); }
             else if (Who == Persona.WonderWoman) { P.AmazonFlight = 0.8f; P.FlightT = F(t); P.CapeWind = 30f; P.Aura = 0.5f; P.AuraColor = Color.FromArgb(255, 215, 90); }
-            else { P.SonicGlow = 0.8f; P.Aura = 0.5f; P.AuraColor = Color.LightSkyBlue; }
+            else
+            {
+                // 수퍼맨: 다리를 모아 곧게 뻗고 발끝을 아래로 향한 채 내려온다 (뒤쪽 다리만 살짝 굽혀 뒤로). 흰 타원 가이드선·오라는 그리지 않는다.
+                double bob = Math.Sin(t * 3.1);
+                P.FlyLegs = 1f;
+                P.FootRX = -34; P.FootRY = F(5 + bob * 1.5);    // 앞다리: 쭉 편다
+                P.FootLX = 38;  P.FootLY = F(-17 + bob * 2);    // 뒷다리: 살짝 굽혀 뒤로
+                P.FootLRot = P.FootRRot = 0; P.Knee = 0;
+            }
             // 하강하는 망토 히어로: 맞바람에 망토가 하늘 쪽으로 휘날린다 (솟구치는 PowerRise 는 제외)
             if (!IsPowerFlight && Who != Persona.Spiderman && Who != Persona.WonderWoman) { P.CapeLift = F(Math.Min(1.0, StateT * 3.5) * (.92 + .08 * Math.Sin(t * 6))); P.CapeT = F(t); }
             if (IsPowerFlight)

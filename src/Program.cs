@@ -33,7 +33,7 @@ namespace SuperHeroes
             if (args.Length >= 5 && args[0] == "--sig-shots") { DevTools.SigShots(args[1], args[2], int.Parse(args[3]), args[4], args.Length >= 6 ? float.Parse(args[5]) : 2f); return; }
             if (args.Length >= 2 && args[0] == "--selftest") { Environment.Exit(DevTools.SelfTest(args[1])); return; }
             if (args.Length >= 2 && args[0] == "--ui-test") { Environment.Exit(DevTools.UiTest(args[1])); return; }
-            if (args.Length >= 2 && args[0] == "--shot-settings") { DevTools.ShotSettings(args[1]); return; }
+            if (args.Length >= 2 && args[0] == "--shot-settings") { DevTools.ShotSettings(args[1], args.Length >= 3 ? int.Parse(args[2]) : 0); return; }
             Log("Main start");
             bool created;
             using (var mutex = new Mutex(true, "SuperHeroes_DeskFriend_single_instance", out created))
@@ -93,12 +93,12 @@ namespace SuperHeroes
         [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(Point p);
         [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern void keybd_event(byte vk, byte scan, int flags, UIntPtr extra);
 
-        internal static void ShotSettings(string outPath)
+        internal static void ShotSettings(string outPath, int page = 0)
         {
             PlayOptions.Load(); FriendData.Load(); CharacterArt.Reset(Native.SystemDpiScale());
             var app = new App(true);
             app.Spawn(1); // Batman
-            var f = new SettingsForm(app, 0);
+            var f = new SettingsForm(app, page);
             f.Show();
             for (int i = 0; i < 25; i++) { Application.DoEvents(); Thread.Sleep(20); }
             using (var b = new Bitmap(f.Width, f.Height))
@@ -171,7 +171,7 @@ namespace SuperHeroes
             var shots = new List<Bitmap>();
             var w = new FakeWorld { Rng = new Random(5) }; w.Areas[0] = new Rectangle(0, 0, 1280, 720);
             var pet = new Pet(w, c, 640, 720) { Area = w.Areas[0] };
-            pet.SetState(PetState.Pause, w); pet.X = 640; pet.Y = 720; pet.Demonstrate(w, "sig" + sig);
+            pet.SetState(PetState.Pause, w); pet.X = 640; pet.Y = 720; pet.Demonstrate(w, sig < 0 ? "krypto" : "sig" + sig);
             double now = 0;
             foreach (double t in ts)
             {
@@ -208,7 +208,7 @@ namespace SuperHeroes
                 K("폴짝", (p, w) => { p.Demonstrate(w, "hop"); p.Update(w, .25, null, 0); }),
                 K("슬라이딩", (p, w) => { p.Y = 720; p.Demonstrate(w, "slide"); Adv(p, w, .3); }),
                 K("어질어질", (p, w) => p.Demonstrate(w, "dizzy")),
-                K("비행하강", (p, w) => p.Demonstrate(w, "fall")),
+                K("비행하강", (p, w) => { p.Demonstrate(w, "fall"); Adv(p, w, .6); }),
                 K("벽타기", (p, w) => p.Demonstrate(w, "wall")),
                 K("천장", (p, w) => p.Demonstrate(w, "ceiling")),
                 K("먹는중", (p, w) => { FriendData.Current.Satiety = 40; p.Feed(w); }),
@@ -527,6 +527,25 @@ namespace SuperHeroes
                 PlayOptions.Current.Walls = true; PlayOptions.Current.Ceiling = true;
                 check(seen.Contains(PetState.PowerRise) && FriendData.Current.Discoveries.Contains("power"), "기 폭발: 10초 안 3번 던지기");
                 run(20); check(pet.State == PetState.Ceiling || seen.Contains(PetState.Ceiling), "변신하며 천장까지 올라감");
+
+                // 크립토나이트: 수퍼맨만 5번 연타하면 힘이 빠지고, 시간이 지나면 일어선다
+                PlayOptions.Current = new PlayOptions { Escape = false, Idle = false, Windows = false, Walls = false, Ceiling = false };
+                var wk = new FakeWorld(); var supe = new Pet(wk, 0, 640, 720) { Area = wk.Areas[0] }; var bat = new Pet(wk, 1, 300, 720) { Area = wk.Areas[0] };
+                var allk = new List<Pet> { supe, bat };
+                supe.Y = 720; supe.SetState(PetState.Pause, wk); bat.Y = 720; bat.SetState(PetState.Pause, wk);
+                for (int i = 0; i < 5; i++) { wk.Now += .3; bat.Poke(wk); }
+                check(bat.State != PetState.Kryptonite, "크립토나이트: 수퍼맨이 아니면 반응 없음");
+                for (int i = 0; i < 4; i++) { wk.Now += .3; supe.Poke(wk); }
+                check(supe.State != PetState.Kryptonite, "크립토나이트: 4번은 아직");
+                wk.Now += .3; supe.Poke(wk);
+                check(supe.State == PetState.Kryptonite && FriendData.Current.Discoveries.Contains("krypto"), "크립토나이트: 5번 연타");
+                bool krypRendered = false;
+                for (double t = 0; t < 9.5; t += .03)
+                {
+                    wk.Now += .03; supe.Update(wk, .03, allk, 0);
+                    if (supe.State == PetState.Kryptonite && ((int)(t * 100) % 70) == 0) { PointF o2; using (Bitmap kb = Pet.Render(supe.GetLook(wk.Now), out o2)) krypRendered |= kb.Width > 10; }
+                }
+                check(krypRendered && supe.State != PetState.Kryptonite, "크립토나이트: 그려지고 끝나면 일어섬 (" + supe.State + ")");
 
                 // 오래 돌려서 벽·천장·쉬기가 모두 나오는지
                 PlayOptions.Current = new PlayOptions { Escape = false, Idle = true };

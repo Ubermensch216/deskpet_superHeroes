@@ -320,6 +320,7 @@ namespace SuperHeroes
             var secret = new ToolStripMenuItem("숨은 반응");
             secret.DropDownItems.Add("어질어질", null, delegate { Pet p = pet ?? windows.Select(a => a.Pet).FirstOrDefault(); if (p != null) p.Demonstrate(this, "dizzy"); });
             secret.DropDownItems.Add("몰래 하는 군무", null, delegate { DemonstrateSecretDance(pet); });
+            secret.DropDownItems.Add("크립토나이트 (수퍼맨)", null, delegate { Pet p = pet ?? windows.Select(a => a.Pet).FirstOrDefault(a => a.Art.Persona == Persona.Superman); if (p != null) p.Demonstrate(this, "krypto"); });
             demo.DropDownItems.AddRange(new ToolStripItem[] { rest, idle, react, move, secret });
             return demo;
         }

@@ -8,7 +8,7 @@ namespace SuperHeroes
     internal enum PetState
     {
         Falling, Walk, Pause, Squish, Drag, Climb, Sleep, Waking, Gather, WaitHome, Cheer,
-        Resting, IdleCry, TouchCry, Hop, Sliding, Wall, Ceiling, WindowClimb, Eating, Thrown, Dizzy, SecretDance, PowerRise, Chat
+        Resting, IdleCry, TouchCry, Hop, Sliding, Wall, Ceiling, WindowClimb, Eating, Thrown, Dizzy, SecretDance, PowerRise, Chat, Kryptonite
     }
 
     internal interface IWorld

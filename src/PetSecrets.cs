@@ -79,9 +79,10 @@ namespace SuperHeroes
                 }
                 return true;
             }
-            if (State == PetState.Dizzy || State == PetState.SecretDance)
+            if (State == PetState.Dizzy || State == PetState.SecretDance || State == PetState.Kryptonite)
             {
                 StateT += dt; animT += dt;
+                if (State == PetState.Kryptonite) KryptoBubble(w);
                 if (Bubble != null && w.Now > BubbleUntil) Bubble = null;
                 SnapToFloor(w);
                 if (StateT >= extraDuration) { SetState(PetState.Walk, w); DelayIdle(w); }

@@ -143,6 +143,9 @@ namespace SuperHeroes
                     DizzyPose(P); L.FaceRight = false;
                     L.Decor |= Decor.Stars; L.DecorPhase = (float)StateT;
                     break;
+                case PetState.Kryptonite:
+                    KryptoPose(P); L.FaceRight = false;
+                    break;
                 case PetState.SecretDance:
                 {
                     double phase = now - danceStarted;
@@ -158,7 +161,7 @@ namespace SuperHeroes
             CompanionLook(ref L, now);
             ApplyPersona(ref L, now);
             // 수퍼맨은 인간으로 지낼 땐 신문사 기자(클라크 켄트). 시그니처 중에는 각 동작이 직접 정한다.
-            if (Who == Persona.Superman && !IsSignatureActive && PlayOptions.Current.ClarkKent) L.Pose.Disguise = 1f;
+            if (Who == Persona.Superman && !IsSignatureActive && State != PetState.Kryptonite && PlayOptions.Current.ClarkKent) L.Pose.Disguise = 1f;
             L.BubbleReveal = ChatRevealCount;
             L.Ai = chatPresence > .005;
             return L;
@@ -344,6 +347,7 @@ namespace SuperHeroes
                 minY = Math.Min(minY, sky[0].Y); spriteTop = Math.Min(spriteTop, sky[0].Y);
             }
             if (ps.CapeWing > 0) fwd = Math.Max(fwd, 160 * K);
+            if (ps.Krypto > 0) { fwd = Math.Max(fwd, 270 * K); padBottom += 45 * K; }   // 바닥의 크립토나이트 조각과 초록 빛이 앞쪽 바닥에 퍼진다
             if (ps.CapeLift > 0) up = Math.Max(up, 110 * K);   // 하강할 때 하늘 쪽으로 뜬 망토
             if (ps.SmokeBomb > 0) { fwd = Math.Max(fwd, 160 * K); }
             if (ps.BeamLen > 1) fwd = Math.Max(fwd, (ps.BeamLen + 280) * K);

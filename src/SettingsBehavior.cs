@@ -355,6 +355,18 @@ namespace SuperHeroes
             using (var pen = Line(r, FriendUI.Blue, .08f)) g.DrawLines(pen, pts);
         }
 
+        /// <summary>크립토나이트: 초록 결정 한 덩이와 작은 조각.</summary>
+        internal static void Kryptonite(Graphics g, RectangleF r, Color ink)
+        {
+            var main = new[] { Pt(r, .36f, .92f), Pt(r, .27f, .54f), Pt(r, .45f, .10f), Pt(r, .64f, .28f), Pt(r, .72f, .92f) };
+            var facet = new[] { Pt(r, .45f, .10f), Pt(r, .64f, .28f), Pt(r, .52f, .60f), Pt(r, .40f, .80f), Pt(r, .27f, .54f) };
+            var shard = new[] { Pt(r, .72f, .92f), Pt(r, .74f, .70f), Pt(r, .88f, .62f), Pt(r, .94f, .92f) };
+            using (var br = new SolidBrush(Color.FromArgb(46, 170, 72))) g.FillPolygon(br, shard);
+            using (var br = new SolidBrush(Color.FromArgb(70, 205, 90))) g.FillPolygon(br, main);
+            using (var br = new SolidBrush(Color.FromArgb(190, 252, 160))) g.FillPolygon(br, facet);
+            using (var pen = Line(r, ink, .06f)) { g.DrawPolygon(pen, main); g.DrawPolygon(pen, shard); }
+        }
+
         internal static void Goggles(Graphics g, RectangleF r, Color ink)
         {
             using (var pen = Line(r, ink, .08f))

@@ -71,8 +71,12 @@ namespace SuperHeroes
             // 눈 & 눈썹
             DrawEyesAndEyebrows(Color.FromArgb(18, 90, 200), false);
 
+            // 크립토나이트: 초록 핏줄 · 식은땀
+            DrawKryptoVeins(rx, ry);
+
             // 입
             DrawHeroMouth();
+            DrawKryptoSweat(rx, ry);
 
             // 기자 차림: 검은 뿔테 안경 (셔츠를 찢는 순간 벗겨진다)
             if (reporter && p.ShirtOpen < .35f) DrawReporterGlasses(rx);
@@ -332,6 +336,13 @@ namespace SuperHeroes
                 g.FillEllipse(B(Color.FromArgb(160, 255, 60, 60)), eyeSep - 18, eyeY - 14, 36, 28);
             }
 
+            // 크립토나이트로 힘이 빠지면 눈을 질끈 감고 눈썹이 처진다
+            if (SickFace)
+            {
+                if (DrawSickEyes(eyeSep, eyeY)) return;
+                // 아직 눈을 뜨고 있는 동안(놀람·초기)은 아래 눈을 그리되 눈썹은 걱정스러운 모양을 쓴다
+            }
+
             // 흰자
             g.FillEllipse(B(Color.White), -eyeSep - 13, eyeY - 8, 26, 18);
             g.DrawEllipse(ink, -eyeSep - 13, eyeY - 8, 26, 18);
@@ -343,6 +354,8 @@ namespace SuperHeroes
             g.FillEllipse(B(irisCol), eyeSep - 8, eyeY - 6, 14, 14);
             g.FillEllipse(B(Color.White), -eyeSep - 3, eyeY - 4, 4, 4);
             g.FillEllipse(B(Color.White), eyeSep - 5, eyeY - 4, 4, 4);
+
+            if (SickFace) return;   // 눈썹은 DrawSickEyes 에서 이미 그렸다
 
             // 눈썹
             Color browCol = blondeBrow ? Color.FromArgb(190, 150, 30) : cInk;
