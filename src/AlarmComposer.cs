@@ -32,6 +32,7 @@ namespace SuperHeroes
             Controls.Add(ok); Controls.Add(cancel); AcceptButton = ok; CancelButton = cancel;
             EventHandler update = delegate { UpdateSummary(); };
             time.ValueChanged += update; repeat.CheckedChanged += update;
+            cancel.Click += delegate { Close(); };   // Show() 로 띄운 창은 DialogResult 만으로는 닫히지 않는다 (Esc 도 같은 버튼을 탄다)
             ok.Click += delegate
             {
                 var a = new UserAlarm { On = true, Repeat = repeat.Checked, Time = TimeText, Msg = msg.Text.Trim() };

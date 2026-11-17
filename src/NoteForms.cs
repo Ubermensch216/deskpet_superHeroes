@@ -295,6 +295,7 @@ namespace SuperHeroes
             Controls.Add(ok); Controls.Add(cancel); AcceptButton = ok; CancelButton = cancel;
             EventHandler update = delegate { interval.Enabled = repeat.SelectedIndex > 0; unit.Text = repeat.SelectedIndex == 1 ? "일마다" : repeat.SelectedIndex == 2 ? "주마다" : repeat.SelectedIndex == 3 ? "개월마다" : repeat.SelectedIndex == 4 ? "년마다" : ""; UpdateSummary(); };
             date.ValueChanged += update; time.ValueChanged += update; repeat.SelectedIndexChanged += update; interval.ValueChanged += update;
+            cancel.Click += delegate { Close(); };   // 모달리스(Show)로 뜨는 창이라 DialogResult 만으로는 닫히지 않는다
             ok.Click += delegate { create(Due, RuleText); Close(); };
             update(null, EventArgs.Empty);
         }
