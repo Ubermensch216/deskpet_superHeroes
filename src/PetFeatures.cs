@@ -32,10 +32,33 @@ namespace SuperHeroes
             Y = Math.Max(Y, Area.Top + HeliH + 5);   // 처음 낙하는 오라까지 화면 안에서 보이게
         }
 
+        private int weakAct, lastWeakAct = -1;
+
+        private int ChooseWeakAct(IWorld w)
+        {
+            int act = w.Rng.Next(4);
+            if (act == lastWeakAct) act = (act + 1 + w.Rng.Next(3)) % 4;
+            lastWeakAct = act;
+            return act;
+        }
+
         private void DelayIdle(IWorld w)
         {
-            nextIdle = w.Now + 20 + w.Rng.NextDouble() * 30;
-            nextClimb = Math.Max(nextClimb, w.Now + 15);
+            if (FriendData.Current.Starving)
+            {
+                nextIdle = w.Now + 3 + w.Rng.NextDouble() * 2.5;
+                nextClimb = Math.Max(nextClimb, w.Now + 15);
+            }
+            else if (FriendData.Current.VeryHungry)
+            {
+                nextIdle = w.Now + 5 + w.Rng.NextDouble() * 4;
+                nextClimb = Math.Max(nextClimb, w.Now + 15);
+            }
+            else
+            {
+                nextIdle = w.Now + 20 + w.Rng.NextDouble() * 30;
+                nextClimb = Math.Max(nextClimb, w.Now + 15);
+            }
         }
 
         private void ClearAttachments() { SupportWindow = IntPtr.Zero; approachWindow = IntPtr.Zero; wallDescending = false; }
@@ -145,7 +168,7 @@ namespace SuperHeroes
                 default: choice = ClickCycle++ % 3; break;
             }
             if (choice == 0) StartSquish(w, .42, .24, resume, false);
-            else if (choice == 1) { extraDuration = 1.6; SetState(PetState.TouchCry, w); }
+            else if (choice == 1 || FriendData.Current.VeryHungry) { extraDuration = 1.6; SetState(PetState.TouchCry, w); }
             else { extraDuration = .7; SetState(PetState.Hop, w); }
             DelayIdle(w);
             FriendData.Current.Like(1);
@@ -157,6 +180,8 @@ namespace SuperHeroes
             { Bubble = Loc.T("내려가면 간식 먹자!"); BubbleUntil = w.Now + 3; return; }
             if (State == PetState.Wall || State == PetState.Ceiling || State == PetState.WindowClimb)
             { ClearAttachments(); SetState(PetState.Falling, w); return; }
+            bool wasStarving = FriendData.Current.Starving;
+            bool wasVeryHungry = FriendData.Current.VeryHungry;
             if (!FriendData.Current.TrySnack())
             {
                 string[] refusals =
@@ -170,7 +195,11 @@ namespace SuperHeroes
                 Bubble = refusals[idx]; BubbleUntil = w.Now + 3.5; return;
             }
             AfterReaction = PetState.Walk; extraDuration = 3;
-            SetState(PetState.Eating, w); Bubble = Loc.T("냠냠! 고마워"); BubbleUntil = w.Now + 3;
+            SetState(PetState.Eating, w);
+            Bubble = wasStarving ? Loc.T("살았다… 고마워! 이제 기운이 나!")
+                : wasVeryHungry ? Loc.T("으으… 겨우 살았네, 고마워!")
+                : Loc.T("냠냠! 고마워");
+            BubbleUntil = w.Now + 3;
             mouseGrace = w.Now + 5; DelayIdle(w);
         }
 
@@ -180,6 +209,8 @@ namespace SuperHeroes
             mouseGrace = w.Now + 8; hoverSince = -1;
             if (kind == "fall")
             { ReleaseFeatures(w); X = Area.Left + Area.Width * .5; Y = Area.Top + HeliH + 5; Vy = 0; SetState(PetState.Falling, w); return; }
+            if (FriendData.Current.VeryHungry && (kind == "wall" || kind == "walldown" || kind == "ceiling" || kind == "window"))
+            { Bubble = Loc.T("힘이 없어서 벽을 못 타겠어…"); BubbleUntil = w.Now + 3; return; }
             if (kind == "wall")
             { ClearAttachments(); wallSide = 1; wallDescending = false; X = WallX(Area.Left, Area.Right, 1, false); Y = Area.Bottom - BottomExt(false); SetState(PetState.Wall, w); return; }
             if (kind == "walldown")
@@ -243,6 +274,15 @@ namespace SuperHeroes
             focusWasOn = focus;
             if ((State == PetState.Wall && !opts.Walls) || (State == PetState.Ceiling && !opts.Ceiling) || (State == PetState.WindowClimb && !opts.Windows))
             { ClearAttachments(); SetState(PetState.Falling, w); }
+            if (FriendData.Current.VeryHungry)
+            {
+                approachWindow = IntPtr.Zero;
+                if (State == PetState.Wall || State == PetState.Ceiling || State == PetState.WindowClimb || State == PetState.Climb)
+                {
+                    ClearAttachments(); Vy = 0; SetState(PetState.Falling, w);
+                    if (string.IsNullOrEmpty(Bubble)) { Bubble = Loc.T("힘이 빠져서 못 버티겠어…"); BubbleUntil = w.Now + 3; }
+                }
+            }
             if (SupportWindow != IntPtr.Zero && State != PetState.Falling && State != PetState.Drag)
             {
                 Rectangle r;
@@ -264,7 +304,7 @@ namespace SuperHeroes
                 if (near && !hadNearMouse) hoverSince = w.Now;
                 if (!near) hoverSince = -1;
                 hadNearMouse = near;
-                if (!focus && opts.Escape && near && hoverSince >= 0 && w.Now - hoverSince > opts.EscapeDelay && w.Now > mouseGrace && w.Now > nextEscape && !CirclingMouse(w.Now) && !InputHeld && !DesktopSurfaces.MousePressed)
+                if (!focus && !FriendData.Current.VeryHungry && opts.Escape && near && hoverSince >= 0 && w.Now - hoverSince > opts.EscapeDelay && w.Now > mouseGrace && w.Now > nextEscape && !CirclingMouse(w.Now) && !InputHeld && !DesktopSurfaces.MousePressed)
                 {
                     Dir = mouse.X < X ? 1 : -1;
                     if (X > Area.Right - Art.W * 2) Dir = -1;
@@ -272,12 +312,17 @@ namespace SuperHeroes
                     extraDuration = .7 + w.Rng.NextDouble() * .25;
                     SetState(PetState.Sliding, w); nextEscape = w.Now + 2.5; hoverSince = -1; DelayIdle(w);
                 }
-                else if (!focus && opts.Follow && !opts.Escape && w.Now > mouseGrace && Math.Abs(mouse.Y - Y) < 140 * S && !InputHeld && Math.Abs(mouse.X - X) > Art.W)
+                else if (!focus && !FriendData.Current.Starving && opts.Follow && !opts.Escape && w.Now > mouseGrace && Math.Abs(mouse.Y - Y) < 140 * S && !InputHeld && Math.Abs(mouse.X - X) > Art.W)
                     Dir = mouse.X < X ? -1 : 1;
                 if (opts.Idle && w.Now >= nextIdle && !InputHeld && !near && (State == PetState.Walk || State == PetState.Pause))
                 {
                     extraDuration = opts.ShortRest ? (focus ? 4 : 6 + w.Rng.NextDouble() * 5) : 20 + w.Rng.NextDouble() * 10;
-                    if (!focus && FriendData.Current.Hungry) { extraDuration = 2.4 + w.Rng.NextDouble(); SetState(PetState.IdleCry, w); }
+                    if (!focus && FriendData.Current.VeryHungry)
+                    {
+                        extraDuration = FriendData.Current.Starving ? 4.0 + w.Rng.NextDouble() * 2.5 : 3.2 + w.Rng.NextDouble() * 1.8;
+                        SetState(PetState.IdleCry, w);
+                    }
+                    else if (!focus && FriendData.Current.Hungry) { extraDuration = 2.4 + w.Rng.NextDouble(); SetState(PetState.IdleCry, w); }
                     else
                     {
                         RestPose chosen = ChooseRestPose(w, focus);
@@ -285,7 +330,7 @@ namespace SuperHeroes
                     }
                     DelayIdle(w);
                 }
-                if (!focus && opts.Windows && State == PetState.Walk && SupportWindow == IntPtr.Zero && w.Now > nextClimb)
+                if (!focus && !FriendData.Current.VeryHungry && opts.Windows && State == PetState.Walk && SupportWindow == IntPtr.Zero && w.Now > nextClimb)
                 {
                     nextClimb = w.Now + 35 + w.Rng.NextDouble() * 30;
                     var possible = DesktopSurfaces.Cached.Where(a => a.Bounds.Top >= Area.Top + 70 * S && a.Bounds.Top < Area.Bottom - 70 * S && a.Bounds.IntersectsWith(Area)).ToList();
@@ -328,7 +373,12 @@ namespace SuperHeroes
                     }
                     break;
                 case PetState.IdleCry:
-                    if (StateT >= extraDuration) { SetState(PetState.Walk, w); DelayIdle(w); }
+                    SnapToFloor(w);
+                    if (StateT >= extraDuration)
+                    {
+                        if (FriendData.Current.Starving) { SetState(PetState.Pause, w); DelayIdle(w); }
+                        else { SetState(PetState.Walk, w); DelayIdle(w); }
+                    }
                     break;
                 case PetState.TouchCry:
                 case PetState.Hop:
@@ -389,7 +439,7 @@ namespace SuperHeroes
 
         internal bool BoundaryFeature(IWorld w, double nextX)
         {
-            if (!PlayOptions.Current.Walls || PlayOptions.IsFocus(DateTime.Now) || State != PetState.Walk || SupportWindow != IntPtr.Zero || approachWindow != IntPtr.Zero) return false;
+            if (FriendData.Current.VeryHungry || !PlayOptions.Current.Walls || PlayOptions.IsFocus(DateTime.Now) || State != PetState.Walk || SupportWindow != IntPtr.Zero || approachWindow != IntPtr.Zero) return false;
             bool hit = Dir > 0 ? nextX + HalfW >= Area.Right : nextX - HalfW <= Area.Left;
             if (!hit) return false;
             double outside = Dir > 0 ? Area.Right + 1 : Area.Left - 1;

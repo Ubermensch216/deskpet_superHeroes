@@ -51,7 +51,7 @@ namespace SuperHeroes
         private readonly double blinkOffset = new Random(Guid.NewGuid().GetHashCode()).NextDouble() * 4.3;
 
         private float S { get { return CharacterArt.Scale; } }
-        private double WalkSpeed { get { return 34 * S * Art.Info.SpeedFactor; } }
+        private double WalkSpeed { get { return 34 * S * Art.Info.SpeedFactor * FriendData.Current.HungerSpeedMultiplier; } }
         private double HalfW { get { return Art.W * .36; } }
         /// <summary>로로펠러까지 포함한 높이·반폭 (화면 맨 위/양끝 보정에 쓴다).</summary>
         internal double HeliH { get { return Art.H + Art.RotorH; } }
@@ -97,16 +97,43 @@ namespace SuperHeroes
 
         public void SetState(PetState s, IWorld w)
         {
+            if (s == PetState.Walk && FriendData.Current.Starving) { BeginWeakIdleOrPause(w); return; }
             State = s; StateT = 0;
             if (s != PetState.IdleCry) previewIdleCry = false;
             switch (s)
             {
-                case PetState.Walk: stateDur = 3 + w.Rng.NextDouble() * 7; break;
+                case PetState.Walk:
+                    stateDur = FriendData.Current.VeryHungry ? 2.0 + w.Rng.NextDouble() * 2.5 : 3 + w.Rng.NextDouble() * 7;
+                    break;
                 case PetState.Pause:
-                    pauseAct = ChoosePauseAct(w);
-                    stateDur = pauseAct == 0 ? 1.2 + w.Rng.NextDouble() * 3 : 3.0 + w.Rng.NextDouble() * .8;
+                    if (FriendData.Current.VeryHungry)
+                    {
+                        pauseAct = 0; weakAct = ChooseWeakAct(w);
+                        stateDur = FriendData.Current.Starving ? 3.2 + w.Rng.NextDouble() * 2.2 : 2.6 + w.Rng.NextDouble() * 1.8;
+                    }
+                    else
+                    {
+                        pauseAct = ChoosePauseAct(w);
+                        stateDur = pauseAct == 0 ? 1.2 + w.Rng.NextDouble() * 3 : 3.0 + w.Rng.NextDouble() * .8;
+                    }
+                    break;
+                case PetState.IdleCry:
+                    weakAct = ChooseWeakAct(w);
                     break;
                 case PetState.Waking: stateDur = 1.6; break;
+            }
+        }
+
+        private void BeginWeakIdleOrPause(IWorld w)
+        {
+            if (w.Rng.NextDouble() < .65)
+            {
+                extraDuration = FriendData.Current.Starving ? 4.0 + w.Rng.NextDouble() * 2.5 : 3.0 + w.Rng.NextDouble() * 1.5;
+                SetState(PetState.IdleCry, w);
+            }
+            else
+            {
+                SetState(PetState.Pause, w);
             }
         }
 
@@ -199,6 +226,7 @@ namespace SuperHeroes
                     SnapToFloor(w);
                     if (StateT > stateDur)
                     {
+                        if (FriendData.Current.Starving) { BeginWeakIdleOrPause(w); break; }
                         if (w.Rng.NextDouble() < .35 && !(AvoidingPartner(w) && -Dir != avoidDir)) Dir = -Dir;
                         SetState(PetState.Walk, w);
                     }
@@ -247,6 +275,7 @@ namespace SuperHeroes
         {
             SnapToFloor(w);
             if (State != PetState.Walk) return;
+            if (FriendData.Current.Starving) { BeginWeakIdleOrPause(w); return; }
             if (StateT > stateDur) { SetState(PetState.Pause, w); return; }
             MoveHoriz(w, dt, WalkSpeed);
         }
@@ -278,7 +307,14 @@ namespace SuperHeroes
             Rectangle next = other.Value;
             if (next.Bottom < Y - 2)
             {
-                // 이웃 모니터가 더 높다 → 기어라르기
+                if (FriendData.Current.VeryHungry)
+                {
+                    Dir = -Dir;
+                    X = Dir <= 0 ? Area.Right - half : Area.Left + half;
+                    if (State == PetState.Walk) SetState(PetState.Pause, w);
+                    return;
+                }
+                // 이웃 모니터가 더 높다 → 기어오르기
                 X = Dir <= 0 ? Area.Left + half * .2 : Area.Right - half * .2;
                 climbTo = next; climbDir = Dir; SetState(PetState.Climb, w);
                 return;
@@ -295,6 +331,7 @@ namespace SuperHeroes
 
         private void UpdateClimb(IWorld w, double dt)
         {
+            if (FriendData.Current.VeryHungry) { Vy = 0; SetState(PetState.Falling, w); return; }
             Y -= 30 * S * dt;
             if (Y <= climbTo.Bottom)
             {

@@ -211,6 +211,15 @@ namespace SuperHeroes
             P.Gx = 0; P.Gy = Math.Max(P.Gy, .4f);
         }
 
+        private void WeakWalkOverlay(Pose P, double t, bool tears)
+        {
+            P.BodyY += 10f; P.Knee = Math.Max(P.Knee, .8f);
+            P.HeadY += 8f; P.HeadTilt += F(6 + Math.Sin(t * 2.2) * 1.8);
+            P.OpenL = P.OpenR = .55f; P.Brow = -.75f; P.Mouth = MouthStyle.Frown;
+            P.CapeWind = 0;
+            if (tears) P.Tears = F(t);
+        }
+
         private void CompanionLook(ref Look look, double now)
         {
             if (PlayOptions.Current.ShowAffinity)
@@ -219,20 +228,67 @@ namespace SuperHeroes
                 look.AffinityOnLeft = X + Art.W * .5 + (22 + look.AffinityLabel.Length * 8) * S > Area.Right;
             }
             bool hungry = FriendData.Current.Hungry;
-            if (hungry && IsCompanionFloorPose)
+            bool veryHungry = FriendData.Current.VeryHungry;
+            bool starving = FriendData.Current.Starving;
+            if ((hungry || veryHungry) && IsCompanionFloorPose)
             {
-                if (State == PetState.Squish) look.Pose.Tears = F(animT);
-                else if (State == PetState.Walk || (State == PetState.Pause && walkAmp > .05)) SadOverlay(look.Pose, animT);
-                else if (State == PetState.Pause) { SadOverlay(look.Pose, animT); }
+                if (State == PetState.Squish)
+                {
+                    if (hungry) look.Pose.Tears = F(animT);
+                    if (veryHungry) { look.Pose.Brow = -.75f; look.Pose.Mouth = MouthStyle.Frown; }
+                }
+                else if (veryHungry && (State == PetState.Walk || (State == PetState.Pause && walkAmp > .05)))
+                {
+                    WeakWalkOverlay(look.Pose, animT, hungry);
+                }
+                else if (veryHungry)
+                {
+                    look.Pose = new Pose();
+                    WeakHungerPose(look.Pose, State == PetState.IdleCry ? StateT : animT, weakAct, starving, hungry);
+                    look.FaceRight = false;
+                    look.Angle = 0; look.Sx = look.Sy = 1; look.HopY = 0;
+                }
+                else if (State == PetState.Walk || State == PetState.Pause)
+                {
+                    SadOverlay(look.Pose, animT);
+                }
                 else
                 {
                     look.Pose = new Pose(); HungryCryPose(look.Pose, animT); look.FaceRight = false;
                     look.Angle = 0; look.Sx = look.Sy = 1; look.HopY = 0;
                 }
-                lookJitterX = Math.Sin(animT * 21) * .45 * S;
+                if (hungry && State != PetState.Walk) lookJitterX = Math.Sin(animT * (starving ? 14 : 21)) * .4 * S;
+            }
+            else if (veryHungry && State == PetState.Falling)
+            {
+                look.Pose.Brow = -.6f; look.Pose.Mouth = MouthStyle.Frown;
+                if (hungry) look.Pose.Tears = F(animT);
             }
             if (hungry && (IsCompanionFloorPose || State == PetState.TouchCry) && string.IsNullOrEmpty(look.Bubble) && now >= flowerUntil)
-                look.Bubble = "배고파! 간식줘 ㅠㅠ";
+            {
+                if (starving)
+                {
+                    string[] lines = {
+                        Loc.T("한 발짝도 못 움직이겠어…"),
+                        Loc.T("기운이 다 빠졌어… 간식 좀 줘 ㅠㅠ"),
+                        Loc.T("배고파서 쓰러질 것 같아…")
+                    };
+                    look.Bubble = lines[(int)(Math.Max(0, now) / 12) % lines.Length];
+                }
+                else if (veryHungry)
+                {
+                    string[] lines = {
+                        Loc.T("힘이 하나도 없어… 벽도 못 타겠어…"),
+                        Loc.T("배고파서 다리가 후들거려… ㅠㅠ"),
+                        Loc.T("기운이 없어… 간식 하나만 줄래?")
+                    };
+                    look.Bubble = lines[(int)(Math.Max(0, now) / 12) % lines.Length];
+                }
+                else
+                {
+                    look.Bubble = Loc.T("배고파! 간식줘 ㅠㅠ");
+                }
+            }
             if (now < flowerUntil && IsCompanionFloorPose && !previewIdleCry)
             {
                 look.Pose = new Pose(); FlowerPose(look.Pose, now);

@@ -22,7 +22,7 @@ namespace SuperHeroes
         internal bool IsPowerFlight { get { return powerFlight && State == PetState.PowerRise; } }
 
         internal bool CanDance(double now)
-        { return !PlayOptions.Current.PositionFixed && !Hidden && !InputHeld && now >= flowerUntil && (IsCompanionFloorPose || State == PetState.Sliding); }
+        { return !PlayOptions.Current.PositionFixed && !FriendData.Current.VeryHungry && !Hidden && !InputHeld && now >= flowerUntil && (IsCompanionFloorPose || State == PetState.Sliding); }
 
         private void ResetSecretThrows() { throwCount = 0; throwSequenceStarted = 0; powerFlight = false; }
 
@@ -30,7 +30,7 @@ namespace SuperHeroes
         internal void RegisterSecretThrow(IWorld w)
         {
             powerFlight = false;
-            if (!PlayOptions.Current.Secrets) { ResetSecretThrows(); return; }
+            if (!PlayOptions.Current.Secrets || FriendData.Current.VeryHungry) { ResetSecretThrows(); return; }
             if (throwCount == 0 || w.Now - throwSequenceStarted > 10) { throwCount = 0; throwSequenceStarted = w.Now; }
             throwCount++;
             if (throwCount >= 3)
@@ -168,7 +168,7 @@ namespace SuperHeroes
             if (!IsCompanionFloorPose && State != PetState.Sliding && State != PetState.TouchCry && State != PetState.Hop && State != PetState.Eating) return;
             if (w.Now < contactReactionUntil) return;
             contactReactionUntil = w.Now + .45;
-            StartSquish(w, .22, .12, PetState.Walk, false); mouseGrace = w.Now + .6;
+            StartSquish(w, .22, .12, FriendData.Current.Starving ? PetState.Pause : PetState.Walk, false); mouseGrace = w.Now + .6;
         }
 
         /// <summary>서로 엉켜 오래 못 비킨 친구는 잠시 몸이 겹쳐도 되게(부딪힘 무시) 화면 안쪽으로 걸어 나와 빠져나간다.</summary>
@@ -180,7 +180,7 @@ namespace SuperHeroes
             ghostUntil = w.Now + GhostSeconds; contactChainStart = w.Now; avoidUntil = 0;
             Dir = X < (Area.Left + Area.Right) / 2.0 ? 1 : -1;
             contactReactionUntil = w.Now + GhostSeconds; mouseGrace = w.Now + GhostSeconds;
-            if (State != PetState.Walk) SetState(PetState.Walk, w);
+            if (State != PetState.Walk && !FriendData.Current.Starving) SetState(PetState.Walk, w);
         }
 
         internal void ClampContact()

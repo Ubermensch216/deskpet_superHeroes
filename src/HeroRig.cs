@@ -217,12 +217,13 @@ namespace SuperHeroes
             DrawLeg(true);
 
             // 4. 뒤쪽 팔
-            DrawArm(false);
+            if (!p.ArmsFront) DrawArm(false);
 
             // 5. 몸통 및 수트/엠블럼/벨트
             DrawTorso();
 
-            // 6. 앞쪽 팔 (또는 가슴 앞 손)
+            // 6. 앞쪽 팔 (또는 가슴·배 앞 양손)
+            if (p.ArmsFront) DrawArm(false);
             DrawArm(true);
 
             // 7. 앞쪽 망토 깃
@@ -667,6 +668,7 @@ namespace SuperHeroes
 
         private void SolveArms()
         {
+            float bx = p.BodyX, by = p.BodyY;
             // 기본 팔 끝 위치 (내려뜨림)
             wrist[0] = Pt(shL.X - 16, shL.Y + l1 + l2 - 10);
             wrist[1] = Pt(shR.X + 16, shR.Y + l1 + l2 - 10);
@@ -675,14 +677,26 @@ namespace SuperHeroes
             if (p.Reach == Reach.Hips)
             {
                 // 양손 허리춤 척 당당한 슈퍼히어로 포즈
-                wrist[0] = Pt(torsoCx - botW * .48f, waistY + 6);
-                wrist[1] = Pt(torsoCx + botW * .48f, waistY + 6);
+                wrist[0] = Pt(torsoCx - botW * .48f + bx, waistY + 6 + by);
+                wrist[1] = Pt(torsoCx + botW * .48f + bx, waistY + 6 + by);
             }
             else if (p.Reach == Reach.Cross)
             {
                 // 팔짱 끼기
-                wrist[0] = Pt(torsoCx + 24, waistY - 14);
-                wrist[1] = Pt(torsoCx - 24, waistY - 14);
+                wrist[0] = Pt(torsoCx + 24 + bx, waistY - 14 + by);
+                wrist[1] = Pt(torsoCx - 24 + bx, waistY - 14 + by);
+            }
+            else if (p.Reach == Reach.Belly)
+            {
+                // 배를 움켜쥔 자세
+                wrist[0] = Pt(torsoCx - 16 + bx, waistY - 12 + by);
+                wrist[1] = Pt(torsoCx + 16 + bx, waistY - 12 + by);
+            }
+            else if (p.Reach == Reach.Lap)
+            {
+                // 무릎·허벅지 위에 힘없이 얹은 손
+                wrist[0] = Pt(torsoCx - 26 + bx, hipY + 22 + by);
+                wrist[1] = Pt(torsoCx + 26 + bx, hipY + 22 + by);
             }
             else if (p.Reach == Reach.Hammer && who == Persona.Thor)
             {

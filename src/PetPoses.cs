@@ -444,6 +444,78 @@ namespace SuperHeroes
             P.Tail = F(Math.Sin(t * 4) * 10); P.TailWaveAmp = 16; P.TailWavePhase = F(t * 8);
         }
 
+        private void WeakHungerPose(Pose P, double t, int act, bool starving, bool tears)
+        {
+            switch (act)
+            {
+                case 0:
+                    HungryCryPose(P, t);
+                    if (starving) P.BodyY = 46;
+                    if (!tears) P.Tears = -1;
+                    break;
+                case 1:
+                {
+                    // 무릎 꿇고 힘없이 고개 떨구기
+                    double breath = Math.Sin(t * (starving ? 2.2 : 2.8));
+                    double sway = Math.Sin(t * 1.4);
+                    P.Sit = true; P.BodyY = F(starving ? 54 : 46); P.Knee = 2.4f;
+                    P.FootLX = 10; P.FootRX = -10; P.FootLY = -22; P.FootRY = -22;
+                    P.BodyX = F(sway * (starving ? 1.5 : 2.2));
+                    P.HeadY = F((starving ? 20 : 14) + breath * 1.5);
+                    P.HeadTilt = F((starving ? 11 : 8) + sway * 1.8);
+                    P.HandLTo = new PointF(112, 495 + P.BodyY * .3f);
+                    P.HandRTo = new PointF(288, 495 + P.BodyY * .3f);
+                    P.Eyes = starving ? EyeStyle.Sleep : EyeStyle.Open;
+                    P.OpenL = P.OpenR = starving ? 0f : .45f;
+                    P.Brow = -.82f; P.Mouth = MouthStyle.Frown;
+                    if (tears) P.Tears = F(t);
+                    break;
+                }
+                case 2:
+                {
+                    // 바닥에 주저앉아 기운 없이 한숨 쉬기
+                    double sigh = Math.Max(0, Math.Sin(t * 1.35));
+                    P.Sit = true; P.BodyY = F(starving ? 58 : 48); P.Knee = 6.5f;
+                    P.FootLX = -10; P.FootRX = 10; P.FootLY = 0; P.FootRY = 0;
+                    P.ArmsFront = true; P.Reach = Reach.Lap;
+                    P.HeadY = F(10 + sigh * 7); P.HeadTilt = F(6 + sigh * 5);
+                    P.Eyes = sigh > .45 || starving ? EyeStyle.Sleep : EyeStyle.Open;
+                    P.OpenL = P.OpenR = .5f;
+                    P.Brow = -.78f; P.Mouth = sigh > .55 ? MouthStyle.Open : MouthStyle.Frown;
+                    if (tears) P.Tears = F(t);
+                    break;
+                }
+                default:
+                    if (starving)
+                    {
+                        // 포만감 5 이하 탈진: 바닥에 완전히 힘없이 늘어져 있음
+                        double breath = Math.Sin(t * 2.0);
+                        P.Sit = true; P.BodyY = F(64 + breath * 1.5); P.Knee = 7.5f;
+                        P.FootLX = -14; P.FootRX = 14; P.FootLY = 0; P.FootRY = 0;
+                        P.ArmsFront = true;
+                        P.HandLTo = new PointF(104, 552); P.HandRTo = new PointF(296, 552);
+                        P.HeadY = F(20 + breath * 1.8);
+                        P.HeadTilt = F(12 + Math.Sin(t * 1.1) * 1.5);
+                        P.Eyes = EyeStyle.Sleep; P.OpenL = P.OpenR = 0f;
+                        P.Brow = -.9f; P.Mouth = MouthStyle.Frown;
+                        if (tears) P.Tears = F(t);
+                    }
+                    else
+                    {
+                        // 포만감 10 이하: 서서 고개 숙이고 기력 없이 휘청이기
+                        double sway = Math.Sin(t * 1.6);
+                        P.BodyX = F(sway * 5); P.BodyY = F(14 + Math.Abs(sway) * 3); P.Knee = 1.1f;
+                        P.HeadY = F(12 + Math.Sin(t * 2.5) * 1.5);
+                        P.HeadTilt = F(6 + sway * 3);
+                        P.HandLTo = new PointF(112, 462 + P.BodyY * .4f);
+                        P.HandRTo = new PointF(288, 462 + P.BodyY * .4f);
+                        P.OpenL = P.OpenR = .52f; P.Brow = -.75f; P.Mouth = MouthStyle.Frown;
+                        if (tears) P.Tears = F(t);
+                    }
+                    break;
+            }
+        }
+
         private void WaitPose(Pose P)
         {
             // 퇴근 시간을 기다리며 두리번, 발끝으로 톡톡

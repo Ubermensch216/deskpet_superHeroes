@@ -292,7 +292,7 @@ namespace SuperHeroes
             b.Append("- 지금은 " + now.ToString("M월 d일") + " " + TimeOfDay(now) + "이야.\n");
             b.Append("- 사용자와의 사이: " + AffinityTone(d.Affinity) + ".\n");
             int sat = (int)Math.Floor(d.Satiety);
-            b.Append("- " + (sat <= 20 ? "에너지가 부족해서 배가 몹시 고픈 상태야." : sat <= 50 ? "조금 출출한 편이야." : "에너지가 든든하게 충전된 상태야.") + "\n");
+            b.Append("- " + (sat <= 5 ? "기력이 완전히 바닥나서 한 발짝도 움직이기 힘들 만큼 탈진한 상태야." : sat <= 10 ? "기운이 크게 빠져서 벽도 못 타고 천천히 힘없이 움직이는 상태야." : sat <= 20 ? "에너지가 부족해서 배가 몹시 고픈 상태야." : sat <= 50 ? "조금 출출한 편이야." : "에너지가 든든하게 충전된 상태야.") + "\n");
             if (ChatOptions.Current.Memory && ChatMemory.Facts.Count > 0)
             {
                 b.Append("\n[네가 기억하는 사용자 이야기]\n");
@@ -337,7 +337,7 @@ namespace SuperHeroes
             b.Append("- It is " + now.ToString("MMMM d", Loc.Culture) + ", " + TimeOfDay(now) + ".\n");
             b.Append("- Bond with the user: " + AffinityTone(d.Affinity) + ".\n");
             int sat = (int)Math.Floor(d.Satiety);
-            b.Append("- " + (sat <= 20 ? "You are low on energy and very hungry." : sat <= 50 ? "You are a little peckish." : "Your energy is nicely charged up.") + "\n");
+            b.Append("- " + (sat <= 5 ? "Your energy is completely depleted; you are too exhausted to take a single step." : sat <= 10 ? "You are so low on strength that you can't climb walls and can only shuffle slowly." : sat <= 20 ? "You are low on energy and very hungry." : sat <= 50 ? "You are a little peckish." : "Your energy is nicely charged up.") + "\n");
             if (ChatOptions.Current.Memory && ChatMemory.Facts.Count > 0)
             {
                 b.Append("\n[What you remember about the user]\n");

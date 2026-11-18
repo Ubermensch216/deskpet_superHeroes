@@ -165,6 +165,7 @@ namespace SuperHeroes
                 g.DrawLine(pn, 39, eyeY + 3, 47, eyeY - 1);
             }
             DrawHeroMouth();
+            DrawTears(26f, -headRy * .05f);
 
             // 윤기 나는 흑발: 이마를 덮는 비대칭 가르마 앞머리
             var cap = new[]

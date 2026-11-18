@@ -140,7 +140,7 @@ namespace SuperHeroes
                 add(WebSwing, 10); add(SpiderSense, 10); add(WebNet, 10);
                 add(MjolnirSpin, 10); add(Lightning, 10); add(LightningT, 30); add(Raise, 20); add(GroundCrush, 10); add(HammerThrow, 10); add(SpinT, 30); add(CrushT, 30); add(SigT, 30); add(HangSwing, 8); add(UpsideDown, 20); add(Flip, 2); add(Hide, 4); add(Vehicle, 4); add(Zoom, 40);
                 add(Bracers, 10); add(BracerT, 30); add(LassoSpin, 10); add(LassoT, 30); add(SwordSlash, 20); add(ShieldGuard, 10); add(AmazonFlight, 10); add(FlightT, 30);
-                add(Aura, 10); add(Lie, 10);
+                add(Aura, 10); add(Lie, 10); add(Tears < 0 ? -1f : Tears, 15); add(Sweat < 0 ? -1f : Sweat, 15);
                 return h;
             }
         }

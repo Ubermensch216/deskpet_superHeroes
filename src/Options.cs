@@ -266,6 +266,12 @@ namespace SuperHeroes
         internal const double SnackFullThreshold = 80;
         internal bool CanSnack { get { return Satiety < SnackFullThreshold; } }
         internal bool Hungry { get { return PlayOptions.Current.HungerCry && (PlayOptions.Current.HungerMinutes == 0 || Satiety <= 20); } }
+        /// <summary>포만감 10 이하: 기력이 크게 떨어져 벽을 못 타고 느리게 힘없이 움직인다.</summary>
+        internal bool VeryHungry { get { return Satiety <= 10; } }
+        /// <summary>포만감 5 이하: 기력이 바닥나 한 곳에 멈춰 주저앉아 있는다.</summary>
+        internal bool Starving { get { return Satiety <= 5; } }
+        /// <summary>포만감 단계별 이동 속도 배율 (20 이하 0.75 · 10 이하 0.40 · 5 이하 정지).</summary>
+        internal double HungerSpeedMultiplier { get { return Satiety <= 5 ? 0 : Satiety <= 10 ? .40 : Satiety <= 20 ? .75 : 1.0; } }
 
         internal static double Number(XmlNode node, string name, double fallback)
         {

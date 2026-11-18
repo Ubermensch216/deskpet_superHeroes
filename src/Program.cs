@@ -496,8 +496,10 @@ namespace SuperHeroes
                 check(!d.TrySnack(), "배가 꽉 차면 간식 거절");
                 d.Satiety = 80; check(!d.TrySnack(), "포만감 80 이상이면 간식 거절");
                 d.Affinity = 250; d.CelebratedHundreds = 1; check(d.TakeMilestone() && d.CelebratedHundreds == 2 && !d.TakeMilestone(), "100 단위 꽃다발 한 번씩");
-                d.Satiety = 10; check(d.Hungry, "포만감 20 이하 = 배고픔");
-                PlayOptions.Current.HungerMinutes = 0; d.Satiety = 100; check(d.Hungry, "0분 = 항상 우는 표정");
+                d.Satiety = 15; check(d.Hungry && !d.VeryHungry && !d.Starving && Math.Abs(d.HungerSpeedMultiplier - .75) < 1e-6, "포만감 20 이하 = 배고픔(속도 0.75)");
+                d.Satiety = 10; check(d.Hungry && d.VeryHungry && !d.Starving && Math.Abs(d.HungerSpeedMultiplier - .40) < 1e-6, "포만감 10 이하 = 기력 저하(속도 0.40)");
+                d.Satiety = 5; check(d.Hungry && d.VeryHungry && d.Starving && d.HungerSpeedMultiplier == 0, "포만감 5 이하 = 탈진 정지");
+                PlayOptions.Current.HungerMinutes = 0; d.Satiety = 100; check(d.Hungry && !d.VeryHungry && !d.Starving && d.HungerSpeedMultiplier == 1.0, "0분 = 항상 우는 표정(속도는 정상)");
                 PlayOptions.Current.HungerMinutes = 60;
                 d.Todos.Add(new TodoItem { Text = "첫 할 일", Done = true }); d.Todos.Add(new TodoItem { Text = "둘째", Done = false });
                 d.Notes = "메모\n두 줄"; d.TimerText = "쉬자"; d.TimerUtc = DateTime.UtcNow.AddMinutes(5); d.Discover("dizzy");
@@ -573,6 +575,58 @@ namespace SuperHeroes
                 var w3 = new FakeWorld(); var p3 = new Pet(w3, 0, 500, 300); var all3 = new List<Pet> { p3 };
                 double px = p3.X, py = p3.Y; for (double t = 0; t < 20; t += .03) { w3.Now += .03; p3.Update(w3, .03, all3, 0); }
                 check(Math.Abs(p3.X - px) < 1 && Math.Abs(p3.Y - py) < 1 || p3.Y <= w3.Areas[0].Bottom, "위치 고정 중에는 자동 이동 없음");
+
+                // 포만감 저하(10 이하 · 5 이하): 속도 감소 · 벽타기 차단 · 제자리 멈춤 · 슬픈 동작
+                {
+                    PlayOptions.Current = new PlayOptions { Escape = false, Idle = false, Windows = false, Walls = true, Ceiling = true };
+                    Func<double, double> measureWalk = sat =>
+                    {
+                        FriendData.Current.Satiety = sat;
+                        var wh = new FakeWorld(); var hp = new Pet(wh, 0, 500, 720) { Area = wh.Areas[0], Dir = 1 };
+                        hp.SetState(PetState.Walk, wh);
+                        double startX = hp.X;
+                        for (double t = 0; t < 1.2; t += .03) { wh.Now += .03; hp.Update(wh, .03, new List<Pet> { hp }, 0); }
+                        return Math.Abs(hp.X - startX);
+                    };
+                    double dxFull = measureWalk(100), dxHungry = measureWalk(15), dxVery = measureWalk(8), dxStarve = measureWalk(4);
+                    check(dxHungry < dxFull * .82 && dxVery < dxHungry * .65 && dxStarve < .01,
+                        string.Format("포만감 단계별 이동 속도 감소 (100:{0:F1} > 15:{1:F1} > 8:{2:F1} > 4:{3:F1})", dxFull, dxHungry, dxVery, dxStarve));
+
+                    // 10 이하: 벽으로 걸어가도 벽타기 불가 + 이미 벽에 붙어 있었으면 즉시 떨어짐
+                    FriendData.Current.Satiety = 10;
+                    var wWall = new FakeWorld(); var wp = new Pet(wWall, 2, 1240, 720) { Area = wWall.Areas[0], Dir = 1 };
+                    wp.SetState(PetState.Walk, wWall);
+                    var seenWall = new HashSet<PetState>();
+                    for (double t = 0; t < 10; t += .03) { wWall.Now += .03; wp.Update(wWall, .03, new List<Pet> { wp }, 0); seenWall.Add(wp.State); }
+                    check(!seenWall.Contains(PetState.Wall) && !seenWall.Contains(PetState.Ceiling), "포만감 10 이하: 벽타기·천장타기 안 함");
+
+                    FriendData.Current.Satiety = 100;
+                    wp.Demonstrate(wWall, "wall");
+                    check(wp.State == PetState.Wall, "포만감 100에서는 벽타기 가능");
+                    FriendData.Current.Satiety = 9;
+                    wWall.Now += .03; wp.Update(wWall, .03, new List<Pet> { wp }, 0);
+                    check(wp.State == PetState.Falling, "벽타기 중 포만감 10 이하가 되면 힘이 빠져 떨어짐");
+
+                    // 5 이하: 한 곳에 멈춘 채 힘없고 서글픈 동작 순환 + 5명 모두 정상 렌더링 + 간식 먹으면 다시 걸음
+                    PlayOptions.Current = new PlayOptions { Escape = false, Idle = true, Windows = false, Walls = true, Ceiling = true };
+                    FriendData.Current.Satiety = 3;
+                    var wStarve = new FakeWorld(); var sp = new Pet(wStarve, 1, 600, 720) { Area = wStarve.Areas[0] };
+                    sp.SetState(PetState.Pause, wStarve);
+                    double sx0 = sp.X; var starveStates = new HashSet<PetState>();
+                    for (double t = 0; t < 20; t += .03) { wStarve.Now += .03; sp.Update(wStarve, .03, new List<Pet> { sp }, 0); starveStates.Add(sp.State); }
+                    check(Math.Abs(sp.X - sx0) < .01 && !starveStates.Contains(PetState.Walk) && starveStates.Contains(PetState.IdleCry), "포만감 5 이하: 한 곳에 멈춰 힘없는 동작 유지");
+
+                    for (int c = 0; c < CharacterArt.Count; c++)
+                    {
+                        var rpWeak = new Pet(wStarve, c, 600, 720) { Area = wStarve.Areas[0] };
+                        rpWeak.SetState(PetState.IdleCry, wStarve);
+                        PointF org; using (Bitmap b = Pet.Render(rpWeak.GetLook(wStarve.Now), out org)) check(b.Width > 20 && b.Height > 20, CharacterArt.Infos[c].Name + " 배고픔 탈진 렌더링");
+                    }
+                    sp.Feed(wStarve);
+                    for (double t = 0; t < 4; t += .03) { wStarve.Now += .03; sp.Update(wStarve, .03, new List<Pet> { sp }, 0); }
+                    check(FriendData.Current.Satiety == 28 && sp.State == PetState.Walk, "간식 후 포만감 회복 및 다시 이동");
+                    FriendData.Current = new FriendData();
+                }
 
                 // 두 마리 충돌 분리
                 PlayOptions.Current = new PlayOptions { Escape = false, Idle = false, Windows = false };

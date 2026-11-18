@@ -74,8 +74,9 @@ namespace SuperHeroes
             // 크립토나이트: 초록 핏줄 · 식은땀
             DrawKryptoVeins(rx, ry);
 
-            // 입
+            // 입 · 눈물
             DrawHeroMouth();
+            DrawTears(26f, -headRy * .05f);
             DrawKryptoSweat(rx, ry);
 
             // 기자 차림: 검은 뿔테 안경 (셔츠를 찢는 순간 벗겨진다)
@@ -168,21 +169,46 @@ namespace SuperHeroes
             };
             Fill(chinArea, cSkin);
 
-            // 다부지게 다문 입 & 턱선
+            // 다부지게 다문 입 & 턱선 (슬픔·놀람 표정 반영)
             using (var pn = Pn(cInk, 3.2f))
             {
-                g.DrawLine(pn, -18, ry * .68f, 18, ry * .68f); // 입
+                if (p.Mouth == MouthStyle.Frown || p.Mouth == MouthStyle.Pout)
+                    g.DrawArc(pn, -14, ry * .64f, 28, 12, 200, 140);
+                else if (p.Mouth == MouthStyle.Open || p.Mouth == MouthStyle.Scared)
+                {
+                    g.FillEllipse(B(Color.FromArgb(160, 40, 40)), -9, ry * .58f, 18, 11);
+                    g.DrawEllipse(pn, -9, ry * .58f, 18, 11);
+                }
+                else if (p.Mouth == MouthStyle.Smile)
+                    g.DrawArc(pn, -14, ry * .56f, 28, 14, 20, 140);
+                else
+                    g.DrawLine(pn, -18, ry * .68f, 18, ry * .68f); // 입
                 g.DrawLine(pn, -10, ry * .84f, 10, ry * .84f); // 턱선
             }
 
-            // 배트맨 시그니처: 흰색 삼각형 안광 렌즈 눈!
+            // 배트맨 시그니처: 흰색 삼각형 안광 렌즈 눈! (감은 눈 · 슬픈 눈 반영)
             float eyeY = -ry * .08f;
-            var eyeL = new[] { Pt(-34, eyeY), Pt(-12, eyeY + 8), Pt(-14, eyeY - 6) };
-            var eyeR = new[] { Pt(34, eyeY), Pt(12, eyeY + 8), Pt(14, eyeY - 6) };
-            g.FillPolygon(B(Color.White), eyeL);
-            g.DrawPolygon(ink, eyeL);
-            g.FillPolygon(B(Color.White), eyeR);
-            g.DrawPolygon(ink, eyeR);
+            if (p.Eyes == EyeStyle.Sleep || p.OpenL < .25f)
+            {
+                using (var pn = Pn(Color.FromArgb(220, 225, 235), 3.4f))
+                {
+                    g.DrawArc(pn, -36, eyeY - 3, 24, 10, 15, 150);
+                    g.DrawArc(pn, 12, eyeY - 3, 24, 10, 15, 150);
+                }
+            }
+            else
+            {
+                float sad = p.Brow < -.25f ? Math.Min(1f, -p.Brow) : 0f;
+                float oDrop = 7f * sad, iLift = 3f * sad;
+                float close = p.OpenL < .85f ? Math.Max(0f, Math.Min(.65f, 1f - p.OpenL)) : 0f;
+                var eyeL = new[] { Pt(-34, eyeY + oDrop + 2 * close), Pt(-12, eyeY + 8 - iLift - 2 * close), Pt(-14, eyeY - 6 - iLift + 6 * close) };
+                var eyeR = new[] { Pt(34, eyeY + oDrop + 2 * close), Pt(12, eyeY + 8 - iLift - 2 * close), Pt(14, eyeY - 6 - iLift + 6 * close) };
+                g.FillPolygon(B(Color.White), eyeL);
+                g.DrawPolygon(ink, eyeL);
+                g.FillPolygon(B(Color.White), eyeR);
+                g.DrawPolygon(ink, eyeR);
+            }
+            DrawTears(24f, eyeY + 3f);
         }
 
         private void DrawSpidermanHead()
@@ -211,34 +237,51 @@ namespace SuperHeroes
                 }
             }
 
-            // 스파이더맨 커다란 흰색 렌즈 눈 (검은 테두리)
+            // 스파이더맨 커다란 흰색 렌즈 눈 (검은 테두리 · 감은 눈 · 처진 눈 반영)
             float eyeY = -ry * .05f;
-            float eyeW = 34f, eyeH = 26f;
-            if (p.Eyes == EyeStyle.Narrow) eyeH = 12f;
-            else if (p.Eyes == EyeStyle.Shock) { eyeW = 40f; eyeH = 34f; }
-
-            var eyeL = new[]
+            if (p.Eyes == EyeStyle.Sleep || p.OpenL < .25f)
             {
-                Pt(-46, eyeY - eyeH * .8f),
-                Pt(-12, eyeY + eyeH * .4f),
-                Pt(-14, eyeY + eyeH * .9f),
-                Pt(-48, eyeY + eyeH * .2f)
-            };
-            var eyeR = new[]
-            {
-                Pt(46, eyeY - eyeH * .8f),
-                Pt(12, eyeY + eyeH * .4f),
-                Pt(14, eyeY + eyeH * .9f),
-                Pt(48, eyeY + eyeH * .2f)
-            };
-
-            using (var pn = Pn(cInk, 5.5f))
-            {
-                g.FillPolygon(B(Color.White), eyeL);
-                g.DrawPolygon(pn, eyeL);
-                g.FillPolygon(B(Color.White), eyeR);
-                g.DrawPolygon(pn, eyeR);
+                using (var pn = Pn(cInk, 5.2f))
+                using (var wpn = Pn(Color.White, 2.6f))
+                {
+                    g.DrawArc(pn, -46, eyeY - 2, 34, 14, 15, 150);
+                    g.DrawArc(pn, 12, eyeY - 2, 34, 14, 15, 150);
+                    g.DrawArc(wpn, -46, eyeY - 2, 34, 14, 15, 150);
+                    g.DrawArc(wpn, 12, eyeY - 2, 34, 14, 15, 150);
+                }
             }
+            else
+            {
+                float eyeW = 34f, eyeH = 26f;
+                if (p.Eyes == EyeStyle.Narrow) eyeH = 12f;
+                else if (p.Eyes == EyeStyle.Shock) { eyeW = 40f; eyeH = 34f; }
+                else if (p.OpenL < .85f) eyeH *= Math.Max(.42f, p.OpenL);
+                float sad = p.Brow < -.25f ? Math.Min(1f, -p.Brow) : 0f;
+
+                var eyeL = new[]
+                {
+                    Pt(-46, eyeY - eyeH * (.8f - .70f * sad)),
+                    Pt(-12, eyeY + eyeH * (.4f - .20f * sad)),
+                    Pt(-14, eyeY + eyeH * .9f),
+                    Pt(-48, eyeY + eyeH * (.2f + .35f * sad))
+                };
+                var eyeR = new[]
+                {
+                    Pt(46, eyeY - eyeH * (.8f - .70f * sad)),
+                    Pt(12, eyeY + eyeH * (.4f - .20f * sad)),
+                    Pt(14, eyeY + eyeH * .9f),
+                    Pt(48, eyeY + eyeH * (.2f + .35f * sad))
+                };
+
+                using (var pn = Pn(cInk, 5.5f))
+                {
+                    g.FillPolygon(B(Color.White), eyeL);
+                    g.DrawPolygon(pn, eyeL);
+                    g.FillPolygon(B(Color.White), eyeR);
+                    g.DrawPolygon(pn, eyeR);
+                }
+            }
+            DrawTears(28f, eyeY + 12f);
         }
 
         private void DrawThorHead()
@@ -265,8 +308,9 @@ namespace SuperHeroes
             };
             Fill(face, cSkin);
 
-            // 눈 & 눈썹
+            // 눈 & 눈썹 · 눈물
             DrawEyesAndEyebrows(Color.FromArgb(30, 130, 230), true);
+            DrawTears(26f, -headRy * .05f);
 
             // 금빛 턱수염 & 콧수염
             var beard = new[]
@@ -282,9 +326,13 @@ namespace SuperHeroes
             };
             Fill(beard, blonde);
 
-            // 콧수염
-            g.FillPolygon(B(blondeDark), new[] { Pt(0, 18), Pt(-22, 28), Pt(-6, 32), Pt(0, 24), Pt(6, 32), Pt(22, 28) });
-            g.DrawPolygon(ink, new[] { Pt(0, 18), Pt(-22, 28), Pt(-6, 32), Pt(0, 24), Pt(6, 32), Pt(22, 28) });
+            // 콧수염 (슬프거나 힘이 빠지면 끝이 축 처진다)
+            bool sadMouth = p.Mouth == MouthStyle.Frown || p.Mouth == MouthStyle.Pout;
+            var must = sadMouth
+                ? new[] { Pt(0, 18), Pt(-24, 34), Pt(-7, 28), Pt(0, 22), Pt(7, 28), Pt(24, 34) }
+                : new[] { Pt(0, 18), Pt(-22, 28), Pt(-6, 32), Pt(0, 24), Pt(6, 32), Pt(22, 28) };
+            g.FillPolygon(B(blondeDark), must);
+            g.DrawPolygon(ink, must);
 
             // 아스가르드 은색 투구 (Winged Helm)
             Color helmCol = Color.FromArgb(215, 222, 232);
@@ -343,27 +391,89 @@ namespace SuperHeroes
                 // 아직 눈을 뜨고 있는 동안(놀람·초기)은 아래 눈을 그리되 눈썹은 걱정스러운 모양을 쓴다
             }
 
-            // 흰자
-            g.FillEllipse(B(Color.White), -eyeSep - 13, eyeY - 8, 26, 18);
-            g.DrawEllipse(ink, -eyeSep - 13, eyeY - 8, 26, 18);
-            g.FillEllipse(B(Color.White), eyeSep - 13, eyeY - 8, 26, 18);
-            g.DrawEllipse(ink, eyeSep - 13, eyeY - 8, 26, 18);
+            bool closed = !SickFace && (p.Eyes == EyeStyle.Sleep || p.OpenL < .25f);
+            if (closed)
+            {
+                using (var pn = Pn(cInk, 3.8f))
+                {
+                    g.DrawArc(pn, -eyeSep - 13, eyeY - 4, 26, 12, 12, 156);
+                    g.DrawArc(pn, eyeSep - 13, eyeY - 4, 26, 12, 12, 156);
+                }
+            }
+            else
+            {
+                // 흰자
+                g.FillEllipse(B(Color.White), -eyeSep - 13, eyeY - 8, 26, 18);
+                g.DrawEllipse(ink, -eyeSep - 13, eyeY - 8, 26, 18);
+                g.FillEllipse(B(Color.White), eyeSep - 13, eyeY - 8, 26, 18);
+                g.DrawEllipse(ink, eyeSep - 13, eyeY - 8, 26, 18);
 
-            // 동공 & 홍채
-            g.FillEllipse(B(irisCol), -eyeSep - 6, eyeY - 6, 14, 14);
-            g.FillEllipse(B(irisCol), eyeSep - 8, eyeY - 6, 14, 14);
-            g.FillEllipse(B(Color.White), -eyeSep - 3, eyeY - 4, 4, 4);
-            g.FillEllipse(B(Color.White), eyeSep - 5, eyeY - 4, 4, 4);
+                // 동공 & 홍채
+                g.FillEllipse(B(irisCol), -eyeSep - 6, eyeY - 6, 14, 14);
+                g.FillEllipse(B(irisCol), eyeSep - 8, eyeY - 6, 14, 14);
+                g.FillEllipse(B(Color.White), -eyeSep - 3, eyeY - 4, 4, 4);
+                g.FillEllipse(B(Color.White), eyeSep - 5, eyeY - 4, 4, 4);
+
+                // 피곤하거나 기력이 없을 때 반쯤 감긴 눈꺼풀
+                if (!SickFace && p.OpenL < .85f)
+                {
+                    float droop = Math.Max(0f, Math.Min(1f, (1f - p.OpenL) / .75f));
+                    float lidY = eyeY - 8 + 13 * droop;
+                    foreach (float ex in new[] { -eyeSep, eyeSep })
+                    {
+                        var st = g.Save();
+                        using (var ep = new GraphicsPath())
+                        {
+                            ep.AddEllipse(ex - 13, eyeY - 8, 26, 18);
+                            g.SetClip(ep, CombineMode.Intersect);
+                            g.FillRectangle(B(cSkin), ex - 15, eyeY - 12, 30, lidY - (eyeY - 12));
+                        }
+                        g.Restore(st);
+                        g.DrawEllipse(ink, ex - 13, eyeY - 8, 26, 18);
+                        using (var lpn = Pn(cInk, 3.2f)) g.DrawLine(lpn, ex - 12, lidY, ex + 12, lidY);
+                    }
+                }
+            }
 
             if (SickFace) return;   // 눈썹은 DrawSickEyes 에서 이미 그렸다
 
-            // 눈썹
+            // 눈썹 (슬프고 기운 없을 때는 처진 '八'자 눈썹)
             Color browCol = blondeBrow ? Color.FromArgb(190, 150, 30) : cInk;
             using (var pn = Pn(browCol, 4.2f))
             {
                 float browY = eyeY - 12;
-                g.DrawLine(pn, -eyeSep - 14, browY - 2, -eyeSep + 12, browY + 4);
-                g.DrawLine(pn, eyeSep + 14, browY - 2, eyeSep - 12, browY + 4);
+                if (p.Brow < -.1f)
+                {
+                    float sad = Math.Min(1f, -p.Brow);
+                    g.DrawLine(pn, -eyeSep - 14, browY + 1 + 6 * sad, -eyeSep + 12, browY + 1 - 9 * sad);
+                    g.DrawLine(pn, eyeSep + 14, browY + 1 + 6 * sad, eyeSep - 12, browY + 1 - 9 * sad);
+                }
+                else
+                {
+                    g.DrawLine(pn, -eyeSep - 14, browY - 2, -eyeSep + 12, browY + 4);
+                    g.DrawLine(pn, eyeSep + 14, browY - 2, eyeSep - 12, browY + 4);
+                }
+            }
+        }
+
+        private void DrawTears(float eyeSep, float eyeY)
+        {
+            if (p.Tears < 0) return;
+            float t = p.Tears;
+            for (int side = -1; side <= 1; side += 2)
+            {
+                float ex = side * eyeSep;
+                g.FillEllipse(B(Color.FromArgb(185, 130, 210, 255)), ex - 10, eyeY + 5, 20, 6);
+                for (int i = 0; i < 2; i++)
+                {
+                    float ph = (t * 1.35f + i * .5f + (side > 0 ? .22f : 0f)) % 1f;
+                    float tx = ex + side * (2 + ph * 4);
+                    float ty = eyeY + 10 + ph * 42;
+                    int al = (int)(230 * (1f - ph * .6f));
+                    var drop = new[] { Pt(tx, ty - 8), Pt(tx - 5, ty + 1), Pt(tx - 2.5f, ty + 6), Pt(tx + 2.5f, ty + 6), Pt(tx + 5, ty + 1) };
+                    g.FillPolygon(B(Color.FromArgb(al, 120, 205, 255)), drop);
+                    using (var pn = new Pen(Color.FromArgb(al, 50, 120, 190), 1.5f) { LineJoin = LineJoin.Round }) g.DrawPolygon(pn, drop);
+                }
             }
         }
 
@@ -380,6 +490,15 @@ namespace SuperHeroes
                 {
                     g.FillEllipse(B(Color.FromArgb(160, 40, 40)), -12, mY, 24, 16);
                     g.DrawEllipse(pn, -12, mY, 24, 16);
+                }
+                else if (p.Mouth == MouthStyle.Scared)
+                {
+                    g.FillEllipse(B(Color.FromArgb(160, 40, 40)), -9, mY - 1, 18, 12);
+                    g.DrawEllipse(pn, -9, mY - 1, 18, 12);
+                }
+                else if (p.Mouth == MouthStyle.Frown || p.Mouth == MouthStyle.Pout)
+                {
+                    g.DrawArc(pn, -14, mY + 2, 28, 14, 200, 140);
                 }
                 else
                 {

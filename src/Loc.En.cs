@@ -897,6 +897,17 @@ namespace SuperHeroes
             d["히트 비전, 냉기 입김, 초음속 펀치, 셔츠 찢기"] = "Heat Vision, Freeze Breath, Supersonic Punch, Shirt Rip";
             d["힘내, 내가 있잖아"] = "Hang in there, I'm right here";
             d["힘이… 빠져…"] = "My strength... fading...";
+            d["힘이 빠져서 못 버티겠어…"] = "My strength gave out... I can't hold on...";
+            d["힘이 없어서 벽을 못 타겠어…"] = "I'm too weak to climb walls...";
+            d["힘이 하나도 없어… 벽도 못 타겠어…"] = "I have zero strength left... can't even climb walls...";
+            d["기운이 없어… 간식 하나만 줄래?"] = "I'm so drained... could I have a snack?";
+            d["기운이 다 빠졌어… 간식 좀 줘 ㅠㅠ"] = "I'm completely out of energy... snack please :(";
+            d["배고파! 간식줘 ㅠㅠ"] = "I'm hungry! Snack please :(";
+            d["배고파서 다리가 후들거려… ㅠㅠ"] = "My legs are shaking from hunger... :(";
+            d["배고파서 쓰러질 것 같아…"] = "I'm so hungry I might collapse...";
+            d["한 발짝도 못 움직이겠어…"] = "I can't even move a single step...";
+            d["으으… 겨우 살았네, 고마워!"] = "Ugh... that saved me, thank you!";
+            d["살았다… 고마워! 이제 기운이 나!"] = "I'm saved... thank you! My strength is coming back!";
             d["＋ 새로"] = "＋ New";
             return d;
         }

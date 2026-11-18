@@ -109,6 +109,7 @@ namespace SuperHeroes
             if (IsSignatureActive) { SigBubble(ref L); return; }
 
             Pose P = L.Pose;
+            if (FriendData.Current.VeryHungry || P.Brow < -.1f || P.Tears >= 0) return;
             double t = animT;
             bool walking = walkAmp > .02 && (State == PetState.Walk || State == PetState.Gather || State == PetState.Pause);
             float a = (float)walkAmp;
