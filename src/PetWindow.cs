@@ -35,7 +35,7 @@ namespace SuperHeroes
         {
             this.app = app; Pet = pet;
             FormBorderStyle = FormBorderStyle.None; ShowInTaskbar = false; StartPosition = FormStartPosition.Manual; TopMost = true;
-            Text = "수퍼히어로"; Size = new Size(1, 1); Location = new Point(-32000, -32000);
+            Text = Loc.T("수퍼히어로"); Size = new Size(1, 1); Location = new Point(-32000, -32000);
         }
 
         protected override void OnPaintBackground(PaintEventArgs e) { }

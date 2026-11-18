@@ -42,9 +42,9 @@ namespace SuperHeroes
         private void KryptoBubble(IWorld w)
         {
             double t = StateT; string say = null; int phase = 0;
-            if (t >= .9) { phase = 1; say = "으윽… 이 초록 빛은…!"; }
-            if (t >= 3.3) { phase = 2; say = "힘이… 빠져…"; }
-            if (t >= 6.5) { phase = 3; say = "휴… 살았다!"; }
+            if (t >= .9) { phase = 1; say = Loc.T("으윽… 이 초록 빛은…!"); }
+            if (t >= 3.3) { phase = 2; say = Loc.T("힘이… 빠져…"); }
+            if (t >= 6.5) { phase = 3; say = Loc.T("휴… 살았다!"); }
             if (phase == krypPhase) return;
             krypPhase = phase;
             if (say != null) { Bubble = say; BubbleUntil = w.Now + (phase == 2 ? 3.0 : 2.4); }

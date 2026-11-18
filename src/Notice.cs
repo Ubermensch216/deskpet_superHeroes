@@ -31,16 +31,16 @@ namespace SuperHeroes
         internal HourlyNotice(Icon icon)
         {
             scale = Math.Max(1, Native.SystemDpiScale()); AutoScaleMode = AutoScaleMode.None;
-            Text = "수퍼히어로 · 정각 알림"; FormBorderStyle = FormBorderStyle.None; StartPosition = FormStartPosition.Manual;
+            Text = Loc.T("수퍼히어로 · 정각 알림"); FormBorderStyle = FormBorderStyle.None; StartPosition = FormStartPosition.Manual;
             ShowInTaskbar = true; TopMost = true; MaximizeBox = false; MinimizeBox = false; DoubleBuffered = true;
             BackColor = Color.FromArgb(255, 253, 249); ForeColor = Color.FromArgb(45, 48, 64); if (icon != null) Icon = icon;
-            header = LabelAt("수퍼히어로", 24, 21, 264, 22, 9, Color.FromArgb(110, 103, 115));
-            caption = LabelAt("정각 알림", 24, 58, 290, 19, 9, Color.FromArgb(153, 117, 92));
+            header = LabelAt(Loc.T("수퍼히어로"), 24, 21, 264, 22, 9, Color.FromArgb(110, 103, 115));
+            caption = LabelAt(Loc.T("정각 알림"), 24, 58, 290, 19, 9, Color.FromArgb(153, 117, 92));
             clock = LabelAt("00:00", 20, 77, 310, 72, 38, ForeColor); clock.Font = OwnFont("Segoe UI", 38, FontStyle.Regular);
             message = LabelAt("", 24, 155, 312, 46, 10, Color.FromArgb(91, 87, 101));
-            close = new CardButton(true) { Text = "×", Name = "close", AccessibleName = "알림 닫기", Bounds = Rect(311, 15, 32, 32), Font = OwnFont("Segoe UI", 14, FontStyle.Regular) };
+            close = new CardButton(true) { Text = "×", Name = "close", AccessibleName = Loc.T("알림 닫기"), Bounds = Rect(311, 15, 32, 32), Font = OwnFont("Segoe UI", 14, FontStyle.Regular) };
             close.Click += delegate { Close(); }; Controls.Add(close);
-            confirm = new CardButton(false) { Text = "확인했어", Name = "confirm", Bounds = Rect(239, 218, 97, 38), Font = OwnFont("Malgun Gothic", 9.5f, FontStyle.Regular) };
+            confirm = new CardButton(false) { Text = Loc.T("확인했어"), Name = "confirm", Bounds = Rect(239, 218, 97, 38), Font = OwnFont("Malgun Gothic", 9.5f, FontStyle.Regular) };
             confirm.Click += delegate { Close(); }; Controls.Add(confirm); AcceptButton = confirm; CancelButton = close;
             ClientSize = new Size(Pixel(360), Pixel(277));
             header.MouseDown += DragCard; MouseDown += DragCard; caption.MouseDown += DragCard;
@@ -58,8 +58,8 @@ namespace SuperHeroes
 
         internal void SetMessage(string text)
         {
-            bool timer = Text.Contains("타이머"); DateTime now = DateTime.Now;
-            caption.Text = timer ? "타이머" : "정각 알림"; clock.Text = timer ? "시간이 됐어" : now.Hour.ToString("00") + ":00";
+            bool timer = Text.Contains(Loc.T("타이머")) || Text.Contains("타이머"); DateTime now = DateTime.Now;
+            caption.Text = timer ? Loc.T("타이머") : Loc.T("정각 알림"); clock.Text = timer ? Loc.T("시간이 됐어") : now.Hour.ToString("00") + ":00";
             if (timer) clock.Font = OwnFont("Malgun Gothic", 23, FontStyle.Regular);
             string friendly = (text ?? "").Replace("지금은 ", "").Trim();
             message.Text = friendly;

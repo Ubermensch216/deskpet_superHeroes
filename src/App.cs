@@ -43,7 +43,7 @@ namespace SuperHeroes
             {
                 using (var k = Registry.CurrentUser.CreateSubKey(KeyPath))
                 {
-                    if (k == null) throw new System.IO.IOException("자동 시작 등록 위치를 열 수 없어요.");
+                    if (k == null) throw new System.IO.IOException(Loc.T("자동 시작 등록 위치를 열 수 없어요."));
                     k.SetValue(ValueName, Command(), RegistryValueKind.String);
                 }
                 return;
@@ -93,9 +93,18 @@ namespace SuperHeroes
         internal List<PetWindow> LiveWindows { get { return windows; } }
         internal NoteManager Notes;
         internal readonly ChatController Chat;
+        internal OvertimeState Overtime;
+        internal ApiServer Api;
+        private HourlyNotice hourlyNotice;
         private AlertPetWindow alert;
         private PetWindow alertHidden;
         private ChatDiaryForm diaryForm;
+
+        internal void StartApi()
+        {
+            if (Api == null) Api = new ApiServer(this);
+            Api.Start();
+        }
         internal bool AllHidden { get { return hidden || autoHidden || PetOff; } }
         /// <summary>펫 전원이 꺼진 상태: 캐릭터는 화면에 없고 움직이지 않지만 알람 · 알림은 그대로 온다.</summary>
         internal bool PetOff { get { return !PlayOptions.Current.PetPower; } }
@@ -115,6 +124,7 @@ namespace SuperHeroes
         public App(bool testMode = false)
         {
             Settings = Settings.Load();
+            Overtime = OvertimeState.Load();
             Chat = new ChatController(this);
             RefreshAreas();
             int[] roster = ParseRoster(Settings.Roster);
@@ -217,7 +227,7 @@ namespace SuperHeroes
         }
 
         private void UpdateMenus()
-        { if (trayHideItem != null) trayHideItem.Text = hidden ? "모두 보이기" : "모두 숨기기"; }
+        { if (trayHideItem != null) trayHideItem.Text = hidden ? Loc.T("모두 보이기") : Loc.T("모두 숨기기"); }
 
         /// <summary>화면 가운데 위에서 다시 둥실 내려오게 한다 (숨은 친구 구조).</summary>
         internal void RecoverVisible()
@@ -251,43 +261,43 @@ namespace SuperHeroes
             HeroMenuRenderer.Apply(menu);
 
             // 친밀도 (맨 위)
-            menu.Items.Add(new MenuSection(MenuKind.Status, "친밀도 " + FriendData.Current.Affinity.ToString("N0") + "  ·  함께 " + FriendData.FormatTogether(FriendData.Current.TogetherSeconds)));
+            menu.Items.Add(new MenuSection(MenuKind.Status, Loc.TF("친밀도 {0}  ·  함께 {1}", FriendData.Current.Affinity.ToString("N0", Loc.Culture), FriendData.FormatTogether(FriendData.Current.TogetherSeconds))));
 
             // 교류: 사용자와 주고받는 것
-            menu.Items.Add(new MenuSection(MenuKind.Social, "교류"));
-            menu.Items.Add(new ToolStripMenuItem("말 걸기  (AI 대화)", null, delegate { BeginInvokeSafe(delegate { StartChat(pet); }); }) { Font = new Font(menu.Font, FontStyle.Bold), Enabled = ChatOptions.Current.Enabled, ShortcutKeyDisplayString = ChatOptions.Current.Hotkey ? ChatOptions.Current.HotkeyText : null });
+            menu.Items.Add(new MenuSection(MenuKind.Social, Loc.T("교류")));
+            menu.Items.Add(new ToolStripMenuItem(Loc.T("말 걸기  (AI 대화)"), null, delegate { BeginInvokeSafe(delegate { StartChat(pet); }); }) { Font = new Font(menu.Font, FontStyle.Bold), Enabled = ChatOptions.Current.Enabled, ShortcutKeyDisplayString = ChatOptions.Current.Hotkey ? ChatOptions.Current.HotkeyText : null });
             menu.Items.Add(ModeMenu());
-            menu.Items.Add("일기장...", null, delegate { BeginInvokeSafe(ShowDiary); });
-            menu.Items.Add(new ToolStripMenuItem("간식 주기  ·  포만감 " + (int)Math.Floor(FriendData.Current.Satiety) + "/100", null, delegate { FeedFirst(pet); }));
+            menu.Items.Add(Loc.T("일기장..."), null, delegate { BeginInvokeSafe(ShowDiary); });
+            menu.Items.Add(new ToolStripMenuItem(Loc.TF("간식 주기  ·  포만감 {0}/100", (int)Math.Floor(FriendData.Current.Satiety)), null, delegate { FeedFirst(pet); }));
             menu.Items.Add(FriendsMenu(w));
 
             // 일: 특징 행동 · 메모 · 알람
-            menu.Items.Add(new MenuSection(MenuKind.Work, "일"));
+            menu.Items.Add(new MenuSection(MenuKind.Work, Loc.T("일")));
             menu.Items.Add(SignatureMenu(pet));
             menu.Items.Add(DemoMenu(pet));
             menu.Items.Add(NewNoteItem());
             menu.Items.Add(AlarmMenu());
-            menu.Items.Add(new ToolStripMenuItem("메모 라이브러리", null, delegate { if (Notes != null) Notes.ShowLibrary(); }) { ShortcutKeyDisplayString = "Ctrl+Shift+F" });
+            menu.Items.Add(new ToolStripMenuItem(Loc.T("메모 라이브러리"), null, delegate { if (Notes != null) Notes.ShowLibrary(); }) { ShortcutKeyDisplayString = "Ctrl+Shift+F" });
 
             // 설정
-            menu.Items.Add(new MenuSection(MenuKind.Settings, "설정"));
+            menu.Items.Add(new MenuSection(MenuKind.Settings, Loc.T("설정")));
             menu.Items.Add(QuickMenu());
-            menu.Items.Add("설정...", null, delegate { OpenSettings(); });
+            menu.Items.Add(Loc.T("설정..."), null, delegate { OpenSettings(); });
             menu.Items.Add(new ToolStripSeparator());
-            menu.Items.Add("종료", null, delegate { Quit(); });
+            menu.Items.Add(Loc.T("종료"), null, delegate { Quit(); });
             return menu;
         }
 
-        /// <summary>★ 표시가 붙은 시그니처 기술. 우클릭한 친구의 기술 3가지(트레이에서는 캐릭터별).</summary>
+        /// <summary>★ 표시가 붙은 시그니처 기술. 우클릭한 친구의 기술(트레이에서는 캐릭터별).</summary>
         private ToolStripMenuItem SignatureMenu(Pet pet)
         {
-            var root = new ToolStripMenuItem("★ 히어로 특징 행동");
+            var root = new ToolStripMenuItem(Loc.T("★ 히어로 특징 행동"));
             if (pet != null)
             {
                 var sigs = Signatures.All[pet.Art.Id];
-                root.DropDownItems.Add(new ToolStripMenuItem(pet.Art.Info.Name + "의 특징 행동") { Enabled = false });
+                root.DropDownItems.Add(new ToolStripMenuItem(Loc.TF("{0}의 특징 행동", Loc.T(pet.Art.Info.Name))) { Enabled = false });
                 for (int i = 0; i < sigs.Length; i++) { int idx = i; root.DropDownItems.Add(sigs[i].Label, null, delegate { pet.RequestSignature(this, idx); }); }
-                var others = new ToolStripMenuItem("다른 캐릭터 특징 행동 보기");
+                var others = new ToolStripMenuItem(Loc.T("다른 캐릭터 특징 행동 보기"));
                 AddAllSignatures(others, pet.Art.Id); root.DropDownItems.Add(new ToolStripSeparator()); root.DropDownItems.Add(others);
             }
             else AddAllSignatures(root, -1);
@@ -299,7 +309,7 @@ namespace SuperHeroes
             for (int c = 0; c < CharacterArt.Count; c++)
             {
                 if (c == skip) continue;
-                int id = c; var sub = new ToolStripMenuItem(CharacterArt.Infos[c].Name);
+                int id = c; var sub = new ToolStripMenuItem(Loc.T(CharacterArt.Infos[c].Name));
                 for (int i = 0; i < Signatures.All[c].Length; i++) { int idx = i; sub.DropDownItems.Add(Signatures.All[c][i].Label, null, delegate { PreviewSignature(id, idx); }); }
                 parent.DropDownItems.Add(sub);
             }
@@ -307,38 +317,38 @@ namespace SuperHeroes
 
         private ToolStripMenuItem DemoMenu(Pet pet)
         {
-            var demo = new ToolStripMenuItem("동작 보기");
+            var demo = new ToolStripMenuItem(Loc.T("동작 보기"));
             Action<ToolStripMenuItem, string[][]> fill = (menu, items) =>
             {
                 foreach (var pair in items)
-                { string key = pair[1]; menu.DropDownItems.Add(pair[0], null, delegate { Pet p = pet ?? windows.Select(a => a.Pet).FirstOrDefault(); if (p != null) p.Demonstrate(this, key); }); }
+                { string key = pair[1]; menu.DropDownItems.Add(Loc.T(pair[0]), null, delegate { Pet p = pet ?? windows.Select(a => a.Pet).FirstOrDefault(); if (p != null) p.Demonstrate(this, key); }); }
             };
-            var rest = new ToolStripMenuItem("쉬는 모습"); fill(rest, new[] { new[] { "앉아서 쉬기", "sit" }, new[] { "잠자기", "sleep" }, new[] { "멍때리기", "daydream" }, new[] { "기지개", "stretch" } });
-            var idle = new ToolStripMenuItem("멈춰 섰을 때 몸짓"); fill(idle, new[] { new[] { "머리 긁적", "scratch" }, new[] { "팔짱", "cross" }, new[] { "손 흔들기", "wave" }, new[] { "주먹 불끈", "flex" }, new[] { "수염 쓰다듬기", "beard" } });
-            var react = new ToolStripMenuItem("반응"); fill(react, new[] { new[] { "클릭할 때 달달 떨며 우는 모습", "cry" }, new[] { "배고플 때 우는 모습", "weep" }, new[] { "폴짝 뛰기", "hop" }, new[] { "질주 (커서 피해 도망)", "slide" } });
-            var move = new ToolStripMenuItem("이동"); fill(move, new[] { new[] { "비행 하강 (슈퍼히어로 랜딩)", "fall" }, new[] { "벽 타기", "wall" }, new[] { "천장 타기", "ceiling" }, new[] { "창 타기", "window" } });
-            var secret = new ToolStripMenuItem("숨은 반응");
-            secret.DropDownItems.Add("어질어질", null, delegate { Pet p = pet ?? windows.Select(a => a.Pet).FirstOrDefault(); if (p != null) p.Demonstrate(this, "dizzy"); });
-            secret.DropDownItems.Add("몰래 하는 군무", null, delegate { DemonstrateSecretDance(pet); });
-            secret.DropDownItems.Add("크립토나이트 (수퍼맨)", null, delegate { Pet p = pet ?? windows.Select(a => a.Pet).FirstOrDefault(a => a.Art.Persona == Persona.Superman); if (p != null) p.Demonstrate(this, "krypto"); });
+            var rest = new ToolStripMenuItem(Loc.T("쉬는 모습")); fill(rest, new[] { new[] { "앉아서 쉬기", "sit" }, new[] { "잠자기", "sleep" }, new[] { "멍때리기", "daydream" }, new[] { "기지개", "stretch" } });
+            var idle = new ToolStripMenuItem(Loc.T("멈춰 섰을 때 몸짓")); fill(idle, new[] { new[] { "머리 긁적", "scratch" }, new[] { "팔짱", "cross" }, new[] { "손 흔들기", "wave" }, new[] { "주먹 불끈", "flex" }, new[] { "수염 쓰다듬기", "beard" } });
+            var react = new ToolStripMenuItem(Loc.T("반응")); fill(react, new[] { new[] { "클릭할 때 달달 떨며 우는 모습", "cry" }, new[] { "배고플 때 우는 모습", "weep" }, new[] { "폴짝 뛰기", "hop" }, new[] { "질주 (커서 피해 도망)", "slide" } });
+            var move = new ToolStripMenuItem(Loc.T("이동")); fill(move, new[] { new[] { "비행 하강 (슈퍼히어로 랜딩)", "fall" }, new[] { "벽 타기", "wall" }, new[] { "천장 타기", "ceiling" }, new[] { "창 타기", "window" } });
+            var secret = new ToolStripMenuItem(Loc.T("숨은 반응"));
+            secret.DropDownItems.Add(Loc.T("어질어질"), null, delegate { Pet p = pet ?? windows.Select(a => a.Pet).FirstOrDefault(); if (p != null) p.Demonstrate(this, "dizzy"); });
+            secret.DropDownItems.Add(Loc.T("몰래 하는 군무"), null, delegate { DemonstrateSecretDance(pet); });
+            secret.DropDownItems.Add(Loc.T("크립토나이트 (수퍼맨)"), null, delegate { Pet p = pet ?? windows.Select(a => a.Pet).FirstOrDefault(a => a.Art.Persona == Persona.Superman); if (p != null) p.Demonstrate(this, "krypto"); });
             demo.DropDownItems.AddRange(new ToolStripItem[] { rest, idle, react, move, secret });
             return demo;
         }
 
         private ToolStripMenuItem FriendsMenu(PetWindow w)
         {
-            var friends = new ToolStripMenuItem("친구");
-            friends.DropDownItems.Add(SpawnMenu("한 마리 더 부르기"));
-            if (w != null) friends.DropDownItems.Add("이 친구 보내기", null, delegate { Remove(w); });
-            friends.DropDownItems.Add(PetOff ? "펫 전원 켜기" : "펫 전원 끄기 (알림은 계속)", null, delegate { SetPetPower(PetOff); });
-            friends.DropDownItems.Add(hidden ? "모두 보이기" : "모두 숨기기", null, delegate { ToggleHidden(); });
-            friends.DropDownItems.Add("화면 가운데로 다시 부르기", null, delegate { RecoverVisible(); });
+            var friends = new ToolStripMenuItem(Loc.T("친구"));
+            friends.DropDownItems.Add(SpawnMenu(Loc.T("한 마리 더 부르기")));
+            if (w != null) friends.DropDownItems.Add(Loc.T("이 친구 보내기"), null, delegate { Remove(w); });
+            friends.DropDownItems.Add(PetOff ? Loc.T("펫 전원 켜기") : Loc.T("펫 전원 끄기 (알림은 계속)"), null, delegate { SetPetPower(PetOff); });
+            friends.DropDownItems.Add(hidden ? Loc.T("모두 보이기") : Loc.T("모두 숨기기"), null, delegate { ToggleHidden(); });
+            friends.DropDownItems.Add(Loc.T("화면 가운데로 다시 부르기"), null, delegate { RecoverVisible(); });
             return friends;
         }
 
         private ToolStripMenuItem QuickMenu()
         {
-            var quick = new ToolStripMenuItem("빠른 설정");
+            var quick = new ToolStripMenuItem(Loc.T("빠른 설정"));
             var o = PlayOptions.Current;
             Func<string, Func<bool>, Action<bool>, ToolStripMenuItem> toggle = (text, get, set) =>
             {
@@ -346,27 +356,27 @@ namespace SuperHeroes
                 item.Click += delegate { set(!get()); item.Checked = get(); };
                 return item;
             };
-            quick.DropDownItems.Add(toggle("친구 위치 고정 (자동 이동 멈추기)", () => o.PositionFixed, v => SetPositionFixed(v)));
-            quick.DropDownItems.Add(toggle("얌전 모드 (바닥에서만)", () => o.Focus, v => { o.Focus = v; o.Save(); }));
-            quick.DropDownItems.Add(toggle("★ 시그니처 자동 재생", () => o.SigFreq > 0, v => { o.SigFreq = v ? 2 : 0; o.Save(); }));
-            var costume = new ToolStripMenuItem("수퍼맨 커스튬");
+            quick.DropDownItems.Add(toggle(Loc.T("친구 위치 고정 (자동 이동 멈추기)"), () => o.PositionFixed, v => SetPositionFixed(v)));
+            quick.DropDownItems.Add(toggle(Loc.T("얌전 모드 (바닥에서만)"), () => o.Focus, v => { o.Focus = v; o.Save(); }));
+            quick.DropDownItems.Add(toggle(Loc.T("★ 시그니처 자동 재생"), () => o.SigFreq > 0, v => { o.SigFreq = v ? 2 : 0; o.Save(); }));
+            var costume = new ToolStripMenuItem(Loc.T("수퍼맨 커스튬"));
             ToolStripMenuItem hero = null, reporter = null;
             Action<bool> pick = clark => { o.ClarkKent = clark; o.Save(); hero.Checked = !clark; reporter.Checked = clark; };
-            hero = new ToolStripMenuItem("수퍼히어로 수트 (기본)") { Checked = !o.ClarkKent };
-            reporter = new ToolStripMenuItem("기자 (클라크 켄트)") { Checked = o.ClarkKent };
+            hero = new ToolStripMenuItem(Loc.T("수퍼히어로 수트 (기본)")) { Checked = !o.ClarkKent };
+            reporter = new ToolStripMenuItem(Loc.T("기자 (클라크 켄트)")) { Checked = o.ClarkKent };
             hero.Click += delegate { pick(false); }; reporter.Click += delegate { pick(true); };
             costume.DropDownItems.Add(hero); costume.DropDownItems.Add(reporter);
             quick.DropDownItems.Add(costume);
-            quick.DropDownItems.Add(toggle("친밀도 숫자 표시", () => o.ShowAffinity, v => { o.ShowAffinity = v; o.Save(); ApplyCharacterSettings(); }));
+            quick.DropDownItems.Add(toggle(Loc.T("친밀도 숫자 표시"), () => o.ShowAffinity, v => { o.ShowAffinity = v; o.Save(); ApplyCharacterSettings(); }));
             return quick;
         }
 
         private ToolStripMenuItem SpawnMenu(string text)
         {
             var item = new ToolStripMenuItem(text) { Enabled = windows.Count < MaxPets };
-            item.DropDownItems.Add("무작위", null, delegate { SpawnFromUi(-1); });
+            item.DropDownItems.Add(Loc.T("무작위"), null, delegate { SpawnFromUi(-1); });
             for (int i = 0; i < CharacterArt.Count; i++)
-            { int id = i; item.DropDownItems.Add(CharacterArt.Infos[i].Name, null, delegate { SpawnFromUi(id); }); }
+            { int id = i; item.DropDownItems.Add(Loc.T(CharacterArt.Infos[i].Name), null, delegate { SpawnFromUi(id); }); }
             return item;
         }
 
@@ -380,7 +390,7 @@ namespace SuperHeroes
                 foreach (ToolStripItem i in fresh.Items.Cast<ToolStripItem>().ToList()) menu.Items.Add(i);
                 trayHideItem = null;
             };
-            tray = new NotifyIcon { Icon = TrayIconImage, Text = "수퍼히어로", ContextMenuStrip = menu, Visible = true };
+            tray = new NotifyIcon { Icon = TrayIconImage, Text = Loc.T("수퍼히어로"), ContextMenuStrip = menu, Visible = true };
             tray.DoubleClick += delegate { ToggleHidden(); };
         }
 
@@ -411,7 +421,7 @@ namespace SuperHeroes
 
         private ToolStripMenuItem ModeMenu()
         {
-            var root = new ToolStripMenuItem("대화 모드  ·  " + ChatMode.Current.Name) { Enabled = ChatOptions.Current.Enabled };
+            var root = new ToolStripMenuItem(Loc.TF("대화 모드  ·  {0}", ChatMode.Current.Name)) { Enabled = ChatOptions.Current.Enabled };
             for (int i = 0; i < ChatMode.All.Length; i++)
             {
                 int index = i; var mode = ChatMode.All[i];
@@ -424,7 +434,7 @@ namespace SuperHeroes
         {
             var o = ChatOptions.Current; o.Mode = index; o.Save(); Chat.ModeChanged();
             Pet p = Chat.Pet ?? windows.Select(w => w.Pet).FirstOrDefault(x => !x.Hidden);
-            if (p != null) { p.Bubble = ChatMode.At(index).Name + " 모드로 얘기할게!"; p.BubbleUntil = Now + 3.5; }
+            if (p != null) { p.Bubble = Loc.TF("{0} 모드로 얘기할게!", ChatMode.At(index).Name); p.BubbleUntil = Now + 3.5; }
         }
 
         internal void ShowDiary()
@@ -435,31 +445,53 @@ namespace SuperHeroes
 
         private ToolStripMenuItem NewNoteItem()
         {
-            return new ToolStripMenuItem("새 메모", null, delegate { if (Notes != null) Notes.CreateNote(); }) { ShortcutKeyDisplayString = "Ctrl+Alt+N" };
+            return new ToolStripMenuItem(Loc.T("새 메모"), null, delegate { if (Notes != null) Notes.CreateNote(); }) { ShortcutKeyDisplayString = "Ctrl+Alt+N" };
         }
 
         // ───────── 알람 (우클릭 메뉴에서 등록) ─────────
         private AlarmComposer alarmForm;
 
-        /// <summary>알람 ▶ 10분 뒤 · 30분 뒤 · 1시간 뒤 · 직접 정하기… · (다음 알람) · 알람 목록(설정)</summary>
+        /// <summary>알람 ▶ 10분 뒤 · 30분 뒤 · 1시간 뒤 · 직접 정하기… · (다음 알람) · 알람 목록(설정) · 초과근무</summary>
         private ToolStripMenuItem AlarmMenu()
         {
-            var root = new ToolStripMenuItem("알람");
+            var root = new ToolStripMenuItem(Loc.T("알람"));
             foreach (int minutes in new[] { 10, 30, 60 })
             {
                 int m = minutes;
-                root.DropDownItems.Add(m < 60 ? m + "분 뒤" : "1시간 뒤", null, delegate
+                root.DropDownItems.Add(m < 60 ? Loc.TF("{0}분 뒤", m) : Loc.T("1시간 뒤"), null, delegate
                 {
                     DateTime at = DateTime.Now.AddMinutes(m).AddSeconds(30);   // 분 단위로 반올림
-                    RegisterAlarm(new UserAlarm { On = true, Repeat = false, Time = at.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture), Msg = (m < 60 ? m + "분" : "1시간") + "이 지났어!" });
+                    RegisterAlarm(new UserAlarm { On = true, Repeat = false, Time = at.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture), Msg = (m < 60 ? Loc.TF("{0}분이 지났어!", m) : Loc.T("1시간이 지났어!")) });
                 });
             }
-            root.DropDownItems.Add("직접 정하기…", null, delegate { BeginInvokeSafe(ShowAlarmComposer); });
+            root.DropDownItems.Add(Loc.T("직접 정하기…"), null, delegate { BeginInvokeSafe(ShowAlarmComposer); });
             root.DropDownItems.Add(new ToolStripSeparator());
             string next = NextAlarmLabel(DateTime.Now);
-            root.DropDownItems.Add(new ToolStripMenuItem(next ?? "켜 둔 알람이 없어요") { Enabled = false });
-            root.DropDownItems.Add("알람 목록 · 설정…", null, delegate { OpenSettingsPage(SettingsForm.AlarmPageIndex); });
+            root.DropDownItems.Add(new ToolStripMenuItem(next ?? Loc.T("켜 둔 알람이 없어요")) { Enabled = false });
+            root.DropDownItems.Add(Loc.T("알람 목록 · 설정…"), null, delegate { OpenSettingsPage(SettingsForm.AlarmPageIndex); });
+            root.DropDownItems.Add(new ToolStripSeparator());
+            BuildOvertimeMenu(root);
             return root;
+        }
+
+        /// <summary>알람 ▶ 아래 초과근무 항목: 켜기/끄기 · (지금 시간대) 기록했어요 · 설정</summary>
+        private void BuildOvertimeMenu(ToolStripMenuItem root)
+        {
+            DateTime now = DateTime.Now; Overtime.EnsureToday(now);
+            bool on = Overtime.WatchOn(now); int pending = Overtime.PendingHour(now);
+            root.DropDownItems.Add(on ? Loc.T("오늘 초과근무 알림 끄기") : Loc.T("오늘 초과근무 알림 켜기"), null, delegate
+            {
+                DateTime n = DateTime.Now; Overtime.SetWatch(!Overtime.WatchOn(n), n); Overtime.SaveIfDirty();
+                Announce(Overtime.WatchOn(n) ? Loc.TF("오늘 초과근무 알림을 켰어! {0} ~ {1}에 챙겨 줄게", OvertimeState.HourText(Overtime.StartHour), OvertimeState.HourText(Overtime.EndHour)) : Loc.T("오늘 초과근무 알림을 껐어"));
+            });
+            var rec = new ToolStripMenuItem(pending >= 0 ? Loc.TF("초과근무 기록했어요 ({0})", OvertimeState.HourLabel(pending)) : Loc.T("초과근무 기록했어요")) { Enabled = pending >= 0 };
+            rec.Click += delegate
+            {
+                DateTime n = DateTime.Now; int h = Overtime.PendingHour(n); if (h < 0) return;
+                Overtime.MarkRecorded(h, true, n); Overtime.SaveIfDirty(); Announce(Loc.TF("{0} 기록했구나, 고생했어!", OvertimeState.HourLabel(h)));
+            };
+            root.DropDownItems.Add(rec);
+            root.DropDownItems.Add(Loc.T("초과근무 알림 설정…"), null, delegate { OpenSettingsPage(SettingsForm.AlarmPageIndex, 1); });
         }
 
         private string NextAlarmLabel(DateTime now)
@@ -474,7 +506,7 @@ namespace SuperHeroes
             }
             if (best == null) return null;
             string text = best.Text; if (text.Length > 14) text = text.Substring(0, 14) + "…";
-            return "다음 알람: " + (bestAt.Date > now.Date ? "내일 " : "") + best.Time + "  " + text;
+            return Loc.TF("다음 알람: {0}{1}  {2}", bestAt.Date > now.Date ? Loc.T("내일 ") : "", best.Time, text);
         }
 
         internal void ShowAlarmComposer()
@@ -486,12 +518,12 @@ namespace SuperHeroes
         /// <summary>메뉴·창에서 만든 알람을 목록에 더하고 바로 저장한다. 열려 있는 설정창에도 한 줄 더한다.</summary>
         internal bool RegisterAlarm(UserAlarm alarm)
         {
-            if (Settings.Alarms.Count >= Settings.MaxAlarms) { Announce("알람은 " + Settings.MaxAlarms + "개까지 만들 수 있어. 설정에서 지워 줘!"); return false; }
+            if (Settings.Alarms.Count >= Settings.MaxAlarms) { Announce(Loc.TF("알람은 {0}개까지 만들 수 있어. 설정에서 지워 줘!", Settings.MaxAlarms)); return false; }
             Settings.Alarms.Add(alarm);
             OnSettingsChanged();   // 이미 지난 시각은 오늘 울린 것으로 쳐서 내일부터 울리게
             Settings.Save();
             if (settingsForm != null && !settingsForm.IsDisposed) settingsForm.AddAlarmFromOutside(alarm);
-            Announce("알람을 맞췄어: " + alarm.Time + "  " + alarm.Text);
+            Announce(Loc.TF("알람을 맞췄어: {0}  {1}", alarm.Time, alarm.Text));
             return true;
         }
 
@@ -504,6 +536,7 @@ namespace SuperHeroes
                 alert = new AlertPetWindow(this, windows.Count > 0 ? windows[0].Pet.Art.Id : 0);
                 alertHidden = windows.FirstOrDefault();
                 alert.FormClosed += OnAlertClosed;
+                alert.Acknowledged += OnAlertAcknowledged;
             }
             alert.AddMessage(message);
             if (fresh)
@@ -516,7 +549,7 @@ namespace SuperHeroes
 
         private void OnAlertClosed(object sender, FormClosedEventArgs e)
         {
-            if (ReferenceEquals(sender, alert)) alert = null;
+            if (ReferenceEquals(sender, alert)) { alert = null; alertOvertimeHours.Clear(); }
             PetWindow back = alertHidden; alertHidden = null;
             if (back == null) return;
             back.Suppressed = false;
@@ -543,31 +576,49 @@ namespace SuperHeroes
         /// <summary>캐릭터 크기를 바꾸면 지금 구성 그대로 다시 등장시킨다.</summary>
         internal void RebuildForSize()
         {
-            var roster = windows.Select(w => w.Pet.Art.Id).ToList();
-            loadingRoster = true;
-            foreach (PetWindow w in windows.ToArray()) { try { w.Close(); w.Dispose(); } catch { } }
+            Chat.End();
+            var roster = windows.Select(w => w.Pet.Art.Id).ToArray();
+            foreach (PetWindow w in windows.ToArray())
+            {
+                try { w.Pet.ReleaseFeatures(this); } catch (Exception e) { FeatureLog.Write(e); }
+                try { w.Close(); w.Dispose(); } catch { }
+            }
             windows.Clear();
-            CharacterArt.Reset(Native.SystemDpiScale() * PlayOptions.Current.SizeScale);
-            foreach (int c in roster) Spawn(c);
-            loadingRoster = false; SaveRoster();
+            CharacterArt.Reset(CharacterArt.DpiScale, PlayOptions.Current.SizeScale);
+            loadingRoster = true;
+            try { if (roster.Length == 0) Spawn(); else foreach (int c in roster.Take(MaxPets)) Spawn(c); }
+            finally { loadingRoster = false; }
+            SaveRoster(); lastTick = Now;
         }
 
         internal void ResetAllSettings()
         {
-            bool wasFixed = PlayOptions.Current.PositionFixed;
+            bool resized = Math.Abs(CharacterArt.SizeFactor - 1f) > .001f;
             PlayOptions.Current = new PlayOptions(); PlayOptions.Current.Save();
+            if (resized) RebuildForSize();
             ChatOptions.Current = new ChatOptions(); ChatOptions.Current.Save(); Chat.ApplyOptions();
             string roster = Settings.Roster; Settings = new Settings { Roster = roster }; Settings.Save();
             try { StartupOption.SetEnabled(false); } catch { }
-            ApplyCharacterSettings(); ApplyHelperOptions(); RebuildForSize();
+            OnSettingsChanged(); ApplyCharacterSettings(); ApplyHelperOptions();
+        }
+
+        /// <summary>화면 언어를 바꾼 직후: 트레이 글, 열려 있는 창(일기장 · 메모), 진행 중인 대화를 새 언어로 맞춘다.</summary>
+        internal void OnLanguageChanged()
+        {
+            if (tray != null) tray.Text = Loc.T("수퍼히어로");
+            if (diaryForm != null && !diaryForm.IsDisposed) diaryForm.Close();
+            if (Chat != null) { Chat.End(); Chat.ModeChanged(); }
+            if (Notes != null) { Notes.Suspend(); Notes = new NoteManager(this); Notes.Start(); }
+            foreach (var w in windows) { w.Pet.Bubble = null; }
         }
 
         // ───────── 창 열기 ─────────
         internal void OpenSettings() { OpenSettingsPage(-1); }
-        internal void OpenSettingsPage(int page)
+        internal void OpenSettingsPage(int page, int tab = -1)
         {
-            if (settingsForm != null && !settingsForm.IsDisposed) { if (page >= 0) settingsForm.SelectPage(page); settingsForm.Activate(); return; }
+            if (settingsForm != null && !settingsForm.IsDisposed) { if (page >= 0) settingsForm.SelectPage(page); if (tab >= 0) settingsForm.SelectAlarmTab(tab); settingsForm.Activate(); return; }
             settingsForm = new SettingsForm(this, page); settingsForm.FormClosed += delegate { settingsForm = null; };
+            if (tab >= 0) settingsForm.SelectAlarmTab(tab);
             settingsForm.Show(); settingsForm.Activate();
         }
         internal void ShowFriendPanel()
@@ -621,7 +672,7 @@ namespace SuperHeroes
         {
             if (hidden) ToggleHidden();
             if (windows.Count == 0) Spawn();
-            NoticeAll(string.IsNullOrWhiteSpace(msg) ? "알람 시간이야!" : msg);
+            NoticeAll(string.IsNullOrWhiteSpace(msg) ? Loc.T("알람 시간이야!") : msg);
         }
 
         public void PreviewLunch(string msg)
@@ -664,7 +715,7 @@ namespace SuperHeroes
             if (Settings.LunchOn && lunchDone != date)
             {
                 TimeSpan? t = Settings.ParseTime(Settings.LunchTime);
-                if (t.HasValue && tod >= t.Value && tod < t.Value + TimeSpan.FromSeconds(60)) { lunchDone = date; napping = false; NoticeAll(Settings.LunchMsg); }
+                if (t.HasValue && tod >= t.Value && tod < t.Value + TimeSpan.FromSeconds(60)) { lunchDone = date; napping = false; NoticeAll(string.IsNullOrWhiteSpace(Settings.LunchMsg) ? Loc.T("점심시간이야!") : Settings.LunchMsg); }
             }
             if (Settings.LeaveOn)
             {
@@ -675,7 +726,7 @@ namespace SuperHeroes
                     if (leaveGatherDone != date && tod >= gather && tod < t.Value)
                     { leaveGatherDone = date; napping = false; StartGather(now + (t.Value - tod).TotalSeconds); }
                     if (leaveDone != date && tod >= t.Value && tod < t.Value + TimeSpan.FromSeconds(60))
-                    { leaveDone = date; leaveGatherDone = date; napping = false; NoticeAll(Settings.LeaveMsg); }
+                    { leaveDone = date; leaveGatherDone = date; napping = false; NoticeAll(string.IsNullOrWhiteSpace(Settings.LeaveMsg) ? Loc.T("퇴근 시간이야!") : Settings.LeaveMsg); }
                 }
             }
             foreach (var al in Settings.Alarms)   // 내 알람 (시각 + 내용, 반복이면 매일)
@@ -684,6 +735,7 @@ namespace SuperHeroes
                 TimeSpan? t = Settings.ParseTime(al.Time);
                 if (t.HasValue && tod >= t.Value && tod < t.Value + TimeSpan.FromSeconds(60)) { al.Done = date; napping = false; NoticeAll(al.Text); if (!al.Repeat) { al.On = false; al.FiredOff = true; Settings.Save(); } }   // 반복이 아니면 한 번 울리고 스스로 꺼진다
             }
+            OvertimeTick(dt);
             if (OptionsHourlyDue(dt))
             {
                 napping = false;
@@ -691,10 +743,40 @@ namespace SuperHeroes
             }
         }
 
+        /// <summary>초과근무 알림: 시간대 확인(정각 뒤 3~10분 · 45분)을 본다.</summary>
+        private void OvertimeTick(DateTime dt)
+        {
+            foreach (OvertimeEvent ev in Overtime.Tick(dt))
+            {
+                napping = false;
+                ShowOvertimeAlert(ev);
+            }
+            Overtime.SaveIfDirty();
+        }
+
+        private readonly List<int> alertOvertimeHours = new List<int>();
+
+        /// <summary>초과근무 알림은 눌러서 확인해야 하므로 설정과 상관없이 큰 알림 창으로 띄운다.</summary>
+        internal AlertPetWindow ShowOvertimeAlert(OvertimeEvent ev)
+        {
+            AlertPetWindow a = ShowAlert(ev.Message);
+            if (a != null && !alertOvertimeHours.Contains(ev.Hour)) alertOvertimeHours.Add(ev.Hour);
+            return a;
+        }
+
+        private void OnAlertAcknowledged()
+        {
+            if (alertOvertimeHours.Count == 0) return;
+            DateTime n = DateTime.Now;
+            foreach (int h in alertOvertimeHours) Overtime.MarkRecorded(h, true, n);
+            alertOvertimeHours.Clear();
+            Overtime.SaveIfDirty();
+        }
+
         public static string HourlyText(DateTime now)
         {
             int h = now.Hour % 12; if (h == 0) h = 12;
-            return "지금은 " + (now.Hour >= 12 ? "오후 " : "오전 ") + h + "시야!";
+            return now.Hour >= 12 ? Loc.TF("지금은 오후 {0}시야!", h) : Loc.TF("지금은 오전 {0}시야!", h);
         }
 
         public static bool AlarmAtHour(DateTime now, bool enabled, string time)
@@ -726,13 +808,32 @@ namespace SuperHeroes
         }
         private bool HourlyNeedsFallback { get { return PetOff || hidden || windows.Count == 0; } }
 
+        internal void ShowHourWindow(string message)
+        {
+            ClearBubbleHourly();
+            if (Settings.AlertPet) { ShowAlert(message); return; }
+            if (hourlyNotice == null || hourlyNotice.IsDisposed)
+            {
+                hourlyNotice = new HourlyNotice(TrayIconImage);
+                hourlyNotice.SetMessage(message);
+                hourlyNotice.EnableEdgeGlow(Settings.EdgeGlow, Settings.EdgeGlowTheme, Settings.EdgeGlowWidth, Settings.EdgeGlowStrength);
+                hourlyNotice.Show();
+            }
+            else
+            {
+                hourlyNotice.SetMessage(message);
+                hourlyNotice.EnableEdgeGlow(Settings.EdgeGlow, Settings.EdgeGlowTheme, Settings.EdgeGlowWidth, Settings.EdgeGlowStrength);
+                hourlyNotice.Show(); hourlyNotice.BringToFront();
+            }
+        }
+
         /// <summary>설정창의 정각 알림 미리보기: 활동 중인 캐릭터가 정각 말풍선을 잠깐 보여 준다.</summary>
         internal void PreviewHourly()
         {
             if (hidden) ToggleHidden();
             if (PetOff) SetPetPower(true, false);
             if (windows.Count == 0) Spawn();
-            string msg = HourlyMessage(DateTime.Now, false, "", "", false, "", "") + "\n(미리보기)";
+            string msg = HourlyMessage(DateTime.Now, false, "", "", false, "", "") + "\n" + Loc.T("(미리보기)");
             foreach (var w in windows) w.Pet.Cheer(this, msg, 8);
         }
 
@@ -776,6 +877,10 @@ namespace SuperHeroes
         internal void ClearHourly()
         {
             ClearBubbleHourly();
+            if (hourlyNotice != null && !hourlyNotice.IsDisposed) hourlyNotice.Close();
+            hourlyNotice = null;
+            if (alert != null && !alert.IsDisposed) alert.Close();
+            alert = null;
         }
 
         // ───────── 틱 ─────────
@@ -785,6 +890,7 @@ namespace SuperHeroes
             if (dt > .1) dt = .1; if (dt < 0) dt = 0;
             if (now - lastSlow >= 1) { lastSlow = now; SlowTick(now); }
             CompanionTick(now, !paused);
+            if (Api != null) { try { Api.Tick(); } catch (Exception error) { FeatureLog.Write(error); } }
             if (!paused) FriendData.Current.PollTimer(this);
             if (paused || hidden) return;
             CheckAlarms(now);
@@ -883,7 +989,7 @@ namespace SuperHeroes
             if (selected == null) selected = windows.Select(w => w.Pet).FirstOrDefault(p => !p.Hidden);
             if (selected == null) return;
             var dancers = windows.Select(w => w.Pet).Where(p => p.CanDance(Now) && p.Area == selected.Area && p.SupportWindow == selected.SupportWindow).ToList();
-            if (dancers.Count < 2) { selected.Bubble = "친구 둘이 바닥에 모이면 춤출 수 있어 ♪"; selected.BubbleUntil = Now + 4; return; }
+            if (dancers.Count < 2) { selected.Bubble = Loc.T("친구 둘이 바닥에 모이면 춤출 수 있어 ♪"); selected.BubbleUntil = Now + 4; return; }
             BeginSecretDance(dancers, Now);
         }
 
@@ -898,6 +1004,7 @@ namespace SuperHeroes
                 for (int i = 0; i < live.Length; i++)
                     for (int j = i + 1; j < live.Length; j++)
                     {
+                        if (live[i].IsGhost(world.Now) || live[j].IsGhost(world.Now)) continue;
                         Pet a = live[i], b = live[j]; RectangleF ra = a.ContactBody(world.Now), rb = b.ContactBody(world.Now);
                         bool touching = ra.IntersectsWith(rb);
                         PointF oa, ob;
@@ -957,6 +1064,7 @@ namespace SuperHeroes
 
         public void Quit()
         {
+            if (Api != null) { Api.Dispose(); Api = null; }
             if (Chat != null) Chat.Dispose();
             if (Notes != null) Notes.Suspend();
             if (alert != null) { alert.Close(); alert = null; }

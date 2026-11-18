@@ -57,8 +57,15 @@ namespace SuperHeroes
 
         internal string Describe()
         {
-            string unit; switch (Frequency) { case RecurrenceFrequency.Daily: unit = "일"; break; case RecurrenceFrequency.Weekly: unit = "주"; break; case RecurrenceFrequency.Monthly: unit = "개월"; break; default: unit = "년"; break; }
-            return Interval == 1 ? "매" + (Frequency == RecurrenceFrequency.Daily ? "일" : Frequency == RecurrenceFrequency.Weekly ? "주" : Frequency == RecurrenceFrequency.Monthly ? "달" : "년") + " 반복" : Interval + unit + "마다 반복";
+            if (Interval == 1)
+                return Loc.T(Frequency == RecurrenceFrequency.Daily ? "매일 반복" : Frequency == RecurrenceFrequency.Weekly ? "매주 반복" : Frequency == RecurrenceFrequency.Monthly ? "매달 반복" : "매년 반복");
+            switch (Frequency)
+            {
+                case RecurrenceFrequency.Daily: return Loc.TF("{0}일마다 반복", Interval);
+                case RecurrenceFrequency.Weekly: return Loc.TF("{0}주마다 반복", Interval);
+                case RecurrenceFrequency.Monthly: return Loc.TF("{0}개월마다 반복", Interval);
+                default: return Loc.TF("{0}년마다 반복", Interval);
+            }
         }
     }
 

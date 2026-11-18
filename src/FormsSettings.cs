@@ -52,14 +52,14 @@ namespace SuperHeroes
         {
             SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw | ControlStyles.Selectable | ControlStyles.StandardClick, true);
             CharId = charId;
-            heroName = CharacterArt.Infos[charId].Name;
+            heroName = Loc.T(CharacterArt.Infos[charId].Name);
             colorBmp = CharacterArt.IconBitmap(charId, 56);
             grayBmp = MakeGrayscale(colorBmp);
             Size = new Size(88, 88);
             Margin = new Padding(0, 0, 6, 0);
             Cursor = Cursors.Hand;
             TabStop = true;
-            AccessibleName = heroName + " 토글";
+            AccessibleName = Loc.TF("{0} 토글", heroName);
             AccessibleRole = AccessibleRole.PushButton;
             UpdateTip(tips);
         }
@@ -68,7 +68,7 @@ namespace SuperHeroes
         {
             if (tips != null)
             {
-                tips.SetToolTip(this, heroName + (IsActive ? " (현재 켜짐)\n클릭하면 화면에서 보내요." : " (현재 꺼짐)\n클릭하면 화면에 불러와요."));
+                tips.SetToolTip(this, IsActive ? Loc.TF("{0} (현재 켜짐)\n클릭하면 화면에서 보내요.", heroName) : Loc.TF("{0} (현재 꺼짐)\n클릭하면 화면에 불러와요.", heroName));
             }
         }
 
@@ -161,7 +161,7 @@ namespace SuperHeroes
                 using (var fStatus = new Font("Malgun Gothic", 7.5f, FontStyle.Regular))
                 using (var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                 {
-                    string statusText = IsActive ? (Count > 1 ? string.Format("● {0}명 켜짐", Count) : "● 켜짐") : "○ 꺼짐";
+                    string statusText = IsActive ? (Count > 1 ? Loc.TF("● {0}명 켜짐", Count) : Loc.T("● 켜짐")) : Loc.T("○ 꺼짐");
                     Color statusCol = IsActive ? Color.FromArgb(18, 138, 56) : Color.FromArgb(160, 165, 175);
                     using (var br = new SolidBrush(statusCol))
                         g.DrawString(statusText, fStatus, br, new RectangleF(0, 68 * s, Width, 16 * s), sf);
@@ -220,9 +220,9 @@ namespace SuperHeroes
     /// </summary>
     internal sealed class SettingsForm : Form
     {
-        // 움직임 · 반응 · 생활은 "행동" 한 쪽으로 합쳤다. 알림 쪽에는 "내 알람"이 들어 있다.
-        internal static readonly string[] PageNames = { "캐릭터", "행동", "알림", "화면 · 시스템", "메모", "AI 대화" };
-        internal static readonly string[] PageHints = { "친구 · 도감 · ★ 기술", "이동 · 반응 · 생활", "정각 · 점심 · 퇴근 · 내 알람", "크기 · 투명도 · 자동 시작", "새 메모 기본값 · 단축키", "Ollama · 단축키 · 기억" };
+        // 움직임 · 반응 · 생활은 "행동" 한 쪽으로 합쳤다. 알림 쪽에는 "내 알람"과 "초과근무 알림"이 들어 있다.
+        internal static string[] PageNames { get { return new[] { Loc.T("캐릭터"), Loc.T("행동"), Loc.T("알림"), Loc.T("화면 · 시스템"), Loc.T("메모"), Loc.T("AI 대화") }; } }
+        internal static string[] PageHints { get { return new[] { Loc.T("친구 · 도감 · ★ 기술"), Loc.T("이동 · 반응 · 생활"), Loc.T("정각 · 점심 · 퇴근 · 초과근무"), Loc.T("크기 · 투명도 · 자동 시작"), Loc.T("새 메모 기본값 · 단축키"), Loc.T("Ollama · EXAONE · 기억") }; } }
         internal const int AlarmPageIndex = 2;
         private const int AlarmPage = AlarmPageIndex, DisplayPage = 3;
         private static int lastPage;
@@ -250,14 +250,16 @@ namespace SuperHeroes
         private sealed class AlarmRow { internal FlowLayoutPanel Host; internal CheckBox On; internal DateTimePicker Time; internal TextBox Msg; internal CheckBox Repeat; internal UserAlarm Source; }
         private readonly List<AlarmRow> alarmRows = new List<AlarmRow>();
         private FlowLayoutPanel alarmList; private Panel alarmHost; private Button bAlarmAdd;
+        private SubTabs alarmTabs; private FlowLayoutPanel alarmFlow; private OvertimePanel overtimePanel;
         // 화면·시스템
-        private NumericUpDown nSize, nOpacity, nMemoOpacity; private CheckBox cMemoTop, cStartup;
+        private NumericUpDown nSize, nOpacity, nMemoOpacity; private CheckBox cMemoTop, cStartup; private ComboBox cLang; private bool languageChanged;
         // 메모
         private ChoiceStrip noteColor, noteSize; private Label noteInfo;
         // AI 대화
         private ChoiceStrip cMode; private HotkeyBox hkBox;
         private CheckBox cChat, cChatKey, cChatSound, cChatProactive, cChatMemory, cChatChips, cChatDiary;
-        private TextBox tChatModel, tChatUrl; private NumericUpDown nProactive; private Label chatProbe;
+        private TextBox tChatModel, tChatUrl, tExaKey; private ComboBox cProvider, cExaEffort; private FlowLayoutPanel rowExa; private Label noteExa; private string[] chatStash = new string[4]; private int providerShown;
+        private NumericUpDown nProactive; private Label chatProbe;
         private FlatButton bChatSetup, bChatSetupCancel; private ProgressBar chatSetupBar;
         private ChatRequest setupHandle;
         // 캐릭터
@@ -271,20 +273,20 @@ namespace SuperHeroes
         {
             this.app = app;
             FriendUI.Setup(this, app.TrayIconImage);
-            Text = "수퍼히어로 · 설정"; ClientSize = new Size(760, 640); MinimumSize = new Size(700, 560);
+            Text = Loc.T("수퍼히어로 · 설정"); ClientSize = new Size(760, 640); MinimumSize = new Size(700, 560);
             FormBorderStyle = FormBorderStyle.Sizable; MaximizeBox = false; ShowInTaskbar = true; BackColor = SystemColors.Control;
 
             // 아래 단추줄
             var bar = new Panel { Dock = DockStyle.Bottom, Height = 52, BackColor = Color.FromArgb(232, 239, 250) };
-            var bSave = new Button { Text = "저장", Width = 92, Height = 32, Anchor = AnchorStyles.Right | AnchorStyles.Top };
-            var bApply = new Button { Text = "적용", Width = 92, Height = 32, Anchor = AnchorStyles.Right | AnchorStyles.Top };
-            var bCancel = new Button { Text = "닫기", Width = 92, Height = 32, Anchor = AnchorStyles.Right | AnchorStyles.Top };
+            var bSave = new Button { Text = Loc.T("저장"), Width = 92, Height = 32, Anchor = AnchorStyles.Right | AnchorStyles.Top };
+            var bApply = new Button { Text = Loc.T("적용"), Width = 92, Height = 32, Anchor = AnchorStyles.Right | AnchorStyles.Top };
+            var bCancel = new Button { Text = Loc.T("닫기"), Width = 92, Height = 32, Anchor = AnchorStyles.Right | AnchorStyles.Top };
             status = new Label { AutoSize = false, Left = 14, Top = 8, Width = 330, Height = 36, ForeColor = Color.DimGray, TextAlign = ContentAlignment.MiddleLeft, Anchor = AnchorStyles.Left | AnchorStyles.Top };
             bar.Controls.AddRange(new Control[] { status, bSave, bApply, bCancel });
             bar.Resize += delegate { bCancel.Left = bar.Width - 14 - bCancel.Width; bApply.Left = bCancel.Left - 8 - bApply.Width; bSave.Left = bApply.Left - 8 - bSave.Width; bSave.Top = bApply.Top = bCancel.Top = 10; status.Width = Math.Max(0, bSave.Left - 8 - status.Left); };
             Controls.Add(bar);
             bSave.Click += delegate { if (Apply()) Close(); };
-            bApply.Click += delegate { Apply(); };
+            bApply.Click += delegate { if (Apply() && languageChanged) { int pg = lastPage; BeginInvoke((Action)delegate { Close(); app.OpenSettingsPage(pg); }); } };
             bCancel.Click += delegate { Close(); };
             AcceptButton = bSave; CancelButton = bCancel;
 
@@ -309,6 +311,7 @@ namespace SuperHeroes
         }
 
         internal void SelectPage(int i) { if (i >= 0 && i < pages.Length) nav.SelectedIndex = i; }
+        internal void SelectAlarmTab(int i) { if (alarmTabs != null) alarmTabs.SelectedIndex = i; }
 
         // ───────── 분류 목록 그리기 ─────────
         private void DrawNav(object sender, DrawItemEventArgs e)
@@ -389,7 +392,7 @@ namespace SuperHeroes
             var b = FriendUI.Button(text, click);
             var img = Glyph(glyph, FriendUI.BlueDark);
             if (img != null) { b.Image = img; b.TextImageRelation = TextImageRelation.ImageBeforeText; b.ImageAlign = ContentAlignment.MiddleLeft; b.TextAlign = ContentAlignment.MiddleRight; }
-            else if (text.Length == 0) b.Text = "취소";
+            else if (text.Length == 0) b.Text = Loc.T("취소");
             if (img != null && text.Length == 0) { b.AutoSize = false; b.Size = new Size(36, b.Height > 0 ? Math.Max(b.Height, 27) : 27); b.ImageAlign = ContentAlignment.MiddleCenter; b.Padding = Padding.Empty; }
             tips.SetToolTip(b, tip); return b;
         }
@@ -436,24 +439,24 @@ namespace SuperHeroes
 
         private Panel BuildCharacterPage()
         {
-            FlowLayoutPanel f; var page = NewPage("캐릭터", "함께할 친구를 부르고, 캐릭터별 ★ 시그니처 기술을 구경해요", out f);
+            FlowLayoutPanel f; var page = NewPage(Loc.T("캐릭터"), Loc.T("함께할 친구를 부르고, 캐릭터별 ★ 시그니처 기술을 구경해요"), out f);
             f.Padding = new Padding(16, 0, 8, 8);
 
             // ① 화면의 친구: 제목줄(+ 모두 숨기기 · 화면 가운데로) / 캐릭터 카드 5장
-            rosterTitle = new Label { Text = "지금 화면에 있는 친구들" };
+            rosterTitle = new Label { Text = Loc.T("지금 화면에 있는 친구들") };
             var head1 = SectionHead(f, rosterTitle, 118);
-            var bCenter = new FlatButton(FlatIcon.CenterScreen, "화면 가운데로", 34, 28) { Left = CharW - 34, Top = 2 };
-            tips.SetToolTip(bCenter, "화면 가운데로 모으기\n화면 밖으로 나갔거나 가려진 친구들을 화면 한가운데로 다시 모아요.");
+            var bCenter = new FlatButton(FlatIcon.CenterScreen, Loc.T("화면 가운데로"), 34, 28) { Left = CharW - 34, Top = 2 };
+            tips.SetToolTip(bCenter, Loc.T("화면 가운데로 모으기\n화면 밖으로 나갔거나 가려진 친구들을 화면 한가운데로 다시 모아요."));
             bCenter.Click += delegate { app.RecoverVisible(); };
-            var bHide = new FlatButton(FlatIcon.Eye, "모두 숨기기 / 보이기", 34, 28) { Left = CharW - 34 - 38, Top = 2 };
-            tips.SetToolTip(bHide, "모두 숨기기 / 보이기\n화면의 모든 친구를 한 번에 숨기거나 다시 보여줘요.");
+            var bHide = new FlatButton(FlatIcon.Eye, Loc.T("모두 숨기기 / 보이기"), 34, 28) { Left = CharW - 34 - 38, Top = 2 };
+            tips.SetToolTip(bHide, Loc.T("모두 숨기기 / 보이기\n화면의 모든 친구를 한 번에 숨기거나 다시 보여줘요."));
             bHide.Click += delegate { app.ToggleHidden(); RefreshRoster(); };
             // 펫 전원(그림만): 꺼 두면 캐릭터가 화면에서 사라지고 움직이지 않지만 알람 · 알림은 그대로 온다. 껐다 켜도 기억한다.
-            bPower = new FlatButton(FlatIcon.Power, "펫 전원", 34, 28) { Left = CharW - 34 - 38 - 38, Top = 2, Lit = !app.PetOff };
-            tips.SetToolTip(bPower, "펫 전원 켜기 / 끄기\n켜져 있을 때만 캐릭터가 화면에 나와 움직여요.\n꺼 두면 캐릭터는 안 보이지만 정각 · 점심 · 퇴근 알림과 내 알람은 계속 와요.");
+            bPower = new FlatButton(FlatIcon.Power, Loc.T("펫 전원"), 34, 28) { Left = CharW - 34 - 38 - 38, Top = 2, Lit = !app.PetOff };
+            tips.SetToolTip(bPower, Loc.T("펫 전원 켜기 / 끄기\n켜져 있을 때만 캐릭터가 화면에 나와 움직여요.\n꺼 두면 캐릭터는 안 보이지만 정각 · 점심 · 퇴근 알림과 내 알람은 계속 와요."));
             bPower.Click += delegate { app.SetPetPower(app.PetOff); RefreshRoster(); };
             head1.Controls.Add(bCenter); head1.Controls.Add(bHide); head1.Controls.Add(bPower);
-            tips.SetToolTip(rosterTitle, "캐릭터 카드를 누르면 바탕화면에서 바로 켜고 끌 수 있어요.");
+            tips.SetToolTip(rosterTitle, Loc.T("캐릭터 카드를 누르면 바탕화면에서 바로 켜고 끌 수 있어요."));
 
             var cardsRow = new FlowLayoutPanel { FlowDirection = FlowDirection.LeftToRight, WrapContents = false, AutoSize = true, Margin = new Padding(3, 0, 0, 4) };
             for (int i = 0; i < CharacterArt.Count; i++)
@@ -468,9 +471,9 @@ namespace SuperHeroes
 
             // ② 캐릭터 도감: 제목줄(+ 오른쪽에 캐릭터 고르기) / 그림 · 이름 · 특징
             int initChar = app.LiveWindows.Count > 0 ? app.LiveWindows[0].Pet.Art.Id : 0;
-            var head2 = SectionHead(f, new Label { Text = "캐릭터 도감" }, 232);
+            var head2 = SectionHead(f, new Label { Text = Loc.T("캐릭터 도감") }, 232);
             dexStatus = new Label { AutoSize = true, ForeColor = Color.DimGray, Left = CharW - 232, Top = 8 };
-            dexChar = Combo(CharacterArt.Infos.Select(i => i.Name).ToArray(), initChar, 110); dexChar.Left = CharW - 113; dexChar.Top = 4; dexChar.Margin = Padding.Empty;
+            dexChar = Combo(CharacterArt.Infos.Select(i => Loc.T(i.Name)).ToArray(), initChar, 110); dexChar.Left = CharW - 113; dexChar.Top = 4; dexChar.Margin = Padding.Empty;
             head2.Controls.Add(dexStatus); head2.Controls.Add(dexChar);
             var info = Row(f);
             dexPic = new PictureBox { Width = 64, Height = 64, SizeMode = PictureBoxSizeMode.Zoom, Margin = new Padding(4, 2, 4, 4) };
@@ -484,11 +487,11 @@ namespace SuperHeroes
 
             // 마릿수: 도감에서 고른 캐릭터를 하나 더 부르거나(+) 한 명 줄인다(−). 전체 최대 App.MaxPets.
             var rcount = Row(f); rcount.Margin = new Padding(0, 2, 0, 2);
-            rcount.Controls.Add(new Label { Text = "마릿수", AutoSize = false, Width = 46, Height = 26, TextAlign = ContentAlignment.MiddleLeft, ForeColor = FriendUI.BlueDark, Font = new Font("Malgun Gothic", 9f, FontStyle.Bold), Margin = new Padding(3, 2, 0, 2) });
+            rcount.Controls.Add(new Label { Text = Loc.T("마릿수"), AutoSize = false, Width = 46, Height = 26, TextAlign = ContentAlignment.MiddleLeft, ForeColor = FriendUI.BlueDark, Font = new Font("Malgun Gothic", 9f, FontStyle.Bold), Margin = new Padding(3, 2, 0, 2) });
             bLess = new Button { Text = "−", Width = 28, Height = 26, Margin = new Padding(2, 2, 0, 2), Font = new Font("Malgun Gothic", 10f, FontStyle.Bold) };
             countLabel = new Label { Text = "0", AutoSize = false, Width = 42, Height = 26, TextAlign = ContentAlignment.MiddleCenter, ForeColor = FriendUI.Ink, Font = new Font("Malgun Gothic", 10f, FontStyle.Bold), Margin = new Padding(0, 2, 0, 2) };
             bMore = new Button { Text = "+", Width = 28, Height = 26, Margin = new Padding(0, 2, 0, 2), Font = new Font("Malgun Gothic", 10f, FontStyle.Bold) };
-            string countTip = "도감에서 고른 캐릭터를 하나 더 부르거나(+) 한 명 줄여요(−).\n전체 최대 " + App.MaxPets + "명까지예요.";
+            string countTip = Loc.TF("도감에서 고른 캐릭터를 하나 더 부르거나(+) 한 명 줄여요(−).\n전체 최대 {0}명까지예요.", App.MaxPets);
             tips.SetToolTip(bLess, countTip); tips.SetToolTip(bMore, countTip); tips.SetToolTip(countLabel, countTip);
             bMore.Click += delegate { if (dexChar.SelectedIndex >= 0 && app.LiveWindows.Count < App.MaxPets) { app.SpawnFromUi(dexChar.SelectedIndex); RefreshRoster(); } };
             bLess.Click += delegate
@@ -497,14 +500,14 @@ namespace SuperHeroes
                 if (w != null) { app.Remove(w); RefreshRoster(); }
             };
             rcount.Controls.Add(bLess); rcount.Controls.Add(countLabel); rcount.Controls.Add(bMore);
-            rcount.Controls.Add(new Label { Text = "위에서 고른 캐릭터를 부르거나 보내요", AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(8, 8, 3, 2) });
+            rcount.Controls.Add(new Label { Text = Loc.T("위에서 고른 캐릭터를 부르거나 보내요"), AutoSize = true, ForeColor = Color.DimGray, Margin = new Padding(8, 8, 3, 2) });
 
             // ③ ★ 시그니처 기술: 카드를 가로로 세 장씩(캐릭터마다 4~8가지). 오른쪽 위에 자동 재생 빈도.
-            var sigTitle = new Label { Text = "★ 시그니처 기술" };
+            var sigTitle = new Label { Text = Loc.T("★ 시그니처 기술") };
             var head3 = SectionHead(f, sigTitle, 232, Color.FromArgb(176, 108, 14));
-            var freqLabel = new Label { Text = "가만히 쉴 때 자동 재생", AutoSize = true, ForeColor = FriendUI.Ink, Left = CharW - 226, Top = 8 };
-            sigFreq = Combo(new[] { "끄기", "드물게", "보통", "자주" }, PlayOptions.Current.SigFreq, 80); sigFreq.Left = CharW - 83; sigFreq.Top = 4; sigFreq.Margin = Padding.Empty;
-            tips.SetToolTip(sigFreq, "가만히 쉴 때 저절로 보여주는 빈도\n얌전 모드에서는 자동으로 나오지 않아요. 손으로 보려면 우클릭 → ★ 시그니처 기술.");
+            var freqLabel = new Label { Text = Loc.T("가만히 쉴 때 자동 재생"), AutoSize = true, ForeColor = FriendUI.Ink, Left = CharW - 226, Top = 8 };
+            sigFreq = Combo(new[] { Loc.T("끄기"), Loc.T("드물게"), Loc.T("보통"), Loc.T("자주") }, PlayOptions.Current.SigFreq, 80); sigFreq.Left = CharW - 83; sigFreq.Top = 4; sigFreq.Margin = Padding.Empty;
+            tips.SetToolTip(sigFreq, Loc.T("가만히 쉴 때 저절로 보여주는 빈도\n얌전 모드에서는 자동으로 나오지 않아요. 손으로 보려면 우클릭 → ★ 시그니처 기술."));
             tips.SetToolTip(freqLabel, tips.GetToolTip(sigFreq));
             head3.Controls.Add(freqLabel); head3.Controls.Add(sigFreq);
 
@@ -517,7 +520,7 @@ namespace SuperHeroes
                 card.Controls.Add(new Label { Text = "★", AutoSize = true, Left = 8, Top = 5, ForeColor = FriendUI.Gold, Font = new Font("Malgun Gothic", 12f, FontStyle.Bold), BackColor = Color.Transparent });
                 sigName[i] = new Label { AutoSize = false, AutoEllipsis = true, Left = 30, Top = 8, Width = 130, Height = 20, Font = new Font("Malgun Gothic", 9f, FontStyle.Bold), ForeColor = FriendUI.Ink, BackColor = Color.Transparent };
                 sigDesc[i] = new Label { AutoSize = false, AutoEllipsis = true, Left = 10, Top = 30, Width = 148, Height = 46, Font = new Font("Malgun Gothic", 8.5f), ForeColor = Color.DimGray, BackColor = Color.Transparent };
-                var play = new Button { Text = "▶ 미리보기", Left = 10, Top = 78, Width = 146, Height = 24 };
+                var play = new Button { Text = Loc.T("▶ 미리보기"), Left = 10, Top = 78, Width = 146, Height = 24 };
                 play.Click += delegate { app.PreviewSignature(dexChar.SelectedIndex, idx); };
                 card.Controls.Add(sigName[i]); card.Controls.Add(sigDesc[i]); card.Controls.Add(play);
                 sigWrap.Controls.Add(card);
@@ -532,11 +535,11 @@ namespace SuperHeroes
             UpdateDex();
 
             // ④ 수퍼맨 커스튬: 한 줄
-            SectionHead(f, new Label { Text = "수퍼맨 커스튬" }, 0);
+            SectionHead(f, new Label { Text = Loc.T("수퍼맨 커스튬") }, 0);
             var rc = Row(f);
-            rc.Controls.Add(Cap("평소 입는 옷", 90));
-            costume = Combo(new[] { "수퍼히어로 수트 (기본)", "기자 (클라크 켄트)" }, PlayOptions.Current.ClarkKent ? 1 : 0, 200); rc.Controls.Add(costume);
-            tips.SetToolTip(costume, "기자 차림은 정장 · 붉은 넥타이 · 검은 뿔테 안경이에요.\n어느 쪽이든 '셔츠 찢기 (S 각성)'은 기자 차림에서 시작해 수퍼맨으로 변신해요.");
+            rc.Controls.Add(Cap(Loc.T("평소 입는 옷"), 90));
+            costume = Combo(new[] { Loc.T("수퍼히어로 수트 (기본)"), Loc.T("기자 (클라크 켄트)") }, PlayOptions.Current.ClarkKent ? 1 : 0, 200); rc.Controls.Add(costume);
+            tips.SetToolTip(costume, Loc.T("기자 차림은 정장 · 붉은 넥타이 · 검은 뿔테 안경이에요.\n어느 쪽이든 '셔츠 찢기 (S 각성)'은 기자 차림에서 시작해 수퍼맨으로 변신해요."));
 
             RefreshRoster();
             return page;
@@ -566,8 +569,8 @@ namespace SuperHeroes
             int c = Math.Max(0, dexChar.SelectedIndex); var info = CharacterArt.Infos[c];
             if (dexPic.Image != null) { var old = dexPic.Image; dexPic.Image = null; old.Dispose(); }
             dexPic.Image = CharacterArt.IconBitmap(c, 96);
-            dexTitle.Text = info.Name + "  ·  " + info.Title;
-            dexTraits.Text = "· " + string.Join("\n· ", info.Traits);
+            dexTitle.Text = Loc.T(info.Name) + "  ·  " + Loc.T(info.Title);
+            dexTraits.Text = "· " + string.Join("\n· ", info.Traits.Select(t => Loc.T(t)).ToArray());
             var sigs = Signatures.All[c];
             for (int i = 0; i < sigName.Length; i++)
             {
@@ -575,8 +578,9 @@ namespace SuperHeroes
                 if (sigCard[i] != null) sigCard[i].Visible = has;
                 if (!has) continue;
                 sigName[i].Text = sigs[i].Label.TrimStart('★', ' ');   // 카드에 금색 ★ 가 따로 있다
-                sigDesc[i].Text = sigs[i].Desc;
-                string tip = sigs[i].Label + "\n" + WrapTip(sigs[i].Desc, 30);   // 카드에 다 안 들어가는 긴 설명은 말풍선으로
+                string desc = Loc.T(sigs[i].Desc);
+                sigDesc[i].Text = desc;
+                string tip = sigs[i].Label + "\n" + WrapTip(desc, Loc.IsEn ? 42 : 30);   // 카드에 다 안 들어가는 긴 설명은 말풍선으로
                 foreach (Control part in new Control[] { sigCard[i], sigName[i], sigDesc[i] }) tips.SetToolTip(part, tip);
             }
             UpdateDexStatus();
@@ -587,7 +591,7 @@ namespace SuperHeroes
             if (dexStatus == null || dexChar == null || dexChar.SelectedIndex < 0) return;
             int c = Math.Max(0, dexChar.SelectedIndex);
             int count = app.LiveWindows.Count(w => w.Pet.Art.Id == c);
-            dexStatus.Text = count > 0 ? string.Format("(화면에 {0}명 활성)", count) : "(화면에 없음)";
+            dexStatus.Text = count > 0 ? Loc.TF("(화면에 {0}명 활성)", count) : Loc.T("(화면에 없음)");
             dexStatus.ForeColor = count > 0 ? FriendUI.BlueDark : Color.DimGray;
         }
 
@@ -596,8 +600,8 @@ namespace SuperHeroes
             var liveIds = app.LiveWindows.Select(w => w.Pet.Art.Id).ToList();
             if (rosterTitle != null)
             {
-                rosterTitle.Text = app.PetOff ? string.Format("지금 화면에 있는 친구들 ({0}명 · 전원 꺼짐)", liveIds.Count)
-                    : liveIds.Count > 0 ? string.Format("지금 화면에 있는 친구들 ({0}명)", liveIds.Count) : "지금 화면에 있는 친구들 (비어 있음)";
+                rosterTitle.Text = app.PetOff ? Loc.TF("지금 화면에 있는 친구들 ({0}명 · 전원 꺼짐)", liveIds.Count)
+                    : liveIds.Count > 0 ? Loc.TF("지금 화면에 있는 친구들 ({0}명)", liveIds.Count) : Loc.T("지금 화면에 있는 친구들 (비어 있음)");
             }
             int curSel = dexChar != null ? dexChar.SelectedIndex : -1;
             for (int i = 0; i < heroCards.Length; i++)
@@ -652,7 +656,7 @@ namespace SuperHeroes
 
         private Panel BuildBehaviorPage()
         {
-            FlowLayoutPanel f; var page = NewPage("행동", "움직임 · 반응 · 생활", out f);
+            FlowLayoutPanel f; var page = NewPage(Loc.T("행동"), Loc.T("움직임 · 반응 · 생활"), out f);
             var o = PlayOptions.Current;
 
             // ① 지금 상태: 친밀도 · 함께한 시간 | 포만감 막대 · 간식
@@ -666,29 +670,29 @@ namespace SuperHeroes
             satietyBar = new MeterBar { Left = 232, Top = 23, Width = 170, Height = 14 }; lifeCard.Controls.Add(satietyBar);
             satietyNum = new Label { AutoSize = false, Left = 408, Top = 17, Width = 40, Height = 26, TextAlign = ContentAlignment.MiddleLeft, Font = new Font("Malgun Gothic", 10f, FontStyle.Bold), ForeColor = FriendUI.Ink, BackColor = Color.Transparent };
             lifeCard.Controls.Add(satietyNum);
-            snackButton = new FlatButton(FlatIcon.Snack, "간식 주기", 40, 36) { Left = 456, Top = 12 };
+            snackButton = new FlatButton(FlatIcon.Snack, Loc.T("간식 주기"), 40, 36) { Left = 456, Top = 12 };
             snackButton.Click += delegate { app.FeedFirst(); RefreshLive(); };
-            tips.SetToolTip(snackButton, "간식 주기\n포만감 +25 (최대 100)");
+            tips.SetToolTip(snackButton, Loc.T("간식 주기\n포만감 +25 (최대 100)"));
             lifeCard.Controls.Add(snackButton);
             f.Controls.Add(lifeCard);
 
             // ② 어디서
-            var r1 = RailRow(f, FlatIcon.PlacePin, "돌아다니는 곳", 56);
-            cWalls = Tile(r1, FlatIcon.Wall, "벽 타기", o.Walls, "화면 양옆 벽을 타고 올라가요.");
-            cCeiling = Tile(r1, FlatIcon.Ceiling, "천장 타기", o.Ceiling, "화면 천장을 타고 건너가요.");
-            cWindows = Tile(r1, FlatIcon.Window, "창 타기", o.Windows, "열린 창 옆을 올라가고 창 위에서 걷거나 쉬어요.");
-            cFull = Tile(r1, FlatIcon.FullScreen, "전체화면 숨김", o.Fullscreen, "전체화면 영상 · 게임을 볼 때 자동으로 숨어요.");
+            var r1 = RailRow(f, FlatIcon.PlacePin, Loc.T("돌아다니는 곳"), 56);
+            cWalls = Tile(r1, FlatIcon.Wall, Loc.T("벽 타기"), o.Walls, Loc.T("화면 양옆 벽을 타고 올라가요."));
+            cCeiling = Tile(r1, FlatIcon.Ceiling, Loc.T("천장 타기"), o.Ceiling, Loc.T("화면 천장을 타고 건너가요."));
+            cWindows = Tile(r1, FlatIcon.Window, Loc.T("창 타기"), o.Windows, Loc.T("열린 창 옆을 올라가고 창 위에서 걷거나 쉬어요."));
+            cFull = Tile(r1, FlatIcon.FullScreen, Loc.T("전체화면 숨김"), o.Fullscreen, Loc.T("전체화면 영상 · 게임을 볼 때 자동으로 숨어요."));
 
             // ③ 쉬기 · 조용히
-            var r2 = RailRow(f, FlatIcon.Cup, "쉬는 방법 · 조용히 지내기", 56);
-            cIdle = Tile(r2, FlatIcon.Zzz, "혼자 쉬기", o.Idle, "혼자 앉아서 쉬어요.\n(앉기 · 잠자기 · 멍때리기 · 기지개 · ★ 시그니처)");
-            cShortRest = Tile(r2, FlatIcon.Hourglass, "짧게 앉기", o.ShortRest, "앉아있는 시간을 줄여요. (6~11초)");
-            cFocus = Tile(r2, FlatIcon.Moon, "얌전 모드", o.Focus, "바닥에만 머물고 도망가지 않아요.\n벽·천장·창 타기와 ★ 시그니처 자동 재생이 멈춰요.");
-            cWork = Tile(r2, FlatIcon.Briefcase, "평일 얌전", o.WorkFocus, "평일 09:00~18:00에는 자동으로 얌전 모드예요.");
-            cPinned = Tile(r2, FlatIcon.Pin, "위치 고정", o.PositionFixed, "친구 위치를 고정해요. (마우스로 옮길 수는 있어요)");
+            var r2 = RailRow(f, FlatIcon.Cup, Loc.T("쉬는 방법 · 조용히 지내기"), 56);
+            cIdle = Tile(r2, FlatIcon.Zzz, Loc.T("혼자 쉬기"), o.Idle, Loc.T("혼자 앉아서 쉬어요.\n(앉기 · 잠자기 · 멍때리기 · 기지개 · ★ 시그니처)"));
+            cShortRest = Tile(r2, FlatIcon.Hourglass, Loc.T("짧게 앉기"), o.ShortRest, Loc.T("앉아있는 시간을 줄여요. (6~11초)"));
+            cFocus = Tile(r2, FlatIcon.Moon, Loc.T("얌전 모드"), o.Focus, Loc.T("바닥에만 머물고 도망가지 않아요.\n벽·천장·창 타기와 ★ 시그니처 자동 재생이 멈춰요."));
+            cWork = Tile(r2, FlatIcon.Briefcase, Loc.T("평일 얌전"), o.WorkFocus, Loc.T("평일 09:00~18:00에는 자동으로 얌전 모드예요."));
+            cPinned = Tile(r2, FlatIcon.Pin, Loc.T("위치 고정"), o.PositionFixed, Loc.T("친구 위치를 고정해요. (마우스로 옮길 수는 있어요)"));
 
             // ④ 속도
-            var r3 = RailRow(f, FlatIcon.Gauge, "속도\n숫자가 클수록 빨라져요.", 36);
+            var r3 = RailRow(f, FlatIcon.Gauge, Loc.T("속도\n숫자가 클수록 빨라져요."), 36);
             Func<FlatIcon.Painter, string, decimal, double, NumericUpDown> speed = (p, tip, max, value) =>
             {
                 var ib = new IconBox(p, 26) { Margin = new Padding(8, 5, 2, 3) };
@@ -698,46 +702,46 @@ namespace SuperHeroes
                 r3.Controls.Add(ib); r3.Controls.Add(x); r3.Controls.Add(n);
                 return n;
             };
-            nSpeed = speed(FlatIcon.Feet, "걷기 · 기어오르기", 2m, o.Speed);
-            nFall = speed(FlatIcon.Feather, "비행 하강 (기를 모아 내려옴)", 3m, o.FallSpeed);
-            nSlide = speed(FlatIcon.Slide, "질주 (커서를 피해 도망)", 3m, o.SlideSpeed);
+            nSpeed = speed(FlatIcon.Feet, Loc.T("걷기 · 기어오르기"), 2m, o.Speed);
+            nFall = speed(FlatIcon.Feather, Loc.T("비행 하강 (기를 모아 내려옴)"), 3m, o.FallSpeed);
+            nSlide = speed(FlatIcon.Slide, Loc.T("질주 (커서를 피해 도망)"), 3m, o.SlideSpeed);
 
             // ⑤ 클릭했을 때
-            var r4 = RailRow(f, FlatIcon.Tap, "마우스로 클릭했을 때\n배트맨은 경계하며 날카로운 눈빛, 다른 친구들은 당당하게 반응해요.\n살짝 놓으면 망토/웹으로 천천히 착지하고, 휙 던지면 히어로 랜딩으로 착지해요.", 62);
-            clickMode = IconStrip(new[] { "순서", "무작위", "놀람", "울음", "폴짝", "끄기" },
-                new[] { "순서대로\n놀람(발끈) → 달달 떨며 울기 → 폴짝", "무작위 반응", "놀람(발끈)만", "달달 떨며 울기만", "폴짝 뛰기만", "클릭 반응 끄기" },
+            var r4 = RailRow(f, FlatIcon.Tap, Loc.T("마우스로 클릭했을 때\n배트맨은 경계하며 날카로운 눈빛, 다른 친구들은 당당하게 반응해요.\n살짝 놓으면 망토/웹으로 천천히 착지하고, 휙 던지면 히어로 랜딩으로 착지해요."), 62);
+            clickMode = IconStrip(new[] { Loc.T("순서"), Loc.T("무작위"), Loc.T("놀람"), Loc.T("울음"), Loc.T("폴짝"), Loc.T("끄기") },
+                new[] { Loc.T("순서대로\n놀람(발끈) → 달달 떨며 울기 → 폴짝"), Loc.T("무작위 반응"), Loc.T("놀람(발끈)만"), Loc.T("달달 떨며 울기만"), Loc.T("폴짝 뛰기만"), Loc.T("클릭 반응 끄기") },
                 (int)o.ClickMode, 76, ClickArt);
             r4.Controls.Add(clickMode);
 
             // ⑥ 커서가 가까이 왔을 때 (+ 도망 반응 대기)
-            var r5 = RailRow(f, FlatIcon.CursorRing, "커서가 가까이 왔을 때", 62);
-            cursorMode = IconStrip(new[] { "도망", "졸졸", "무시" }, new[] { "슉! 질주하며 도망가요.", "커서를 졸졸 따라와요.", "신경 쓰지 않아요." },
+            var r5 = RailRow(f, FlatIcon.CursorRing, Loc.T("커서가 가까이 왔을 때"), 62);
+            cursorMode = IconStrip(new[] { Loc.T("도망"), Loc.T("졸졸"), Loc.T("무시") }, new[] { Loc.T("슉! 질주하며 도망가요."), Loc.T("커서를 졸졸 따라와요."), Loc.T("신경 쓰지 않아요.") },
                 o.Escape && !o.Follow ? 0 : o.Follow && !o.Escape ? 1 : 2, 84, CursorArt);
             r5.Controls.Add(cursorMode);
             var dl = new FlowLayoutPanel { AutoSize = true, WrapContents = false, FlowDirection = FlowDirection.LeftToRight, Margin = new Padding(14, 14, 0, 0) };
             var dib = new IconBox(FlatIcon.Clock, 26) { Margin = new Padding(3, 0, 2, 3) };
             nDelay = Num(.05m, 1m, (decimal)o.EscapeDelay, 2, .05m, 66); nDelay.Margin = new Padding(2, 1, 0, 0);
-            var sec = Cap("초"); sec.Margin = new Padding(3, 4, 0, 0);
-            string delayTip = "도망 반응 대기\n커서가 다가온 뒤 도망치기 시작하기까지의 시간이에요.";
+            var sec = Cap(Loc.T("초")); sec.Margin = new Padding(3, 4, 0, 0);
+            string delayTip = Loc.T("도망 반응 대기\n커서가 다가온 뒤 도망치기 시작하기까지의 시간이에요.");
             tips.SetToolTip(dib, delayTip); tips.SetToolTip(nDelay, delayTip);
             dl.Controls.Add(dib); dl.Controls.Add(nDelay); dl.Controls.Add(sec); r5.Controls.Add(dl);
             cursorMode.SelectedIndexChanged += delegate { dl.Enabled = cursorMode.SelectedIndex == 0; }; dl.Enabled = cursorMode.SelectedIndex == 0;
 
             // ⑦ 생활
-            var r6 = RailRow(f, FlatIcon.Heart, "생활", 56);
-            cHungerCry = Tile(r6, FlatIcon.SadFace, "배고프면 울기", o.HungerCry, "배고프면 계속 우는 표정을 지어요.");
-            cAffinity = Tile(r6, FlatIcon.HeartNumber, "친밀도 표시", o.ShowAffinity, "친구 옆에 친밀도 숫자를 보여 줘요.");
+            var r6 = RailRow(f, FlatIcon.Heart, Loc.T("생활"), 56);
+            cHungerCry = Tile(r6, FlatIcon.SadFace, Loc.T("배고프면 울기"), o.HungerCry, Loc.T("배고프면 계속 우는 표정을 지어요."));
+            cAffinity = Tile(r6, FlatIcon.HeartNumber, Loc.T("친밀도 표시"), o.ShowAffinity, Loc.T("친구 옆에 친밀도 숫자를 보여 줘요."));
             var hib = new IconBox(FlatIcon.FoodClock, 32) { Margin = new Padding(14, 12, 2, 0) };
             nHunger = Num(0, 360, o.HungerMinutes, 0, 1, 66); nHunger.Margin = new Padding(3, 17, 0, 0);
-            var minL = Cap("분"); minL.Margin = new Padding(3, 20, 0, 0);
-            string hungerTip = "간식 없이 배고파지기까지 (분)\n0분이면 항상 우는 표정이에요.";
+            var minL = Cap(Loc.T("분")); minL.Margin = new Padding(3, 20, 0, 0);
+            string hungerTip = Loc.T("간식 없이 배고파지기까지 (분)\n0분이면 항상 우는 표정이에요.");
             tips.SetToolTip(hib, hungerTip); tips.SetToolTip(nHunger, hungerTip);
             r6.Controls.Add(hib); r6.Controls.Add(nHunger); r6.Controls.Add(minL);
 
-            // ⑧ 숨은 반응: 켜기 + 도감 칸 세 개
-            var r7 = RailRow(f, FlatIcon.Question, "숨은 반응", 56);
-            cSecrets = Tile(r7, FlatIcon.Spark, "숨은 반응", o.Secrets, "숨은 반응을 켜요.\n찾으면 오른쪽 도감 칸이 채워져요.");
-            string[] secretTip = { "몰래 군무\n친구 둘 이상일 때 커서를 떨어뜨리고 4초.", "어질어질\n친구 머리 위에서 마우스를 한 바퀴 빙글빙글.", "기 폭발\n같은 친구를 10초 안에 세 번 휙 던지기.\n(변신하며 천장까지 솟구쳐요)", "크립토나이트\n수퍼맨을 1초 간격으로 5번 연달아 클릭.\n(초록 돌 빛에 힘이 빠져 주저앉아요)" };
+            // ⑧ 숨은 반응: 켜기 + 도감 칸 네 개
+            var r7 = RailRow(f, FlatIcon.Question, Loc.T("숨은 반응"), 56);
+            cSecrets = Tile(r7, FlatIcon.Spark, Loc.T("숨은 반응"), o.Secrets, Loc.T("숨은 반응을 켜요.\n찾으면 오른쪽 도감 칸이 채워져요."));
+            string[] secretTip = { Loc.T("몰래 군무\n친구 둘 이상일 때 커서를 떨어뜨리고 4초."), Loc.T("어질어질\n친구 머리 위에서 마우스를 한 바퀴 빙글빙글."), Loc.T("기 폭발\n같은 친구를 10초 안에 세 번 휙 던지기.\n(변신하며 천장까지 솟구쳐요)"), Loc.T("크립토나이트\n수퍼맨을 1초 간격으로 5번 연달아 클릭.\n(초록 돌 빛에 힘이 빠져 주저앉아요)") };
             FlatIcon.Painter[] secretArt = { FlatIcon.Dance, FlatIcon.Dizzy, FlatIcon.Bolt, FlatIcon.Kryptonite };
             for (int i = 0; i < 4; i++)
             {
@@ -745,69 +749,68 @@ namespace SuperHeroes
                 tips.SetToolTip(secretBadge[i], secretTip[i]); r7.Controls.Add(secretBadge[i]);
             }
             secretCount = new Label { AutoSize = true, Text = "0 / 4", Font = new Font("Malgun Gothic", 10f, FontStyle.Bold), ForeColor = FriendUI.BlueDark, Margin = new Padding(10, 19, 0, 0) };
-            tips.SetToolTip(secretCount, "발견한 숨은 반응\n우클릭 → 동작 보기 → 숨은 반응에서도 볼 수 있어요.");
+            tips.SetToolTip(secretCount, Loc.T("발견한 숨은 반응\n우클릭 → 동작 보기 → 숨은 반응에서도 볼 수 있어요."));
             r7.Controls.Add(secretCount);
             return page;
         }
 
         // ───────── 5. 알림 ─────────
-        // 위에서 아래로 ① 정각 알림(켜기 · 미리보기 한 줄, 조용한 시간 한 줄) ② 점심 · 퇴근 · 낮잠(한 줄씩) ③ 내 알람 — 남는 높이를 알람 목록이 쓰고, 많아지면 목록 안에서만 스크롤된다.
         private Panel BuildAlarmPage()
         {
-            FlowLayoutPanel f; var page = NewPage("알림", "정각 · 점심 · 퇴근 알림, 낮잠, 내 알람", out f);
+            FlowLayoutPanel f; var page = NewPage(Loc.T("알림"), Loc.T("정각 · 점심 · 퇴근 · 내 알람, 초과근무 알림"), out f);
             f.Padding = new Padding(16, 0, 8, 8);
             Settings s = app.Settings;
 
             // ① 정각 알림: 지금 바탕화면에서 활동 중인 캐릭터들이 말풍선으로 알려 준다(별도 창 없음)
-            SectionHead(f, new Label { Text = "정각 알림" }, 0);
+            SectionHead(f, new Label { Text = Loc.T("정각 알림") }, 0);
             var top = Row(f);
-            cHourly = new CheckBox { Text = "정각 알림", Checked = s.HourlyOn, AutoSize = true, Margin = new Padding(3, 7, 14, 3) };
-            tips.SetToolTip(cHourly, "정각이 되면 지금 바탕화면에서 활동 중인 캐릭터들이 말풍선으로 알려요.\n마우스나 키보드를 쓰면 잠시 뒤 말풍선이 사라져요.\n캐릭터가 화면에 없을 때(펫 전원 꺼짐 · 모두 숨김)는 큰 히어로 알림으로 대신해요.");
-            var bPreview = IconButton('\ue768', "미리보기", "정각 알림 미리보기\n활동 중인 캐릭터들이 정각 말풍선을 잠깐 보여줘요", delegate
+            cHourly = new CheckBox { Text = Loc.T("정각 알림"), Checked = s.HourlyOn, AutoSize = true, Margin = new Padding(3, 7, 14, 3) };
+            tips.SetToolTip(cHourly, Loc.T("정각이 되면 지금 바탕화면에서 활동 중인 캐릭터들이 말풍선으로 알려요.\n마우스나 키보드를 쓰면 잠시 뒤 말풍선이 사라져요.\n캐릭터가 화면에 없을 때(펫 전원 꺼짐 · 모두 숨김)는 큰 히어로 알림으로 대신해요."));
+            var bPreview = IconButton('\ue768', Loc.T("미리보기"), Loc.T("정각 알림 미리보기\n활동 중인 캐릭터들이 정각 말풍선을 잠깐 보여줘요"), delegate
             { app.PreviewHourly(); });
             bPreview.Margin = new Padding(0, 3, 3, 3);
             top.Controls.Add(cHourly); top.Controls.Add(bPreview);
             var rq = Row(f);
-            cQuiet = new CheckBox { Text = "평일(월~금) 정각 알림 끄기", Checked = s.QuietWeekdays, AutoSize = true, Margin = new Padding(3, 6, 8, 3) };
+            cQuiet = new CheckBox { Text = Loc.T("평일(월~금) 정각 알림 끄기"), Checked = s.QuietWeekdays, AutoSize = true, Margin = new Padding(3, 6, 8, 3) };
             nStart = Num(0, 23, s.QuietStart, 0, 1, 54); nEnd = Num(0, 23, s.QuietEnd, 0, 1, 54);
-            rq.Controls.Add(cQuiet); rq.Controls.Add(nStart); rq.Controls.Add(Cap("시 ~")); rq.Controls.Add(nEnd); rq.Controls.Add(Cap("시 (양 끝 정각 포함)"));
+            rq.Controls.Add(cQuiet); rq.Controls.Add(nStart); rq.Controls.Add(Cap(Loc.T("시 ~"))); rq.Controls.Add(nEnd); rq.Controls.Add(Cap(Loc.T("시 (양 끝 정각 포함)")));
             cQuiet.CheckedChanged += delegate { nStart.Enabled = nEnd.Enabled = cQuiet.Checked && cHourly.Checked; }; nStart.Enabled = nEnd.Enabled = cQuiet.Checked && cHourly.Checked;
             cHourly.CheckedChanged += delegate { cQuiet.Enabled = cHourly.Checked; nStart.Enabled = nEnd.Enabled = cQuiet.Checked && cHourly.Checked; }; cQuiet.Enabled = cHourly.Checked;
 
             // ③ 점심 · 퇴근 · 낮잠: 한 줄에 켜기 · 시각 · 문구 · 미리보기
-            SectionHead(f, new Label { Text = "점심 · 퇴근 · 낮잠" }, 0);
+            SectionHead(f, new Label { Text = Loc.T("점심 · 퇴근 · 낮잠") }, 0);
             var rl = Row(f);
-            cLunch = new CheckBox { Text = "점심 알림", Checked = s.LunchOn, AutoSize = false, Width = 92, Height = 24, Margin = new Padding(3, 6, 3, 3) }; rl.Controls.Add(cLunch);
+            cLunch = new CheckBox { Text = Loc.T("점심 알림"), Checked = s.LunchOn, AutoSize = false, Width = 92, Height = 24, Margin = new Padding(3, 6, 3, 3) }; rl.Controls.Add(cLunch);
             tLunch = new TextBox { Text = s.LunchTime, Width = 56, Margin = new Padding(3, 4, 3, 3) }; rl.Controls.Add(tLunch);
             tLunchMsg = new TextBox { Text = s.LunchMsg, Width = 250, Margin = new Padding(3, 4, 3, 3) }; rl.Controls.Add(tLunchMsg);
-            rl.Controls.Add(FriendUI.Button("미리보기", delegate { app.PreviewLunch(tLunchMsg.Text); }));
-            tips.SetToolTip(tLunch, "시각 (12:00처럼)"); tips.SetToolTip(tLunchMsg, "알림 문구");
+            rl.Controls.Add(FriendUI.Button(Loc.T("미리보기"), delegate { app.PreviewLunch(tLunchMsg.Text); }));
+            tips.SetToolTip(tLunch, Loc.T("시각 (12:00처럼)")); tips.SetToolTip(tLunchMsg, Loc.T("알림 문구"));
             var rv = Row(f);
-            cLeave = new CheckBox { Text = "퇴근 알림", Checked = s.LeaveOn, AutoSize = false, Width = 92, Height = 24, Margin = new Padding(3, 6, 3, 3) }; rv.Controls.Add(cLeave);
+            cLeave = new CheckBox { Text = Loc.T("퇴근 알림"), Checked = s.LeaveOn, AutoSize = false, Width = 92, Height = 24, Margin = new Padding(3, 6, 3, 3) }; rv.Controls.Add(cLeave);
             tLeave = new TextBox { Text = s.LeaveTime, Width = 56, Margin = new Padding(3, 4, 3, 3) }; rv.Controls.Add(tLeave);
             tLeaveMsg = new TextBox { Text = s.LeaveMsg, Width = 250, Margin = new Padding(3, 4, 3, 3) }; rv.Controls.Add(tLeaveMsg);
-            rv.Controls.Add(FriendUI.Button("미리보기", delegate { app.PreviewLeave(tLeaveMsg.Text); }));
-            tips.SetToolTip(tLeave, "시각 (18:00처럼)\n퇴근 10초 전에는 친구들이 화면 가운데로 모여요."); tips.SetToolTip(tLeaveMsg, "알림 문구");
-            cAlertPet = new CheckBox { Text = "점심 · 퇴근 · 내 알람은 큰 히어로로 보여주기", Checked = s.AlertPet, AutoSize = true, Margin = new Padding(3, 5, 3, 3) };
-            tips.SetToolTip(cAlertPet, "2배 크기 히어로가 네온 빛을 두르고 나와요. 눌러서 닫을 때까지 유지돼요.\n끄면 캐릭터들의 말풍선으로 알려요. (메모 알림은 늘 큰 히어로로 나와요)");
+            rv.Controls.Add(FriendUI.Button(Loc.T("미리보기"), delegate { app.PreviewLeave(tLeaveMsg.Text); }));
+            tips.SetToolTip(tLeave, Loc.T("시각 (18:00처럼)\n퇴근 10초 전에는 친구들이 화면 가운데로 모여요.")); tips.SetToolTip(tLeaveMsg, Loc.T("알림 문구"));
+            cAlertPet = new CheckBox { Text = Loc.T("점심 · 퇴근 · 내 알람은 큰 히어로로 보여주기"), Checked = s.AlertPet, AutoSize = true, Margin = new Padding(3, 5, 3, 3) };
+            tips.SetToolTip(cAlertPet, Loc.T("2배 크기 히어로가 네온 빛을 두르고 나와요. 눌러서 닫을 때까지 유지돼요.\n끄면 캐릭터들의 말풍선으로 알려요. (메모 알림은 늘 큰 히어로로 나와요)"));
             f.Controls.Add(cAlertPet);
             var rn = Row(f);
-            cNap = new CheckBox { Text = "자리를 오래 비우면 낮잠 자기", Checked = s.NapOn, AutoSize = false, Width = 196, Height = 24, Margin = new Padding(3, 6, 3, 3) };
+            cNap = new CheckBox { Text = Loc.T("자리를 오래 비우면 낮잠 자기"), Checked = s.NapOn, AutoSize = false, Width = 196, Height = 24, Margin = new Padding(3, 6, 3, 3) };
             nNap = Num(1, 600, s.NapMinutes, 0, 1, 62);
-            rn.Controls.Add(cNap); rn.Controls.Add(nNap); rn.Controls.Add(Cap("분 동안 입력이 없을 때"));
+            rn.Controls.Add(cNap); rn.Controls.Add(nNap); rn.Controls.Add(Cap(Loc.T("분 동안 입력이 없을 때")));
             cNap.CheckedChanged += delegate { nNap.Enabled = cNap.Checked; }; nNap.Enabled = cNap.Checked;
 
             // ④ 내 알람: 제목줄 오른쪽에 추가 단추, 남는 높이는 목록이 쓴다(많아지면 목록 안에서만 스크롤)
-            var alarmHead = SectionHead(f, new Label { Text = "내 알람" }, 110);
-            bAlarmAdd = FriendUI.Button("+ 알람 추가", delegate { AddAlarmRow(null); });
+            var alarmHead = SectionHead(f, new Label { Text = Loc.T("내 알람") }, 110);
+            bAlarmAdd = FriendUI.Button(Loc.T("+ 알람 추가"), delegate { AddAlarmRow(null); });
             bAlarmAdd.Margin = Padding.Empty; bAlarmAdd.Location = new Point(CharW - bAlarmAdd.PreferredSize.Width - 2, 2);
-            tips.SetToolTip(bAlarmAdd, "새 알람 한 줄을 만들어요. (최대 " + Settings.MaxAlarms + "개)\n반복 단추를 켠 알람만 매일 울리고, 아니면 한 번만 울리고 꺼져요.\n우클릭 → 알람에서도 바로 맞출 수 있어요.");
+            tips.SetToolTip(bAlarmAdd, Loc.TF("새 알람 한 줄을 만들어요. (최대 {0}개)\n반복 단추를 켠 알람만 매일 울리고, 아니면 한 번만 울리고 꺼져요.\n우클릭 → 알람에서도 바로 맞출 수 있어요.", Settings.MaxAlarms));
             alarmHead.Controls.Add(bAlarmAdd);
             alarmHost = new Panel { Width = CharW - 4, Height = 150, AutoScroll = true, BackColor = Color.White, BorderStyle = BorderStyle.FixedSingle, Margin = new Padding(2, 0, 0, 0) };
             alarmList = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoSize = true, Location = new Point(0, 2), Margin = Padding.Empty };
             alarmHost.HorizontalScroll.Enabled = false; alarmHost.HorizontalScroll.Visible = false;   // 세로로만 스크롤
-            alarmHost.Paint += (o, e) => { if (alarmRows.Count == 0) TextRenderer.DrawText(e.Graphics, "아직 알람이 없어요. 오른쪽 위 '+ 알람 추가'로 만들어 보세요.", Font, new Point(10, 12), Color.DimGray, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix); };   // 컨트롤 대신 직접 그린다
-            alarmList.BackColor = Color.White;   // 기본 배경색이면 아래에 깔린 안내 글자를 가린다
+            alarmHost.Paint += (o, e) => { if (alarmRows.Count == 0) TextRenderer.DrawText(e.Graphics, Loc.T("아직 알람이 없어요. 오른쪽 위 '+ 알람 추가'로 만들어 보세요."), Font, new Point(10, 12), Color.DimGray, TextFormatFlags.NoPadding | TextFormatFlags.NoPrefix); };
+            alarmList.BackColor = Color.White;
             alarmHost.Controls.Add(alarmList);
             f.Controls.Add(alarmHost);
             alarmRows.Clear();
@@ -822,13 +825,26 @@ namespace SuperHeroes
             };
             f.SizeChanged += fit; page.VisibleChanged += fit;
             f.HandleCreated += delegate { f.BeginInvoke(fit, f, EventArgs.Empty); };
+
+            // 위쪽 탭: 정각 · 점심 · 퇴근 · 알람 / 초과근무 알림
+            alarmFlow = f;
+            overtimePanel = new OvertimePanel(app, tips) { Dock = DockStyle.Fill, Visible = false };
+            alarmTabs = new SubTabs(new[] { Loc.T("정각 · 점심 · 퇴근 · 알람"), Loc.T("초과근무 알림") }) { Dock = DockStyle.Top };
+            alarmTabs.SelectedIndexChanged += delegate
+            {
+                bool ot = alarmTabs.SelectedIndex == 1;
+                alarmFlow.Visible = !ot; overtimePanel.Visible = ot;
+                if (ot) overtimePanel.Refresh();
+            };
+            page.Controls.Add(alarmTabs); page.Controls.Add(overtimePanel);
+            alarmTabs.BringToFront(); alarmFlow.BringToFront(); overtimePanel.BringToFront();
             return page;
         }
 
         // 내 알람 한 줄: [켜기] [시각] [내용] [미리보기] [삭제]. src 가 null 이면 새 알람(다음 30분 단위 시각).
         private void AddAlarmRow(UserAlarm src)
         {
-            if (alarmRows.Count >= Settings.MaxAlarms) { Warn("알람은 최대 " + Settings.MaxAlarms + "개까지 만들 수 있어요."); return; }
+            if (alarmRows.Count >= Settings.MaxAlarms) { Warn(Loc.TF("알람은 최대 {0}개까지 만들 수 있어요.", Settings.MaxAlarms)); return; }
             DateTime when = DateTime.Today;
             if (src != null) { TimeSpan? p = Settings.ParseTime(src.Time); if (p.HasValue) when = when + p.Value; }
             else { DateTime n = DateTime.Now.AddMinutes(30); when = DateTime.Today.AddHours(n.Hour).AddMinutes(n.Minute / 30 * 30); }
@@ -837,21 +853,21 @@ namespace SuperHeroes
             row.On = new CheckBox { Checked = src == null || src.On, AutoSize = false, Width = 22, Height = 24, Margin = new Padding(3, 5, 0, 3) };
             row.Time = new DateTimePicker { Format = DateTimePickerFormat.Custom, CustomFormat = "HH:mm", ShowUpDown = true, Value = when, Width = 64, Margin = new Padding(3, 4, 3, 3) };
             row.Msg = new TextBox { Text = src != null ? src.Msg : "", MaxLength = 60, Width = 224, Margin = new Padding(3, 4, 3, 3) };
-            if (src == null) row.Msg.Text = "알람 시간이야!";
+            if (src == null) row.Msg.Text = Loc.T("알람 시간이야!");
             // 매일 반복: 글자 없이 반복 아이콘만 있는 켜짐/꺼짐 단추. 꺼 두면 다음 그 시각에 한 번만 울리고 알람이 스스로 꺼진다.
-            row.Repeat = new CheckBox { Appearance = Appearance.Button, Checked = src != null && src.Repeat, AutoSize = false, Size = new Size(34, 27), Margin = new Padding(3, 2, 0, 2), FlatStyle = FlatStyle.Standard };   // System 스타일은 이미지를 그리지 않는다
+            row.Repeat = new CheckBox { Appearance = Appearance.Button, Checked = src != null && src.Repeat, AutoSize = false, Size = new Size(34, 27), Margin = new Padding(3, 2, 0, 2), FlatStyle = FlatStyle.Standard };
             var repImg = Glyph('', FriendUI.BlueDark);
             if (repImg != null) { row.Repeat.Image = repImg; row.Repeat.ImageAlign = ContentAlignment.MiddleCenter; } else { row.Repeat.Text = "↻"; row.Repeat.TextAlign = ContentAlignment.MiddleCenter; }
-            tips.SetToolTip(row.Repeat, "매일 반복\n누르면 매일 이 시각에 울려요.\n꺼 두면 다음 그 시각에 한 번만 울리고 알람이 꺼져요.");
-            var bTry = IconButton('', "", "이 알람을 지금 미리 보기", delegate { app.PreviewAlarm(row.Msg.Text.Trim()); });
-            var bDel = IconButton('', "", "이 알람 지우기", delegate
+            tips.SetToolTip(row.Repeat, Loc.T("매일 반복\n누르면 매일 이 시각에 울려요.\n꺼 두면 다음 그 시각에 한 번만 울리고 알람이 꺼져요."));
+            var bTry = IconButton('', "", Loc.T("이 알람을 지금 미리 보기"), delegate { app.PreviewAlarm(row.Msg.Text.Trim()); });
+            var bDel = IconButton('', "", Loc.T("이 알람 지우기"), delegate
             {
                 alarmRows.Remove(row); alarmList.Controls.Remove(row.Host); row.Host.Dispose(); UpdateAlarmEmpty();
             });
-            if (bTry.Image == null) { bTry.AutoSize = true; bTry.Text = "미리보기"; }
-            if (bDel.Image == null) { bDel.AutoSize = true; bDel.Text = "삭제"; }
+            if (bTry.Image == null) { bTry.AutoSize = true; bTry.Text = Loc.T("미리보기"); }
+            if (bDel.Image == null) { bDel.AutoSize = true; bDel.Text = Loc.T("삭제"); }
             bTry.Margin = new Padding(6, 2, 0, 2); bDel.Margin = new Padding(2, 2, 0, 2);
-            tips.SetToolTip(row.On, "켜기 / 끄기"); tips.SetToolTip(row.Time, "알람 시각 (위·아래 화살표로 바꿔요)");
+            tips.SetToolTip(row.On, Loc.T("켜기 / 끄기")); tips.SetToolTip(row.Time, Loc.T("알람 시각 (위·아래 화살표로 바꿔요)"));
             row.On.CheckedChanged += delegate { row.Time.Enabled = row.Msg.Enabled = row.Repeat.Enabled = row.On.Checked; };
             row.Time.Enabled = row.Msg.Enabled = row.Repeat.Enabled = row.On.Checked;
             row.Host.Controls.AddRange(new Control[] { row.On, row.Time, row.Msg, row.Repeat, bTry, bDel });
@@ -889,26 +905,30 @@ namespace SuperHeroes
         // ───────── 6. 화면 · 시스템 ─────────
         private Panel BuildDisplayPage()
         {
-            FlowLayoutPanel f; var page = NewPage("화면 · 시스템", "크기 · 투명도 · 도우미 창 · Windows 시작", out f);
+            FlowLayoutPanel f; var page = NewPage(Loc.T("화면 · 시스템"), Loc.T("크기 · 투명도 · 도우미 창 · Windows 시작"), out f);
             var o = PlayOptions.Current;
-            var g1 = Group(f, "캐릭터 모습"); var a = In(g1);
-            var rs = Row(a); rs.Controls.Add(Cap("캐릭터 크기", 110)); nSize = Num(60, 200, o.SizePercent, 0, 10, 72); rs.Controls.Add(nSize); rs.Controls.Add(Cap("%   (바꾸면 친구들이 다시 등장해요)"));
-            var rp = Row(a); rp.Controls.Add(Cap("캐릭터 진하기", 110)); nOpacity = Num(20, 100, o.PetOpacityPercent, 0, 5, 72); rp.Controls.Add(nOpacity); rp.Controls.Add(Cap("%   낮을수록 투명해요"));
-            var g2 = Group(f, "도우미 창 (할 일 · 메모 · 타이머)"); var b = In(g2);
-            cMemoTop = Check(b, "도우미 창을 맨 앞에 고정", o.MemoTopMost);
-            var rm = Row(b); rm.Controls.Add(Cap("창 진하기", 110)); nMemoOpacity = Num(20, 100, o.MemoOpacityPercent, 0, 5, 72); rm.Controls.Add(nMemoOpacity); rm.Controls.Add(Cap("%"));
+            var gl = Group(f, Loc.IsEn ? "Language" : "언어 / Language"); var lg = In(gl);
+            var rl = Row(lg); rl.Controls.Add(Cap(Loc.IsEn ? "Display language" : "화면 언어 / Language", 150));
+            cLang = Combo(Loc.NativeNames, Array.IndexOf(Loc.Codes, Loc.Code), 140); rl.Controls.Add(cLang);
+            Note(lg, Loc.T("저장하거나 적용하면 바로 바뀌어요. 하던 AI 대화는 마무리되고 새 언어로 이어져요. 처음 실행할 때는 Windows 표시 언어를 따라요."));
+            var g1 = Group(f, Loc.T("캐릭터 모습")); var a = In(g1);
+            var rs = Row(a); rs.Controls.Add(Cap(Loc.T("캐릭터 크기"), 110)); nSize = Num(60, 200, o.SizePercent, 0, 10, 72); rs.Controls.Add(nSize); rs.Controls.Add(Cap(Loc.T("%   (바꾸면 친구들이 다시 등장해요)")));
+            var rp = Row(a); rp.Controls.Add(Cap(Loc.T("캐릭터 진하기"), 110)); nOpacity = Num(20, 100, o.PetOpacityPercent, 0, 5, 72); rp.Controls.Add(nOpacity); rp.Controls.Add(Cap(Loc.T("%   낮을수록 투명해요")));
+            var g2 = Group(f, Loc.T("도우미 창 (할 일 · 메모 · 타이머)")); var b = In(g2);
+            cMemoTop = Check(b, Loc.T("도우미 창을 맨 앞에 고정"), o.MemoTopMost);
+            var rm = Row(b); rm.Controls.Add(Cap(Loc.T("창 진하기"), 110)); nMemoOpacity = Num(20, 100, o.MemoOpacityPercent, 0, 5, 72); rm.Controls.Add(nMemoOpacity); rm.Controls.Add(Cap("%"));
             var rcol = Row(b);
-            rcol.Controls.Add(FriendUI.Button("배경색...", delegate { PickColor(true); }));
-            rcol.Controls.Add(FriendUI.Button("글자색...", delegate { PickColor(false); }));
-            rcol.Controls.Add(FriendUI.Button("기본 색상으로", delegate { o.HelperBackgroundArgb = FriendUI.Paper.ToArgb(); o.HelperForegroundArgb = FriendUI.Ink.ToArgb(); app.ApplyHelperOptions(); }));
-            Note(b, "색상은 누르는 즉시 도우미 창에 적용돼요.");
+            rcol.Controls.Add(FriendUI.Button(Loc.T("배경색..."), delegate { PickColor(true); }));
+            rcol.Controls.Add(FriendUI.Button(Loc.T("글자색..."), delegate { PickColor(false); }));
+            rcol.Controls.Add(FriendUI.Button(Loc.T("기본 색상으로"), delegate { o.HelperBackgroundArgb = FriendUI.Paper.ToArgb(); o.HelperForegroundArgb = FriendUI.Ink.ToArgb(); app.ApplyHelperOptions(); }));
+            Note(b, Loc.T("색상은 누르는 즉시 도우미 창에 적용돼요."));
             var g3 = Group(f, "Windows"); var c = In(g3);
-            cStartup = Check(c, "Windows 로그인 시 자동으로 켜기", StartupOption.IsEnabled());
-            var g4 = Group(f, "정리"); var d = In(g4);
-            d.Controls.Add(FriendUI.Button("설정을 처음 상태로 되돌리기 (기록은 그대로)", delegate
+            cStartup = Check(c, Loc.T("Windows 로그인 시 자동으로 켜기"), StartupOption.IsEnabled());
+            var g4 = Group(f, Loc.T("정리")); var d = In(g4);
+            d.Controls.Add(FriendUI.Button(Loc.T("설정을 처음 상태로 되돌리기 (기록은 그대로)"), delegate
             {
-                if (MessageBox.Show(this, "모든 설정을 처음 값으로 되돌릴까요?\n친밀도·할 일·메모 같은 기록은 지워지지 않아요.", "수퍼히어로", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
-                app.ResetAllSettings(); status.Text = "처음 설정으로 되돌렸어요."; Close(); app.OpenSettingsPage(lastPage);
+                if (MessageBox.Show(this, Loc.T("모든 설정을 처음 값으로 되돌릴까요?\n친밀도·할 일·메모 같은 기록은 지워지지 않아요."), Loc.T("수퍼히어로"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+                app.ResetAllSettings(); status.Text = Loc.T("처음 설정으로 되돌렸어요."); Close(); app.OpenSettingsPage(lastPage);
             }));
             return page;
         }
@@ -929,18 +949,18 @@ namespace SuperHeroes
         // 글 대신 그림으로: 색 · 크기는 그림 카드로 고르고, 단축키는 아이콘 + 키캡 카드로 보여 준다. 자세한 설명은 마우스를 올리면 말풍선으로.
         private Panel BuildMemoPage()
         {
-            FlowLayoutPanel f; var page = NewPage("메모", "바탕화면 메모의 기본 모습 · 단축키 · 저장 위치", out f);
+            FlowLayoutPanel f; var page = NewPage(Loc.T("메모"), Loc.T("바탕화면 메모의 기본 모습 · 단축키 · 저장 위치"), out f);
             var mgr = app.Notes;
 
-            var g1 = Group(f, "새 메모의 기본값", 520); var a = In(g1);
-            var rc = Row(a); rc.Controls.Add(Badge(FlatIcon.Palette, "기본 색"));
+            var g1 = Group(f, Loc.T("새 메모의 기본값"), 520); var a = In(g1);
+            var rc = Row(a); rc.Controls.Add(Badge(FlatIcon.Palette, Loc.T("기본 색")));
             noteColor = new ChoiceStrip(NoteColors.All.Select(k => NoteColors.Label(k)).ToArray(), mgr == null ? 0 : Math.Max(0, Array.IndexOf(NoteColors.All, mgr.DefaultColor)), 50, new Size(28, 24),
                 delegate(Graphics g, Rectangle r, int i) { FlatIcon.NoteShape(g, r, NoteColors.All[i]); });
             rc.Controls.Add(noteColor);
-            var rs = Row(a); rs.Controls.Add(Badge(FlatIcon.Resize, "기본 크기"));
+            var rs = Row(a); rs.Controls.Add(Badge(FlatIcon.Resize, Loc.T("기본 크기")));
             // 크기 카드는 실제 메모 비율로 그리고, 위에서 고른 색으로 칠한다.
             Size[] dims = { new Size(NoteGeometry.SmallW, NoteGeometry.SmallH), new Size(NoteGeometry.MediumW, NoteGeometry.MediumH), new Size(NoteGeometry.LargeW, NoteGeometry.LargeH) };
-            noteSize = new ChoiceStrip(new[] { "작게  240×180", "보통  320×260", "크게  420×360" }, mgr == null ? 1 : Math.Max(0, Math.Min(2, (int)mgr.DefaultSize)), 112, new Size(48, 40),
+            noteSize = new ChoiceStrip(new[] { Loc.T("작게  240×180"), Loc.T("보통  320×260"), Loc.T("크게  420×360") }, mgr == null ? 1 : Math.Max(0, Math.Min(2, (int)mgr.DefaultSize)), 112, new Size(48, 40),
                 delegate(Graphics g, Rectangle r, int i)
                 {
                     float w = r.Width * dims[i].Width / (float)NoteGeometry.LargeW, h = r.Height * dims[i].Height / (float)NoteGeometry.LargeH;
@@ -948,45 +968,45 @@ namespace SuperHeroes
                 });
             noteColor.SelectedIndexChanged += delegate { noteSize.Invalidate(); };
             rs.Controls.Add(noteSize);
-            IconText(Row(a), FlatIcon.Info, "저장한 다음에 만드는 메모부터 적용돼요.", "이미 있는 메모의 색과 크기는 그대로예요.", Color.DimGray);
+            IconText(Row(a), FlatIcon.Info, Loc.T("저장한 다음에 만드는 메모부터 적용돼요."), Loc.T("이미 있는 메모의 색과 크기는 그대로예요."), Color.DimGray);
 
-            var g2 = Group(f, "어디서나 쓰는 단축키", 520); var b = In(g2);
+            var g2 = Group(f, Loc.T("어디서나 쓰는 단축키"), 520); var b = In(g2);
             var hot = TileGrid(b, 2, 246);
-            AddTile(hot, FlatIcon.NewNote, "새 메모", new[] { "Ctrl", "Alt", "N" }, "어디서나 새 메모를 만들어요.", true);
-            AddTile(hot, FlatIcon.Library, "메모 라이브러리", new[] { "Ctrl", "Shift", "F" }, "모든 메모를 한눈에 보고 찾아요.", true);
-            AddTile(hot, FlatIcon.Pin, "항상 위에 두기", new[] { "Ctrl", "Shift", "P" }, "마지막으로 쓴 메모를 항상 위에 두었다가 풀어요.", true);
-            AddTile(hot, FlatIcon.BellClock, "1시간 뒤 알림", new[] { "Ctrl", "Shift", "R" }, "마지막으로 쓴 메모에 1시간 뒤 알림을 걸어요.", true);
-            IconText(Row(b), FlatIcon.Warning, "다른 프로그램이 쓰는 조합이면 등록되지 않아요.", "그래도 트레이·우클릭 메뉴의 새 메모와, 메모 위젯 ⋯ 메뉴의 메모 라이브러리는 늘 쓸 수 있어요.", Color.DimGray);
+            AddTile(hot, FlatIcon.NewNote, Loc.T("새 메모"), new[] { "Ctrl", "Alt", "N" }, Loc.T("어디서나 새 메모를 만들어요."), true);
+            AddTile(hot, FlatIcon.Library, Loc.T("메모 라이브러리"), new[] { "Ctrl", "Shift", "F" }, Loc.T("모든 메모를 한눈에 보고 찾아요."), true);
+            AddTile(hot, FlatIcon.Pin, Loc.T("항상 위에 두기"), new[] { "Ctrl", "Shift", "P" }, Loc.T("마지막으로 쓴 메모를 항상 위에 두었다가 풀어요."), true);
+            AddTile(hot, FlatIcon.BellClock, Loc.T("1시간 뒤 알림"), new[] { "Ctrl", "Shift", "R" }, Loc.T("마지막으로 쓴 메모에 1시간 뒤 알림을 걸어요."), true);
+            IconText(Row(b), FlatIcon.Warning, Loc.T("다른 프로그램이 쓰는 조합이면 등록되지 않아요."), Loc.T("그래도 트레이·우클릭 메뉴의 새 메모와, 메모 위젯 ⋯ 메뉴의 메모 라이브러리는 늘 쓸 수 있어요."), Color.DimGray);
 
-            var g3 = Group(f, "메모를 쓰는 중", 520); var c = In(g3);
+            var g3 = Group(f, Loc.T("메모를 쓰는 중"), 520); var c = In(g3);
             var edit = TileGrid(c, 4, 122);
-            AddTile(edit, FlatIcon.Bold, "굵게", new[] { "Ctrl", "B" }, "굵게", false);
-            AddTile(edit, FlatIcon.Italic, "기울임", new[] { "Ctrl", "I" }, "기울임", false);
-            AddTile(edit, FlatIcon.Underline, "밑줄", new[] { "Ctrl", "U" }, "밑줄", false);
-            AddTile(edit, FlatIcon.Strike, "취소선", new[] { "Ctrl", "Shift", "X" }, "취소선", false);
-            AddTile(edit, FlatIcon.Link, "링크", new[] { "Ctrl", "K" }, "링크", false);
-            AddTile(edit, FlatIcon.Code, "코드", new[] { "Ctrl", "Shift", "K" }, "코드", false);
-            AddTile(edit, FlatIcon.Heading, "제목", new[] { "Ctrl", "1–3" }, "Ctrl+1 / 2 / 3  제목 1 · 2 · 3", false);
-            AddTile(edit, FlatIcon.Bullets, "글머리", new[] { "Ctrl", "Shift", "L" }, "글머리 목록", false);
-            AddTile(edit, FlatIcon.Checklist, "할 일", new[] { "Ctrl", "Shift", "C" }, "체크리스트 (할 일 목록)", false);
-            AddTile(edit, FlatIcon.ToggleCheck, "체크", new[] { "Ctrl", "Enter" }, "커서가 있는 줄의 체크박스를 켜고 꺼요.", false);
-            AddTile(edit, FlatIcon.EnterKey, "이어쓰기", new[] { "Enter" }, "목록 이어쓰기. 빈 항목에서 Enter 를 누르면 목록이 끝나요.", false);
+            AddTile(edit, FlatIcon.Bold, Loc.T("굵게"), new[] { "Ctrl", "B" }, Loc.T("굵게"), false);
+            AddTile(edit, FlatIcon.Italic, Loc.T("기울임"), new[] { "Ctrl", "I" }, Loc.T("기울임"), false);
+            AddTile(edit, FlatIcon.Underline, Loc.T("밑줄"), new[] { "Ctrl", "U" }, Loc.T("밑줄"), false);
+            AddTile(edit, FlatIcon.Strike, Loc.T("취소선"), new[] { "Ctrl", "Shift", "X" }, Loc.T("취소선"), false);
+            AddTile(edit, FlatIcon.Link, Loc.T("링크"), new[] { "Ctrl", "K" }, Loc.T("링크"), false);
+            AddTile(edit, FlatIcon.Code, Loc.T("코드"), new[] { "Ctrl", "Shift", "K" }, Loc.T("코드"), false);
+            AddTile(edit, FlatIcon.Heading, Loc.T("제목"), new[] { "Ctrl", "1–3" }, Loc.T("Ctrl+1 / 2 / 3  제목 1 · 2 · 3"), false);
+            AddTile(edit, FlatIcon.Bullets, Loc.T("글머리"), new[] { "Ctrl", "Shift", "L" }, Loc.T("글머리 목록"), false);
+            AddTile(edit, FlatIcon.Checklist, Loc.T("할 일"), new[] { "Ctrl", "Shift", "C" }, Loc.T("체크리스트 (할 일 목록)"), false);
+            AddTile(edit, FlatIcon.ToggleCheck, Loc.T("체크"), new[] { "Ctrl", "Enter" }, Loc.T("커서가 있는 줄의 체크박스를 켜고 꺼요."), false);
+            AddTile(edit, FlatIcon.EnterKey, Loc.T("이어쓰기"), new[] { "Enter" }, Loc.T("목록 이어쓰기. 빈 항목에서 Enter 를 누르면 목록이 끝나요."), false);
 
-            var g4 = Group(f, "내 메모는 어디에", 520); var d = In(g4);
+            var g4 = Group(f, Loc.T("내 메모는 어디에"), 520); var d = In(g4);
             var rp = Row(d); rp.Controls.Add(new IconBox(FlatIcon.Folder, 28) { Margin = new Padding(3, 3, 6, 3) });
             var path = new Label { AutoSize = true, ForeColor = FriendUI.Ink, Margin = new Padding(0, 6, 3, 3), MaximumSize = new Size(410, 0), Text = mgr == null ? "" : mgr.Store.Root };
-            tips.SetToolTip(path, "메모가 저장되는 폴더"); rp.Controls.Add(path);
+            tips.SetToolTip(path, Loc.T("메모가 저장되는 폴더")); rp.Controls.Add(path);
             var rn = Row(d);
             rn.Controls.Add(new IconBox(FlatIcon.NoteGlyph, 22) { Margin = new Padding(3, 6, 4, 3) });
-            noteInfo = new Label { AutoSize = true, ForeColor = FriendUI.Ink, Font = new Font("Malgun Gothic", 10f, FontStyle.Bold), Margin = new Padding(0, 6, 14, 3), Text = mgr == null ? "" : mgr.Store.Count.ToString("N0") + "개" };
-            tips.SetToolTip(noteInfo, "저장된 메모 수"); rn.Controls.Add(noteInfo);
-            var bOpen = FriendUI.Button("폴더 열기", delegate { try { if (mgr != null) System.Diagnostics.Process.Start("explorer.exe", "\"" + mgr.Store.Root + "\""); } catch { } });
+            noteInfo = new Label { AutoSize = true, ForeColor = FriendUI.Ink, Font = new Font("Malgun Gothic", 10f, FontStyle.Bold), Margin = new Padding(0, 6, 14, 3), Text = mgr == null ? "" : Loc.TF("{0}개", mgr.Store.Count.ToString("N0", Loc.Culture)) };
+            tips.SetToolTip(noteInfo, Loc.T("저장된 메모 수")); rn.Controls.Add(noteInfo);
+            var bOpen = FriendUI.Button(Loc.T("폴더 열기"), delegate { try { if (mgr != null) System.Diagnostics.Process.Start("explorer.exe", "\"" + mgr.Store.Root + "\""); } catch { } });
             int px = Math.Max(16, (int)Math.Round(16 * DeviceDpi / 96.0));
             bOpen.Image = FlatIcon.Bitmap(FlatIcon.Folder, px, FriendUI.BlueDark); bOpen.TextImageRelation = TextImageRelation.ImageBeforeText; bOpen.ImageAlign = ContentAlignment.MiddleLeft;
             rn.Controls.Add(bOpen);
             var rt = Row(d);
-            IconText(rt, FlatIcon.Copy, "폴더째 복사 = 백업", "백업은 프로그램을 끈 뒤 이 폴더를 통째로 복사하면 돼요.\n새 PC 에서는 같은 위치에 덮어쓰면 메모 · 태그 · 알림이 그대로 돌아와요.", Color.DimGray);
-            IconText(rt, FlatIcon.Trash, "삭제는 되돌릴 수 없어요", "휴지통이 없어서, 지운 메모는 돌아오지 않아요.", Color.FromArgb(180, 60, 60));
+            IconText(rt, FlatIcon.Copy, Loc.T("폴더째 복사 = 백업"), Loc.T("백업은 프로그램을 끈 뒤 이 폴더를 통째로 복사하면 돼요.\n새 PC 에서는 같은 위치에 덮어쓰면 메모 · 태그 · 알림이 그대로 돌아와요."), Color.DimGray);
+            IconText(rt, FlatIcon.Trash, Loc.T("삭제는 되돌릴 수 없어요"), Loc.T("휴지통이 없어서, 지운 메모는 돌아오지 않아요."), Color.FromArgb(180, 60, 60));
             return page;
         }
 
@@ -1032,34 +1052,53 @@ namespace SuperHeroes
 
         private Panel BuildChatPage()
         {
-            FlowLayoutPanel f; var page = NewPage("AI 대화", "내 PC의 Ollama와 이야기해요", out f);
+            FlowLayoutPanel f; var page = NewPage(Loc.T("AI 대화"), Loc.T("내 PC의 Ollama 또는 EXAONE API 와 이야기해요"), out f);
             var o = ChatOptions.Current;
 
-            // 연결: 켜기 · 단추 세 개 / 모델 · 서버 / 상태 한 줄
-            var g1 = Group(f, "연결", 520); var a = In(g1);
+            // 연결: 켜기 · 단추 세 개 / 대화 상대 · 모델 · 서버 / 상태 한 줄
+            var g1 = Group(f, Loc.T("연결"), 520); var a = In(g1);
             var ra = Row(a);
             ra.Controls.Add(new IconBox(FlatIcon.Chat, 24) { Margin = new Padding(3, 5, 0, 3) });
-            cChat = new CheckBox { Text = "AI 대화 사용", Checked = o.Enabled, AutoSize = false, Width = 309, Height = 24, Margin = new Padding(5, 8, 3, 3) };
-            tips.SetToolTip(cChat, "켜면 캐릭터를 더블클릭하거나 우클릭 → 말 걸기로 이야기할 수 있어요.");
+            cChat = new CheckBox { Text = Loc.T("AI 대화 사용"), Checked = o.Enabled, AutoSize = false, Width = 309, Height = 24, Margin = new Padding(5, 8, 3, 3) };
+            tips.SetToolTip(cChat, Loc.T("켜면 캐릭터를 더블클릭하거나 우클릭 → 말 걸기로 이야기할 수 있어요."));
             ra.Controls.Add(cChat);
-            ra.Controls.Add(IconBtn(FlatIcon.PlugCheck, "연결 확인\n서버와 모델이 준비됐는지 봐요.", delegate { ProbeChat(); }));
-            bChatSetup = IconBtn(FlatIcon.Download, "자동 설치\nOllama 와 모델이 없을 때 공식 사이트에서 받아 설치해요.\n서버가 이 PC(localhost)일 때만 되고, 받기 전에 한 번 물어봐요.", delegate { StartChatSetup(); });
-            bChatSetupCancel = IconBtn(FlatIcon.Stop, "설치 취소", delegate { if (setupHandle != null) setupHandle.Abort(); }); bChatSetupCancel.Enabled = false;
+            ra.Controls.Add(IconBtn(FlatIcon.PlugCheck, Loc.T("연결 확인\n서버와 모델이 준비됐는지 봐요."), delegate { ProbeChat(); }));
+            bChatSetup = IconBtn(FlatIcon.Download, Loc.T("자동 설치\nOllama 와 모델이 없을 때 공식 사이트에서 받아 설치해요.\n서버가 이 PC(localhost)일 때만 되고, 받기 전에 한 번 물어봐요."), delegate { StartChatSetup(); });
+            bChatSetupCancel = IconBtn(FlatIcon.Stop, Loc.T("설치 취소"), delegate { if (setupHandle != null) setupHandle.Abort(); }); bChatSetupCancel.Enabled = false;
             ra.Controls.Add(bChatSetup); ra.Controls.Add(bChatSetupCancel);
 
+            var rp = Row(a);
+            rp.Controls.Add(Mark(FlatIcon.Chat, Loc.T("대화 상대\nOllama: 내 PC 에서만 이야기해요(기본).\nEXAONE: LG AI연구원 API 로 대화가 인터넷을 거쳐 보내져요(API 키 필요).")));
+            rp.Controls.Add(Cap(Loc.T("대화 상대"), 64));
+            cProvider = Combo(new[] { Loc.T("Ollama — 내 PC (기본)"), Loc.T("EXAONE — LG AI연구원 API (인터넷)") }, o.IsExaone ? 1 : 0, 280); rp.Controls.Add(cProvider);
+            chatStash = new[] { o.Model, o.Endpoint, o.ExaoneModel, o.ExaoneEndpoint }; providerShown = cProvider.SelectedIndex;
+
             var rb = Row(a);
-            rb.Controls.Add(Mark(FlatIcon.Chip, "모델  (Ollama 모델 이름)"));
-            tChatModel = new TextBox { Text = o.Model, Width = 150, Margin = new Padding(3, 3, 12, 3) }; rb.Controls.Add(tChatModel);
-            rb.Controls.Add(Mark(FlatIcon.Globe, "서버 주소\n대화는 이 서버로만 보내져요.\n기본값(localhost)이면 이 PC 밖으로 나가지 않아요."));
-            tChatUrl = new TextBox { Text = o.Endpoint, Width = 250, Margin = new Padding(3) }; rb.Controls.Add(tChatUrl);
+            rb.Controls.Add(Mark(FlatIcon.Chip, Loc.T("모델 이름\nOllama: 예) gemma4:e2b\nEXAONE: k-exaone_v2.5")));
+            tChatModel = new TextBox { Text = chatStash[providerShown * 2], Width = 150, Margin = new Padding(3, 3, 12, 3) }; rb.Controls.Add(tChatModel);
+            rb.Controls.Add(Mark(FlatIcon.Globe, Loc.T("서버 주소\n대화는 이 서버로만 보내져요.\nOllama 기본값(localhost)이면 이 PC 밖으로 나가지 않아요.\nEXAONE 기본값: https://api.exaone.ai")));
+            tChatUrl = new TextBox { Text = chatStash[providerShown * 2 + 1], Width = 250, Margin = new Padding(3) }; rb.Controls.Add(tChatUrl);
+
+            rowExa = Row(a);
+            rowExa.Controls.Add(Mark(FlatIcon.PlugCheck, Loc.T("EXAONE API 키\nLG AI연구원 EXAONE API Platform 에서 발급받아요.\n이 Windows 계정에서만 풀리게 암호화해 저장해요.\n비워 두면 환경 변수 EXAONE_API_KEY 를 써요.")));
+            rowExa.Controls.Add(Cap(Loc.T("API 키")));
+            tExaKey = new TextBox { Text = o.ExaoneKey, Width = 170, UseSystemPasswordChar = true, Margin = new Padding(3, 3, 10, 3) }; rowExa.Controls.Add(tExaKey);
+            rowExa.Controls.Add(Cap(Loc.T("추론")));
+            cExaEffort = Combo(new[] { Loc.T("low (빠름)"), "high", Loc.T("max (깊게)") }, Math.Max(0, Array.IndexOf(ExaoneClient.Efforts, o.ExaoneEffort)), 100);
+            tips.SetToolTip(cExaEffort, Loc.T("EXAONE 은 대답 전에 늘 생각(추론)해요.\n낮을수록 빨리 대답하고 토큰도 덜 써요. 수다엔 low 를 권해요."));
+            rowExa.Controls.Add(cExaEffort);
+            rowExa.Controls.Add(IconBtn(FlatIcon.OpenOut, Loc.T("EXAONE API 문서 · 키 발급 페이지 열기\n(docs.exaone.ai)"), delegate { try { System.Diagnostics.Process.Start("https://docs.exaone.ai/ko/docs/overview"); } catch { } }));
+            noteExa = Note(a, Loc.T("EXAONE 을 고르면 대화 내용과 캐릭터의 기억 · 일기 요약 요청이 LG AI연구원 서버로 보내지고, 사용량에 따라 요금이 나올 수 있어요."), 480);
+            cProvider.SelectedIndexChanged += delegate { ProviderChanged(); };
 
             var rs = Row(a);
-            chatProbe = new Label { Text = "○ 아직 확인 안 함", AutoSize = false, AutoEllipsis = true, Width = 330, Height = 20, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(6, 3, 3, 3), ForeColor = Color.DimGray };
+            chatProbe = new Label { Text = Loc.T("○ 아직 확인 안 함"), AutoSize = false, AutoEllipsis = true, Width = 330, Height = 20, TextAlign = ContentAlignment.MiddleLeft, Margin = new Padding(6, 3, 3, 3), ForeColor = Color.DimGray };
             chatSetupBar = new ProgressBar { Width = 140, Height = 8, Margin = new Padding(6, 9, 3, 3), Visible = false };
             rs.Controls.Add(chatProbe); rs.Controls.Add(chatSetupBar);
+            ShowProviderRows();
 
             // 대화 방식: 그림 카드 다섯 장 + 단축키 한 줄
-            var g2 = Group(f, "대화 방식", 520); var b = In(g2);
+            var g2 = Group(f, Loc.T("대화 방식"), 520); var b = In(g2);
             cMode = new ChoiceStrip(ChatMode.All.Select(x => x.Name).ToArray(), o.Mode, 90, new Size(24, 24),
                 delegate(Graphics g, Rectangle r, int i) { ModeArt[Math.Min(i, ModeArt.Length - 1)](g, new RectangleF(r.X, r.Y, r.Width, r.Height), FriendUI.BlueDark); });
             cMode.HotChanged += i =>
@@ -1070,30 +1109,30 @@ namespace SuperHeroes
             b.Controls.Add(cMode);
 
             var rk = Row(b);
-            rk.Controls.Add(Mark(FlatIcon.Keyboard, "단축키로 말 걸기\n입력란을 클릭한 뒤 키를 하나씩 누르세요.\nCtrl · Alt · Shift 중 2개 이상 + 글쇠 1개.\nEsc 는 취소, Backspace 는 방금 누른 키 취소예요."));
-            cChatKey = new CheckBox { Text = "단축키", Checked = o.Hotkey, AutoSize = false, Width = 76, Height = 24, Margin = new Padding(2, 5, 3, 3) }; rk.Controls.Add(cChatKey);
+            rk.Controls.Add(Mark(FlatIcon.Keyboard, Loc.T("단축키로 말 걸기\n입력란을 클릭한 뒤 키를 하나씩 누르세요.\nCtrl · Alt · Shift 중 2개 이상 + 글쇠 1개.\nEsc 는 취소, Backspace 는 방금 누른 키 취소예요.")));
+            cChatKey = new CheckBox { Text = Loc.T("단축키"), Checked = o.Hotkey, AutoSize = false, Width = 76, Height = 24, Margin = new Padding(2, 5, 3, 3) }; rk.Controls.Add(cChatKey);
             hkBox = new HotkeyBox(o.HotkeyMods, o.HotkeyKey) { Width = 190, Margin = new Padding(3, 3, 6, 3) }; rk.Controls.Add(hkBox);
-            var bKeyReset = IconBtn(FlatIcon.Reset, "기본 단축키로 되돌리기", delegate { hkBox.SetValue(ChatHotkey.DefaultMods, ChatHotkey.DefaultKey); tips.Hide(hkBox); });
+            var bKeyReset = IconBtn(FlatIcon.Reset, Loc.T("기본 단축키로 되돌리기"), delegate { hkBox.SetValue(ChatHotkey.DefaultMods, ChatHotkey.DefaultKey); tips.Hide(hkBox); });
             rk.Controls.Add(bKeyReset);
             hkBox.Hint += t => { if (string.IsNullOrEmpty(t)) tips.Hide(hkBox); else tips.Show(t, hkBox, 0, hkBox.Height + 3, 30000); };
             cChatKey.CheckedChanged += delegate { hkBox.Enabled = bKeyReset.Enabled = cChatKey.Checked; };
             hkBox.Enabled = bKeyReset.Enabled = cChatKey.Checked;
 
             // 부가 기능: 두 칸 표
-            var g3 = Group(f, "부가 기능", 520); var c = In(g3);
+            var g3 = Group(f, Loc.T("부가 기능"), 520); var c = In(g3);
             var grid = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, Margin = Padding.Empty };
             grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 250)); grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 250));
             Func<FlowLayoutPanel> cell = () => { var r = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = Padding.Empty, FlowDirection = FlowDirection.LeftToRight }; return r; };
-            var c00 = cell(); cChatChips = IconCheck(c00, FlatIcon.ReplyChips, "답장 추천", o.Chips, "캐릭터의 말 끝에 짧은 답장 칩을 보여 줘요.\n눌러서 바로 보내요 (Ctrl+1~3). 글자를 치면 사라져요.");
-            var c10 = cell(); cChatSound = IconCheck(c10, FlatIcon.Sound, "글자 소리", o.Sound, "말할 때 글자마다 뽁뽁 소리가 나요.");
-            var c01 = cell(); cChatProactive = IconCheck(c01, FlatIcon.Spark, "먼저 말 걸기", o.Proactive, "컴퓨터를 쓰는 중에 친구가 가끔 먼저 한마디 건네요.\n켜면 모델이 메모리에 올라가 있어요.");
-            var c11 = cell(); c11.Controls.Add(Mark(FlatIcon.Clock, "평균 간격 (분)"));
-            nProactive = Num(5, 480, o.ProactiveMinutes, 0, 5, 64); c11.Controls.Add(nProactive); c11.Controls.Add(Cap("분마다"));
+            var c00 = cell(); cChatChips = IconCheck(c00, FlatIcon.ReplyChips, Loc.T("답장 추천"), o.Chips, Loc.T("캐릭터의 말 끝에 짧은 답장 칩을 보여 줘요.\n눌러서 바로 보내요 (Ctrl+1~3). 글자를 치면 사라져요."));
+            var c10 = cell(); cChatSound = IconCheck(c10, FlatIcon.Sound, Loc.T("글자 소리"), o.Sound, Loc.T("말할 때 글자마다 뽁뽁 소리가 나요."));
+            var c01 = cell(); cChatProactive = IconCheck(c01, FlatIcon.Spark, Loc.T("먼저 말 걸기"), o.Proactive, Loc.T("컴퓨터를 쓰는 중에 친구가 가끔 먼저 한마디 건네요.\n켜면 모델이 메모리에 올라가 있어요."));
+            var c11 = cell(); c11.Controls.Add(Mark(FlatIcon.Clock, Loc.T("평균 간격 (분)")));
+            nProactive = Num(5, 480, o.ProactiveMinutes, 0, 5, 64); c11.Controls.Add(nProactive); c11.Controls.Add(Cap(Loc.T("분마다")));
             cChatProactive.CheckedChanged += delegate { nProactive.Enabled = cChatProactive.Checked; }; nProactive.Enabled = cChatProactive.Checked;
-            var c02 = cell(); cChatMemory = IconCheck(c02, FlatIcon.Memory, "기억하기", o.Memory, "대화에서 알게 된 사실을 한두 줄로 적어 둬요.\n이 PC 의 파일에만 저장돼요.");
-            c02.Controls.Add(IconBtn(FlatIcon.OpenOut, "기억 보기 · 지우기", delegate { new ChatMemoryForm(app.TrayIconImage).ShowDialog(this); }));
-            var c12 = cell(); cChatDiary = IconCheck(c12, FlatIcon.Diary, "일기 쓰기", o.Diary, "대화가 끝나면 친구가 오늘 이야기를 일기 한두 줄로 적어요.\n이 PC 의 파일(수퍼히어로_일기.txt)에만 저장돼요.");
-            c12.Controls.Add(IconBtn(FlatIcon.OpenOut, "일기장 열기", delegate { new ChatDiaryForm(app.TrayIconImage).ShowDialog(this); }));
+            var c02 = cell(); cChatMemory = IconCheck(c02, FlatIcon.Memory, Loc.T("기억하기"), o.Memory, Loc.T("대화에서 알게 된 사실을 한두 줄로 적어 둬요.\n이 PC 의 파일에만 저장돼요."));
+            c02.Controls.Add(IconBtn(FlatIcon.OpenOut, Loc.T("기억 보기 · 지우기"), delegate { new ChatMemoryForm(app.TrayIconImage).ShowDialog(this); }));
+            var c12 = cell(); cChatDiary = IconCheck(c12, FlatIcon.Diary, Loc.T("일기 쓰기"), o.Diary, Loc.T("대화가 끝나면 친구가 오늘 이야기를 일기 한두 줄로 적어요.\n이 PC 의 파일(수퍼히어로_일기.txt)에만 저장돼요."));
+            c12.Controls.Add(IconBtn(FlatIcon.OpenOut, Loc.T("일기장 열기"), delegate { new ChatDiaryForm(app.TrayIconImage).ShowDialog(this); }));
             grid.Controls.Add(c00, 0, 0); grid.Controls.Add(c10, 1, 0);
             grid.Controls.Add(c01, 0, 1); grid.Controls.Add(c11, 1, 1);
             grid.Controls.Add(c02, 0, 2); grid.Controls.Add(c12, 1, 2);
@@ -1101,21 +1140,58 @@ namespace SuperHeroes
             return page;
         }
 
+        private bool ExaoneSelected { get { return cProvider != null && cProvider.SelectedIndex == 1; } }
+
+        private void StashProviderFields() { chatStash[providerShown * 2] = tChatModel.Text.Trim(); chatStash[providerShown * 2 + 1] = tChatUrl.Text.Trim().TrimEnd('/'); }
+
+        private void ProviderChanged()
+        {
+            StashProviderFields();
+            providerShown = cProvider.SelectedIndex;
+            tChatModel.Text = chatStash[providerShown * 2]; tChatUrl.Text = chatStash[providerShown * 2 + 1];
+            ShowProviderRows();
+            SetChatStatus(Loc.T("○ 아직 확인 안 함"), Color.DimGray);
+        }
+
+        private void ShowProviderRows()
+        {
+            bool exa = ExaoneSelected;
+            rowExa.Visible = noteExa.Visible = exa;
+            bChatSetup.Visible = bChatSetupCancel.Visible = !exa;
+        }
+
+        private void FillChatConnection(ChatOptions c)
+        {
+            StashProviderFields();
+            c.Provider = ExaoneSelected ? "exaone" : "ollama";
+            c.Model = chatStash[0].Length > 0 ? chatStash[0] : "gemma4:e2b";
+            c.Endpoint = chatStash[1].Length > 0 ? chatStash[1] : "http://localhost:11434";
+            c.ExaoneModel = chatStash[2].Length > 0 ? chatStash[2] : ExaoneClient.DefaultModel;
+            c.ExaoneEndpoint = chatStash[3].Length > 0 ? chatStash[3] : ExaoneClient.DefaultEndpoint;
+            c.ExaoneKey = tExaKey.Text.Trim();
+            c.ExaoneEffort = ExaoneClient.Efforts[Math.Max(0, cExaEffort.SelectedIndex)];
+        }
+
         private void SetChatStatus(string text, Color color)
         { chatProbe.ForeColor = color; chatProbe.Text = text; tips.SetToolTip(chatProbe, text); }
 
         private void ProbeChat()
         {
-            var probe = new ChatOptions { Endpoint = tChatUrl.Text.Trim().TrimEnd('/'), Model = tChatModel.Text.Trim() };
-            SetChatStatus("확인하는 중...", Color.DimGray);
+            var probe = new ChatOptions(); FillChatConnection(probe);
+            SetChatStatus(Loc.T("확인하는 중..."), Color.DimGray);
             new System.Threading.Thread(delegate ()
             {
-                ProbeResult r = OllamaClient.Probe(probe);
+                ProbeResult r = LlmClient.Probe(probe);
                 try
                 {
                     BeginInvoke(new Action(delegate
                     {
-                        SetChatStatus(r == ProbeResult.Ok ? "● 연결됐어요" : r == ProbeResult.ModelMissing ? "● 모델이 없어요 — 설치(↓) 단추를 눌러요" : "● 연결 안 됨 — Ollama 가 켜져 있나요?", r == ProbeResult.Ok ? Color.FromArgb(30, 130, 70) : Color.Firebrick);
+                        string why = r == ProbeResult.Ok ? Loc.T("● 연결됐어요")
+                            : r == ProbeResult.ModelMissing ? (probe.IsExaone ? Loc.T("● 모델 이름을 확인해 주세요 (k-exaone_v2.5)") : Loc.T("● 모델이 없어요 — 설치(↓) 단추를 눌러요"))
+                            : r == ProbeResult.NoKey ? Loc.T("● API 키를 넣어 주세요")
+                            : r == ProbeResult.AuthFailed ? Loc.T("● API 키가 맞지 않아요")
+                            : probe.IsExaone ? Loc.T("● 연결 안 됨 — 인터넷 · 서버 주소를 확인해요") : Loc.T("● 연결 안 됨 — Ollama 가 켜져 있나요?");
+                        SetChatStatus(why, r == ProbeResult.Ok ? Color.FromArgb(30, 130, 70) : Color.Firebrick);
                     }));
                 }
                 catch { }
@@ -1129,10 +1205,10 @@ namespace SuperHeroes
             string url = tChatUrl.Text.Trim().TrimEnd('/'), model = tChatModel.Text.Trim();
             if (url.Length == 0) url = "http://localhost:11434";
             if (model.Length == 0) model = "gemma4:e2b";
-            if (!OllamaSetup.IsLocalEndpoint(url)) { Warn("자동 설치는 서버 주소가 이 PC(localhost)일 때만 쓸 수 있어요.\n다른 PC 의 서버를 쓰는 중이라면 그 PC 에서 직접 설치해 주세요."); return; }
+            if (!OllamaSetup.IsLocalEndpoint(url)) { Warn(Loc.T("자동 설치는 서버 주소가 이 PC(localhost)일 때만 쓸 수 있어요.\n다른 PC 의 서버를 쓰는 중이라면 그 PC 에서 직접 설치해 주세요.")); return; }
             var opts = new ChatOptions { Endpoint = url, Model = model };
             var handle = setupHandle = new ChatRequest();
-            ShowSetup("시작하는 중...", -1, true); bChatSetup.Enabled = false; chatSetupBar.Visible = true;
+            ShowSetup(Loc.T("시작하는 중..."), -1, true); bChatSetup.Enabled = false; chatSetupBar.Visible = true;
             new System.Threading.Thread(delegate ()
             {
                 string err;
@@ -1143,11 +1219,11 @@ namespace SuperHeroes
                         msg =>
                         {
                             bool yes = false;
-                            try { Invoke(new Action(delegate { yes = MessageBox.Show(this, msg, "수퍼히어로 · AI 자동 설치", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes; })); } catch { }
+                            try { Invoke(new Action(delegate { yes = MessageBox.Show(this, msg, Loc.T("수퍼히어로 · AI 자동 설치"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes; })); } catch { }
                             return yes;
                         });
                 }
-                catch (Exception e) { err = "예상하지 못한 오류가 났어요. (" + e.Message + ")"; }
+                catch (Exception e) { err = Loc.TF("예상하지 못한 오류가 났어요. ({0})", e.Message); }
                 PostUi(delegate { FinishSetup(handle, err); });
             }) { IsBackground = true }.Start();
         }
@@ -1166,8 +1242,8 @@ namespace SuperHeroes
         {
             if (setupHandle == handle) setupHandle = null;
             chatSetupBar.Visible = false; bChatSetup.Enabled = true; bChatSetupCancel.Enabled = false;
-            if (err == null) SetChatStatus("● 준비 끝 — 'AI 대화 사용'을 켜고 저장하세요", Color.FromArgb(30, 130, 70));
-            else if (err == OllamaSetup.Cancelled) SetChatStatus("취소했어요 — 다시 누르면 이어서 받아요", Color.DimGray);
+            if (err == null) SetChatStatus(Loc.T("● 준비 끝 — 'AI 대화 사용'을 켜고 저장하세요"), Color.FromArgb(30, 130, 70));
+            else if (err == OllamaSetup.Cancelled) SetChatStatus(Loc.T("취소했어요 — 다시 누르면 이어서 받아요"), Color.DimGray);
             else SetChatStatus(err, Color.Firebrick);
         }
 
@@ -1179,12 +1255,14 @@ namespace SuperHeroes
                 if (r.Source != null && r.Source.FiredOff) { r.Source.FiredOff = false; r.On.Checked = false; }
             var d = FriendData.Current;
             int sat = Math.Max(0, Math.Min(100, (int)Math.Floor(d.Satiety)));
-            lifeSummary.Text = d.Affinity.ToString("N0"); lifeDetail.Text = FriendData.FormatTogether(d.TogetherSeconds);
+            lifeSummary.Text = d.Affinity.ToString("N0", Loc.Culture); lifeDetail.Text = FriendData.FormatTogether(d.TogetherSeconds);
             satietyBar.Value = sat; satietyNum.Text = sat.ToString();
             snackButton.Enabled = d.CanSnack;
             // 자세한 숫자는 카드 위에 마우스를 올렸을 때의 말풍선으로
-            string tip = "친밀도 " + d.Affinity.ToString("N0") + "  ·  함께 " + FriendData.FormatTogether(d.TogetherSeconds) + "\n포만감 " + sat + " / 100  ·  " + (d.CanSnack ? "지금 간식을 줄 수 있어요" : "지금은 배가 꽉 찼어요")
-                       + "\n다음 꽃다발: 친밀도 " + ((d.Affinity / 100 + 1) * 100).ToString("N0") + "\n(간식 +25씩 · 함께한 시간 1분마다 친밀도 +1)";
+            string tip = Loc.TF("친밀도 {0}  ·  함께 {1}\n포만감 {2} / 100  ·  {3}\n다음 꽃다발: 친밀도 {4}\n(간식 +25씩 · 함께한 시간 1분마다 친밀도 +1)",
+                d.Affinity.ToString("N0", Loc.Culture), FriendData.FormatTogether(d.TogetherSeconds), sat,
+                d.CanSnack ? Loc.T("지금 간식을 줄 수 있어요") : Loc.T("지금은 배가 꽉 찼어요"),
+                ((d.Affinity / 100 + 1) * 100).ToString("N0", Loc.Culture));
             if (tip != lifeTip)
             {
                 lifeTip = tip; tips.SetToolTip(lifeCard, tip);
@@ -1198,14 +1276,23 @@ namespace SuperHeroes
 
         // ───────── 저장 ─────────
         private static string Norm(string v) { TimeSpan t = Settings.ParseTime(v).Value; return string.Format("{0:00}:{1:00}", t.Hours, t.Minutes); }
-        private void Warn(string m) { MessageBox.Show(this, m, "수퍼히어로", MessageBoxButtons.OK, MessageBoxIcon.Asterisk); }
+        private void Warn(string m) { MessageBox.Show(this, m, Loc.T("수퍼히어로"), MessageBoxButtons.OK, MessageBoxIcon.Asterisk); }
 
         private bool Apply()
         {
-            if (!Settings.ParseTime(tLunch.Text).HasValue) { nav.SelectedIndex = AlarmPage; Warn("점심 시간을 12:00처럼 적어 주세요."); tLunch.Focus(); return false; }
-            if (!Settings.ParseTime(tLeave.Text).HasValue) { nav.SelectedIndex = AlarmPage; Warn("퇴근 시간을 18:00처럼 적어 주세요."); tLeave.Focus(); return false; }
+            languageChanged = false;
+            if (!Settings.ParseTime(tLunch.Text).HasValue) { nav.SelectedIndex = AlarmPage; Warn(Loc.T("점심 시간을 12:00처럼 적어 주세요.")); tLunch.Focus(); return false; }
+            if (!Settings.ParseTime(tLeave.Text).HasValue) { nav.SelectedIndex = AlarmPage; Warn(Loc.T("퇴근 시간을 18:00처럼 적어 주세요.")); tLeave.Focus(); return false; }
+            if (ExaoneSelected && !ChatOptions.Current.IsExaone && cChat.Checked
+                && MessageBox.Show(this, Loc.T("AI 대화 상대를 EXAONE(LG AI연구원 API)으로 바꿀까요?\n\n이제부터 캐릭터와 나눈 대화, 기억한 내 이야기, 일기 요약 요청이 인터넷을 거쳐 LG AI연구원 서버로 보내져요. 사용량에 따라 요금이 나올 수 있어요."), Loc.T("수퍼히어로 · AI 대화"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            { cProvider.SelectedIndex = 0; return false; }
+            if (ExaoneSelected && cChat.Checked && tExaKey.Text.Trim().Length == 0 && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("EXAONE_API_KEY")))
+                Warn(Loc.T("EXAONE API 키가 비어 있어요. 키를 넣기 전까지 캐릭터가 대답하지 못해요."));
             try { StartupOption.SetEnabled(cStartup.Checked); }
-            catch (Exception ex) { nav.SelectedIndex = DisplayPage; Warn("자동 시작 설정을 저장하지 못했어요.\n" + ex.Message); return false; }
+            catch (Exception ex) { nav.SelectedIndex = DisplayPage; Warn(Loc.T("자동 시작 설정을 저장하지 못했어요.\n") + ex.Message); return false; }
+
+            string newLang = Loc.Codes[Math.Max(0, cLang.SelectedIndex)];
+            if (newLang != Loc.Code) { Loc.Set(newLang); languageChanged = true; }
 
             var o = PlayOptions.Current; int oldSize = o.SizePercent;
             o.Walls = cWalls.Checked; o.Ceiling = cCeiling.Checked; o.Windows = cWindows.Checked; o.Fullscreen = cFull.Checked;
@@ -1224,32 +1311,32 @@ namespace SuperHeroes
             s.LunchOn = cLunch.Checked; s.LunchTime = Norm(tLunch.Text); s.LunchMsg = tLunchMsg.Text.Trim();
             s.LeaveOn = cLeave.Checked; s.LeaveTime = Norm(tLeave.Text); s.LeaveMsg = tLeaveMsg.Text.Trim();
             s.NapOn = cNap.Checked; s.NapMinutes = (int)nNap.Value;
-            // 내 알람: 시각이 그대로인 알람은 오늘 울렸는지(Done)를 이어받는다
             var made = new List<UserAlarm>();
             foreach (var r in alarmRows)
             {
                 string t = r.Time.Value.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture);
                 var u = new UserAlarm { On = r.On.Checked, Repeat = r.Repeat.Checked, Time = t, Msg = r.Msg.Text.Trim() };
                 if (r.Source != null && r.Source.Time == t) u.Done = r.Source.Done;
-                r.Source = u; made.Add(u);   // 다음 저장 때 이어받을 수 있게
+                r.Source = u; made.Add(u);
             }
             s.Alarms = made.OrderBy(u => u.Time, StringComparer.Ordinal).ToList();
-            if (s.LunchMsg.Length == 0) s.LunchMsg = "점심 먹으러 가자!";
-            if (s.LeaveMsg.Length == 0) s.LeaveMsg = "퇴근이다! 오늘도 수고했어";
+            if (s.LunchMsg.Length == 0) s.LunchMsg = Loc.T("점심 먹으러 가자!");
+            if (s.LeaveMsg.Length == 0) s.LeaveMsg = Loc.T("퇴근이다! 오늘도 수고했어");
+            if (languageChanged) { s.LunchMsg = Loc.Retarget(s.LunchMsg, "점심 먹으러 가자!"); s.LeaveMsg = Loc.Retarget(s.LeaveMsg, "퇴근이다! 오늘도 수고했어"); }
 
             var chat = ChatOptions.Current;
-            chat.Enabled = cChat.Checked; chat.Model = tChatModel.Text.Trim().Length > 0 ? tChatModel.Text.Trim() : "gemma4:e2b";
-            chat.Endpoint = tChatUrl.Text.Trim().Length > 0 ? tChatUrl.Text.Trim().TrimEnd('/') : "http://localhost:11434";
+            chat.Enabled = cChat.Checked; FillChatConnection(chat);
             chat.Mode = Math.Max(0, cMode.SelectedIndex); chat.Hotkey = cChatKey.Checked; chat.HotkeyMods = hkBox.Mods; chat.HotkeyKey = hkBox.Key; chat.Sound = cChatSound.Checked; chat.Proactive = cChatProactive.Checked; chat.ProactiveMinutes = (int)nProactive.Value; chat.Memory = cChatMemory.Checked; chat.Chips = cChatChips.Checked; chat.Diary = cChatDiary.Checked;
 
             app.OnSettingsChanged();
             app.ApplyCharacterSettings(); app.ApplyHelperOptions();
             app.Chat.ApplyOptions(); app.Chat.ModeChanged();
-            if (chat.Enabled && chat.Hotkey && !app.Chat.HotkeyRegistered) Warn("단축키 " + ChatHotkey.Text(chat.HotkeyMods, chat.HotkeyKey) + " 는 다른 프로그램이 이미 쓰고 있어서 등록하지 못했어요. 다른 조합을 골라 주세요.");
+            if (chat.Enabled && chat.Hotkey && !app.Chat.HotkeyRegistered) Warn(Loc.TF("단축키 {0} 는 다른 프로그램이 이미 쓰고 있어서 등록하지 못했어요. 다른 조합을 골라 주세요.", ChatHotkey.Text(chat.HotkeyMods, chat.HotkeyKey)));
+            if (languageChanged) app.OnLanguageChanged();
             if (app.Notes != null) { app.Notes.DefaultColor = NoteColors.All[Math.Max(0, noteColor.SelectedIndex)]; app.Notes.DefaultSize = (NoteSizePreset)Math.Max(0, noteSize.SelectedIndex); }
             if (o.SizePercent != oldSize) app.RebuildForSize();
             bool ok = s.Save() & o.Save() & chat.Save();
-            status.Text = ok ? "저장했어요." : "설정 파일을 저장하지 못했어요. 이번에 켜 있는 동안만 적용돼요.";
+            status.Text = ok ? Loc.T("저장했어요.") : Loc.T("설정 파일을 저장하지 못했어요. 이번에 켜 있는 동안만 적용돼요.");
             if (!ok) Warn(status.Text);
             return true;
         }

@@ -213,9 +213,9 @@ namespace SuperHeroes
         {
             this.app = app;
             AutoScaleMode = AutoScaleMode.None; FormBorderStyle = FormBorderStyle.None; ShowInTaskbar = false; StartPosition = FormStartPosition.Manual; TopMost = true;
-            Text = "수퍼히어로 · 알림"; Size = new Size(1, 1); Location = new Point(-32000, -32000);
+            Text = Loc.T("수퍼히어로 · 알림"); Size = new Size(1, 1); Location = new Point(-32000, -32000);
             area = Screen.FromPoint(Cursor.Position).WorkingArea;
-            art = CharacterArt.Zoomed(character, Zoom);
+            art = CharacterArt.Zoomed(character, Zoom / CharacterArt.SizeFactor);   // 캐릭터 크기 설정과 상관없이 화면 배율의 Zoom 배
             // 발바닥 위치: 몸통의 한가운데가 화면 한가운데에 오도록
             pet = new Pet(app, art, area.Left + area.Width / 2.0, area.Top + area.Height / 2.0 + art.H / 2.0);
             pet.StartAlert(app);
@@ -240,7 +240,7 @@ namespace SuperHeroes
         private void Relayout()
         {
             string text = string.Join("\n\n", messages.ToArray());
-            float u = art.Unit, scale = CharacterArt.Scale;
+            float u = art.Unit, scale = CharacterArt.DpiScale;
             bubbleWidth = Math.Min(area.Width * .55f, 760f * scale);
             float room = Math.Max(60f, area.Height / 2f - art.H / 2f - 10 * u - 14 * u - 6);
             Font chosen = null;
@@ -294,7 +294,25 @@ namespace SuperHeroes
             }
         }
 
-        protected override void OnMouseUp(MouseEventArgs e) { base.OnMouseUp(e); Close(); }
+        /// <summary>지금 화면에 그려진 모습을 그림 파일용 비트맵으로 돌려준다(점검용).</summary>
+        internal Bitmap Snapshot(double t, out PointF origin)
+        {
+            Pet.Look look = pet.GetLook(app.Now);
+            look.AffinityLabel = null; look.HopY *= Zoom;
+            look.BubbleFont = font; look.BubbleWidth = bubbleWidth; look.CloseMark = true;
+            look.Neon = NeonGlow.ColorAt(t); look.NeonPulse = .5f;
+            return Pet.Render(look, out origin);
+        }
+
+        /// <summary>왼쪽 단추로 눌러 닫았을 때(확인한 것으로 본다). 닫히기 직전에 불린다.</summary>
+        internal event Action Acknowledged;
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            base.OnMouseUp(e);
+            if (e.Button == MouseButtons.Left) { var h = Acknowledged; if (h != null) { try { h(); } catch (Exception error) { FeatureLog.Write(error); } } }
+            Close();
+        }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {

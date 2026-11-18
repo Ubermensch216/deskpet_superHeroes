@@ -26,14 +26,27 @@ namespace SuperHeroes
         private static void Main(string[] args)
         {
             try { Native.SetProcessDPIAware(); } catch { }
+            string lang = null; var rest = new List<string>();
+            for (int a = 0; a < args.Length; a++)
+            {
+                if (args[a] == "--lang" && a + 1 < args.Length) { lang = args[++a]; continue; }
+                if (args[a].StartsWith("--lang=")) { lang = args[a].Substring(7); continue; }
+                rest.Add(args[a]);
+            }
+            args = rest.ToArray();
+            if (lang != null) Loc.Force(lang);
             Application.EnableVisualStyles(); Application.SetCompatibleTextRenderingDefault(false);
             if (args.Length >= 2 && args[0] == "--make-icon") { DevTools.MakeIcon(args[1]); return; }
+            if (args.Length >= 2 && args[0] == "--i18n-test") { Environment.Exit(DevToolsI18n.Run(args[1])); return; }
             if (args.Length >= 2 && args[0] == "--perf") { DevTools.Perf(args[1]); return; }
             if (args.Length >= 2 && args[0] == "--render-test") { DevTools.RenderSheet(args[1], args.Length >= 3 ? float.Parse(args[2]) : Native.SystemDpiScale()); return; }
             if (args.Length >= 5 && args[0] == "--sig-shots") { DevTools.SigShots(args[1], args[2], int.Parse(args[3]), args[4], args.Length >= 6 ? float.Parse(args[5]) : 2f); return; }
             if (args.Length >= 2 && args[0] == "--selftest") { Environment.Exit(DevTools.SelfTest(args[1])); return; }
             if (args.Length >= 2 && args[0] == "--ui-test") { Environment.Exit(DevTools.UiTest(args[1])); return; }
             if (args.Length >= 2 && args[0] == "--shot-settings") { DevTools.ShotSettings(args[1], args.Length >= 3 ? int.Parse(args[2]) : 0); return; }
+            Loc.Load();
+            int cliExit;
+            if (ApiServer.TryForwardCliCommand(args, out cliExit)) { Environment.Exit(cliExit); return; }
             Log("Main start");
             bool created;
             using (var mutex = new Mutex(true, "SuperHeroes_DeskFriend_single_instance", out created))
@@ -42,7 +55,7 @@ namespace SuperHeroes
                 if (!created)
                 {
                     Log("Exiting: mutex not created");
-                    MessageBox.Show("수퍼히어로가 이미 실행 중이야.\n작업표시줄 알림 영역의 친구 아이콘을 우클릭해서 ‘화면 가운데로 다시 부르기’를 눌러줘.", "수퍼히어로", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show(Loc.T("수퍼히어로가 이미 실행 중이야.\n작업표시줄 알림 영역의 친구 아이콘을 우클릭해서 ‘화면 가운데로 다시 부르기’를 눌러줘."), Loc.T("수퍼히어로"), MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
@@ -57,11 +70,11 @@ namespace SuperHeroes
                 {
                     Log("Loading options...");
                     PlayOptions.Load(); FriendData.Load();
-                    CharacterArt.Reset(Native.SystemDpiScale() * PlayOptions.Current.SizeScale);
+                    CharacterArt.Reset(Native.SystemDpiScale(), PlayOptions.Current.SizeScale);
                     Log("Creating App...");
                     var app = new App();
                     Log("Starting Notes...");
-                    app.Notes = new NoteManager(app); app.Notes.Start();
+                    app.Notes = new NoteManager(app); app.Notes.Start(); app.StartApi();
                     Log("Running Application.Run...");
                     Application.Run(app);
                     Log("Application.Run returned.");
@@ -70,7 +83,7 @@ namespace SuperHeroes
                 {
                     Log("Caught in Main: " + error);
                     FeatureLog.Write(error);
-                    MessageBox.Show("친구를 화면에 표시하지 못했어.\n\n" + error.Message + "\n\n기록: " + Path.Combine(Paths.Dir, "수퍼히어로_오류기록.txt"), "수퍼히어로", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(Loc.T("친구를 화면에 표시하지 못했어.\n\n") + error.Message + Loc.T("\n\n기록: ") + Path.Combine(Paths.Dir, "수퍼히어로_오류기록.txt"), Loc.T("수퍼히어로"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
                 GC.KeepAlive(mutex);
             }
@@ -467,10 +480,10 @@ namespace SuperHeroes
                 check(App.HourlyMessage(new DateTime(2026, 10, 21, 12, 0, 0), true, "12:00", "점심!", true, "18:00", "퇴근!") == "지금은 오후 12시야!\n점심!", "정각 문구+점심 병합");
                 check(App.HourlyText(new DateTime(2026, 10, 21, 0, 0, 0)) == "지금은 오전 12시야!", "정각 문구 0시");
 
-                var o = new PlayOptions { Walls = false, Speed = 1.5, ClickMode = ClickReaction.Cry, HungerMinutes = 30, PetOpacityPercent = 70, FixedX = 123.5, FixedY = 456.25, PetPower = false };
+                var o = new PlayOptions { Walls = false, Speed = 1.5, ClickMode = ClickReaction.Cry, HungerMinutes = 30, PetOpacityPercent = 70, SizePercent = 150, FixedX = 123.5, FixedY = 456.25, PetPower = false };
                 PlayOptions.Current = o; check(o.Save(), "움직임 설정 저장");
                 PlayOptions.Load(); var l = PlayOptions.Current;
-                check(!l.Walls && l.Speed == 1.5 && l.ClickMode == ClickReaction.Cry && l.HungerMinutes == 30 && l.PetOpacityPercent == 70 && l.FixedX == 123.5 && l.FixedY == 456.25, "움직임 설정 불러오기 일치");
+                check(!l.Walls && l.Speed == 1.5 && l.ClickMode == ClickReaction.Cry && l.HungerMinutes == 30 && l.PetOpacityPercent == 70 && l.SizePercent == 150 && l.FixedX == 123.5 && l.FixedY == 456.25, "움직임 설정 불러오기 일치");
                 check(!l.PetPower && new PlayOptions().PetPower, "펫 전원: 기본은 켜짐, 꺼 둔 상태는 저장·불러오기로 유지");
 
                 // 친구 기록
@@ -479,8 +492,9 @@ namespace SuperHeroes
                 d.AdvanceLife(60);
                 check(d.Affinity == 1 && d.TogetherSeconds == 60, "함께한 1분 = 친밀도 +1");
                 check(Math.Abs(d.Satiety - (100 - 60 * 80.0 / 3600)) < 1e-6, "포만감 감소량");
-                d.Satiety = 90; check(d.TrySnack() && d.Satiety == 100 && d.Affinity == 6, "간식: 포만감 +25(최대 100), 친밀도 +5");
+                d.Satiety = 78; check(d.TrySnack() && d.Satiety == 100 && d.Affinity == 6, "간식: 포만감 +25(최대 100), 친밀도 +5");
                 check(!d.TrySnack(), "배가 꽉 차면 간식 거절");
+                d.Satiety = 80; check(!d.TrySnack(), "포만감 80 이상이면 간식 거절");
                 d.Affinity = 250; d.CelebratedHundreds = 1; check(d.TakeMilestone() && d.CelebratedHundreds == 2 && !d.TakeMilestone(), "100 단위 꽃다발 한 번씩");
                 d.Satiety = 10; check(d.Hungry, "포만감 20 이하 = 배고픔");
                 PlayOptions.Current.HungerMinutes = 0; d.Satiety = 100; check(d.Hungry, "0분 = 항상 우는 표정");
@@ -577,12 +591,168 @@ namespace SuperHeroes
                     App.ResolveCompanionContacts(w5, new List<Pet> { wallPet, floorPet }, null);
                     check(!wallPet.ContactBody(w5.Now).IntersectsWith(floorPet.ContactBody(w5.Now)), "벽에 붙은 친구 몸통 안에 낀 친구도 떨어짐");
                 }
+
+                // 여러 마리가 오래 돌아다니며 마주쳐도 서로 엉킨 채 오래 머물지 않음
+                {
+                    double worst = 0; string worstInfo = "";
+                    foreach (int mode in new[] { 0, 1, 2 })
+                        foreach (int count in new[] { 2, 3, 5 })
+                            foreach (int seed in new[] { 1, 2, 3, 4 })
+                            {
+                                PlayOptions.Current = new PlayOptions { Escape = mode == 1, Follow = mode == 2, Idle = true, Windows = false, Walls = seed % 2 == 0 };
+                                int mouseX = 200 + seed * 170; double clock = 0;
+                                DesktopSurfaces.TestMouse = mode == 0 ? (Func<Point>)(() => new Point(-9999, -9999)) : () => new Point(mouseX + (int)(Math.Sin(clock / 9) * (seed % 2 == 0 ? 250 : 0)), 690);
+                                var wt = new FakeWorld { Rng = new Random(seed) };
+                                if (count == 5) wt.Areas[0] = new Rectangle(0, 0, 900, 720);
+                                var tall = new List<Pet>();
+                                for (int k = 0; k < count; k++) tall.Add(new Pet(wt, k % CharacterArt.Count, 100 + k * 130, 720) { Area = wt.Areas[0] });
+                                var stuck = new double[count, count];
+                                for (double t = 0; t < 1800; t += .03)
+                                {
+                                    wt.Now += .03; clock = wt.Now;
+                                    var old = tall.ToDictionary(q => q, q => new PointF((float)q.X, (float)q.Y));
+                                    var before = tall.Select(q => q.X).ToArray();
+                                    foreach (Pet q in tall) q.Update(wt, .03, tall, 0);
+                                    App.ResolveCompanionContacts(wt, tall, old);
+                                    for (int i = 0; i < count; i++)
+                                        for (int j2 = i + 1; j2 < count; j2++)
+                                        {
+                                            Pet pa = tall[i], pb = tall[j2];
+                                            bool skip = pa.IsGhost(wt.Now) || pb.IsGhost(wt.Now) || pa.State == PetState.Falling || pb.State == PetState.Falling || pa.State == PetState.Wall || pb.State == PetState.Wall || pa.State == PetState.WindowClimb || pb.State == PetState.WindowClimb;
+                                            double near = (pa.Art.W + pb.Art.W) * .85 * .5 * 1.3 + 6;
+                                            bool moved = Math.Abs(pa.X - before[i]) + Math.Abs(pb.X - before[j2]) > .3;
+                                            bool ovl = pa.ContactBody(wt.Now).IntersectsWith(pb.ContactBody(wt.Now));
+                                            bool jam = !skip && Math.Abs(pa.X - pb.X) < near && (ovl || (!moved && (pa.State == PetState.Walk || pb.State == PetState.Walk)));
+                                            stuck[i, j2] = jam ? stuck[i, j2] + .03 : 0;
+                                            if (stuck[i, j2] > worst) { worst = stuck[i, j2]; worstInfo = "모드" + mode + " " + count + "마리 seed " + seed + " [" + pa.Art.Id + "(" + pa.State + ")+" + pb.Art.Id + "(" + pb.State + ")]"; }
+                                        }
+                                }
+                            }
+                    DesktopSurfaces.TestMouse = null;
+                    log.AppendLine("  [정보] 붙은 채 정지 최장 " + worst.ToString("F1") + "초 " + worstInfo);
+                    check(worst < 4, "여러 마리가 붙은 채 오래 정지하지 않음 (최장 " + worst.ToString("F1") + "초)");
+                }
+
+                // ── AI 대화 & EXAONE ──
+                var j = Json.Parse("{\"message\":{\"role\":\"assistant\",\"content\":\"[기쁨] \\\"안녕\\\"\\n\\u0041\"},\"done\":false,\"n\":-1.5e2}");
+                check(Json.Str(Json.Get(j, "message"), "content") == "[기쁨] \"안녕\"\nA" && !Json.Flag(j, "done") && (double)Json.Get(j, "n") == -150, "JSON 읽기(이스케이프·숫자)");
+                check(Json.Parse("{깨진") == null, "깨진 JSON 은 null");
+                check(Json.Quote("a\"b\n") == "\"a\\\"b\\n\"", "JSON 문자열 만들기");
+                var rp = new ReplyParser(ChatMode.All[0].MaxSentences, ChatMode.All[0].MaxChars); bool c1 = rp.Feed("["); rp.Feed("기"); rp.Feed("쁨"); bool c2 = rp.Feed("] 안녕"); rp.Feed("! 반가워. 또 왔네! 네 번째 문장");
+                check(!c1 && c2 && rp.Mood == ChatMood.Joy && rp.Text == "안녕! 반가워. 또 왔네!", "감정 태그가 토큰으로 쪼개져 와도 읽고, 세 문장까지만 남김: " + rp.Text);
+                check(ReplyParser.Clean("**좋아** 😀 (웃으며) 그래\n수퍼맨: 둘째 줄") == "좋아 그래", "마크다운·이모지·괄호 지문·둘째 줄 제거");
+                var rq = new ReplyParser(); rq.Feed("힘들었겠다 ㅠㅠ");
+                check(rq.Mood == ChatMood.Sad && !rq.HasTag, "태그가 없으면 글에서 감정을 짐작");
+                ChatOptions.Current = new ChatOptions { Provider = "exaone", ExaoneKey = "test-key-123", ExaoneEffort = "high" }; ChatOptions.Current.Save(); ChatOptions.Load();
+                check(ChatOptions.Current.IsExaone && ChatOptions.Current.ExaoneKey == "test-key-123" && ChatOptions.Current.ExaoneEffort == "high" && !File.ReadAllText(ChatOptions.FilePath).Contains("test-key-123"), "EXAONE 설정 저장·불러오기(키 암호화)");
+                string exBody = ExaoneClient.Body(ChatOptions.Current, new List<ChatMessage> { new ChatMessage("system", "s"), new ChatMessage("user", "안녕") }, true, 170, .85);
+                object exJ = Json.Parse(exBody);
+                check(Json.Str(exJ, "model") == "k-exaone_v2.5" && Json.Flag(exJ, "stream") && (double)Json.Get(exJ, "max_tokens") > 170 && Json.Str(exJ, "reasoning_effort") == "high" && ((List<object>)Json.Get(exJ, "messages")).Count == 2, "EXAONE 요청 본문");
+                var lc = new ExaoneClient.LineCutter(); string cutText = lc.Feed("\n\n") + lc.Feed("[기쁨] 안") + lc.Feed("녕!\n수퍼맨: 또") + lc.Feed("더");
+                check(cutText == "[기쁨] 안녕!" && lc.Ended, "EXAONE 답: 앞 빈 줄 건너뛰고 첫 줄에서 끊기: " + cutText);
+                check(ExaoneClient.Probe(new ChatOptions { Provider = "exaone", ExaoneKey = "" }) == ProbeResult.NoKey || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("EXAONE_API_KEY")), "EXAONE 키가 없으면 NoKey");
+                ChatOptions.Current = new ChatOptions();
+
+                OvertimeState.SelfTests(check);
+                OvertimeUiTests.Run(check);
+                ApiSelfTests(check);
             }
             catch (Exception e) { log.AppendLine("EXCEPTION " + e); failures++; }
             log.AppendLine(failures == 0 ? "ALL PASSED" : failures + " FAILED");
             File.WriteAllText(Path.Combine(dir, "selftest_result.txt"), log.ToString(), new UTF8Encoding(true));
             Console.Write(log.ToString());
             return failures == 0 ? 0 : 1;
+        }
+
+        private static void ApiSelfTests(Action<bool, string> check)
+        {
+            check(ApiServer.IsAllowedOrigin(null) && ApiServer.IsAllowedOrigin(""), "API Origin: 데스크톱 앱(Origin 없음) 허용");
+            check(ApiServer.IsAllowedOrigin("chrome-extension://abcdefghijklmnop") && ApiServer.IsAllowedOrigin("edge-extension://123456"), "API Origin: 브라우저 확장(*.sAIde) 허용");
+            check(!ApiServer.IsAllowedOrigin("https://evil.example.com") && !ApiServer.IsAllowedOrigin("http://localhost:3000"), "API Origin: 일반 웹페이지 차단");
+
+            var app = new App(true);
+            app.Notes = new NoteManager(app);
+            app.Notes.Start(false);
+            app.Settings.ApiPort = 19485;
+            app.StartApi();
+            bool pump = true;
+            var pumper = new Thread(delegate () { while (pump) { try { app.Api.Tick(); } catch { } Thread.Sleep(5); } }) { IsBackground = true };
+            pumper.Start();
+            try
+            {
+                check(app.Api != null && app.Api.IsRunning && app.Api.Port >= 1024, "API 서버 시작 (127.0.0.1:" + (app.Api != null ? app.Api.Port : 0) + ")");
+                string baseUrl = "http://127.0.0.1:" + app.Api.Port;
+
+                Func<string, string, string, string, KeyValuePair<int, string>> call = (method, path, body, origin) =>
+                {
+                    var req = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(baseUrl + path);
+                    req.Method = method; req.Timeout = 5000; req.Proxy = null;
+                    if (!string.IsNullOrEmpty(origin)) req.Headers["Origin"] = origin;
+                    if (body != null)
+                    {
+                        byte[] b = new UTF8Encoding(false).GetBytes(body);
+                        req.ContentType = "application/json; charset=utf-8"; req.ContentLength = b.Length;
+                        using (var s = req.GetRequestStream()) s.Write(b, 0, b.Length);
+                    }
+                    try
+                    {
+                        using (var resp = (System.Net.HttpWebResponse)req.GetResponse())
+                        using (var sr = new StreamReader(resp.GetResponseStream(), Encoding.UTF8))
+                            return new KeyValuePair<int, string>((int)resp.StatusCode, sr.ReadToEnd());
+                    }
+                    catch (System.Net.WebException wex)
+                    {
+                        var r = wex.Response as System.Net.HttpWebResponse;
+                        if (r != null) using (var sr = new StreamReader(r.GetResponseStream(), Encoding.UTF8)) return new KeyValuePair<int, string>((int)r.StatusCode, sr.ReadToEnd());
+                        throw;
+                    }
+                };
+
+                var h = call("GET", "/api/health", null, null);
+                check(h.Key == 200 && Json.Flag(Json.Parse(h.Value), "ok"), "GET /api/health 응답 확인");
+
+                var forbidden = call("POST", "/api/alert", "{\"message\":\"침입\"}", "https://malicious.example.com");
+                check(forbidden.Key == 403, "일반 웹 Origin 403 차단 확인");
+
+                var extOk = call("POST", "/api/alert", "{\"message\":\"공문 도착!\",\"style\":\"bubble\",\"seconds\":5}", "chrome-extension://onnara-saide-ext");
+                object extJson = Json.Parse(extOk.Value);
+                string alertId = Json.Str(extJson, "alertId");
+                check(extOk.Key == 200 && Json.Flag(extJson, "ok") && !string.IsNullOrEmpty(alertId), "POST /api/alert (브라우저 확장 Origin) 성공");
+
+                var alertGet = call("GET", "/api/alert/" + alertId, null, null);
+                check(alertGet.Key == 200 && Json.Str(Json.Parse(alertGet.Value), "message") == "공문 도착!", "GET /api/alert/{id} 상태 조회");
+
+                var noteCreate = call("POST", "/api/notes", "{\"content\":\"# 회의 메모\\n- [ ] 안건 정리 #업무\",\"color\":\"yellow\",\"open\":false}", null);
+                object ncJson = Json.Parse(noteCreate.Value);
+                string noteId = Json.Str(Json.Get(ncJson, "note"), "id");
+                check(noteCreate.Key == 201 && !string.IsNullOrEmpty(noteId), "POST /api/notes 메모 생성 성공");
+
+                var noteList = call("GET", "/api/notes?tag=업무", null, null);
+                check(noteList.Key == 200 && noteList.Value.Contains("회의 메모"), "GET /api/notes 태그 검색 확인");
+
+                var notePatch = call("PATCH", "/api/notes/" + noteId, "{\"append\":\"- [ ] 추가 항목\"}", null);
+                check(notePatch.Key == 200 && notePatch.Value.Contains("추가 항목"), "PATCH /api/notes/{id} 본문 덧붙이기 확인");
+
+                var noteRemind = call("POST", "/api/notes/" + noteId + "/remind", "{\"minutes\":30}", null);
+                check(noteRemind.Key == 200 && Json.Flag(Json.Parse(noteRemind.Value), "ok"), "POST /api/notes/{id}/remind 알림 설정 확인");
+
+                var noteDel = call("DELETE", "/api/notes/" + noteId, null, null);
+                check(noteDel.Key == 200 && Json.Flag(Json.Parse(noteDel.Value), "ok"), "DELETE /api/notes/{id} 메모 삭제 확인");
+
+                var actList = call("GET", "/api/pet/actions", null, null);
+                check(actList.Key == 200 && actList.Value.Contains("sit") && actList.Value.Contains("sig0"), "GET /api/pet/actions 동작 목록 조회");
+
+                var actRun = call("POST", "/api/pet/action", "{\"action\":\"sit\",\"say\":\"결재 완료!\"}", null);
+                check(actRun.Key == 200 && Json.Flag(Json.Parse(actRun.Value), "ok") && app.LiveWindows[0].Pet.Bubble == "결재 완료!", "POST /api/pet/action 캐릭터 동작·말풍선 유도 확인");
+            }
+            finally
+            {
+                pump = false;
+                try { pumper.Join(200); } catch { }
+                try { if (app.Api != null) app.Api.Dispose(); } catch { }
+                try { if (app.Notes != null) app.Notes.Suspend(); } catch { }
+                foreach (var w in app.LiveWindows.ToArray()) { try { w.Close(); w.Dispose(); } catch { } }
+            }
         }
     }
 }

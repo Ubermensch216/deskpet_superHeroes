@@ -49,7 +49,7 @@ namespace SuperHeroes
         /// </summary>
         internal static string Run(ChatOptions o, ChatRequest h, Action<string, int, bool> report, Func<string, bool> confirm)
         {
-            report("지금 상태를 확인하는 중...", -1, true);
+            report(Loc.T("지금 상태를 확인하는 중..."), -1, true);
             ProbeResult r = OllamaClient.Probe(o);
             if (r == ProbeResult.Ok) return null;
             bool agreed = false;
@@ -60,9 +60,7 @@ namespace SuperHeroes
                 if (exe == null)
                 {
                     long free = FreeBytes(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
-                    if (!confirm("이 PC 에는 Ollama 가 없어요.\n\n"
-                        + "① Ollama 설치 파일(공식 ollama.com)을 내려받아 설치하고\n② AI 모델 '" + o.Model + "' 을 받아요.\n\n"
-                        + "용량이 커서(합쳐서 수 GB 일 수 있어요) 시간이 걸려요. 인터넷 연결이 필요하고, 사용자 폴더의 여유 공간은 약 " + FmtBytes(free) + " 이에요.\n계속할까요?")) return Cancelled;
+                    if (!confirm(Loc.TF("이 PC 에는 Ollama 가 없어요.\n\n① Ollama 설치 파일(공식 ollama.com)을 내려받아 설치하고\n② AI 모델 '{0}' 을 받아요.\n\n용량이 커서(합쳐서 수 GB 일 수 있어요) 시간이 걸려요. 인터넷 연결이 필요하고, 사용자 폴더의 여유 공간은 약 {1} 이에요.\n계속할까요?", o.Model, FmtBytes(free)))) return Cancelled;
                     agreed = true;
                     string dir = Path.Combine(Path.GetTempPath(), "SuperHeroesOllamaSetup_" + Guid.NewGuid().ToString("N"));
                     try
@@ -72,7 +70,7 @@ namespace SuperHeroes
                         string err = Download(h, InstallerUrl, setup, report);
                         if (err != null) return err;
                         if (h.Cancelled) return Cancelled;
-                        report("설치 파일의 서명을 확인하는 중...", -1, true);
+                        report(Loc.T("설치 파일의 서명을 확인하는 중..."), -1, true);
                         err = VerifySignature(setup);
                         if (err != null) return err;
                         err = Install(setup, report);
@@ -80,7 +78,7 @@ namespace SuperHeroes
                     }
                     finally { try { Directory.Delete(dir, true); } catch { } }
                     exe = FindExe();
-                    if (exe == null) return "설치는 끝났는데 Ollama 를 찾지 못했어요. 컴퓨터를 다시 켠 뒤 다시 눌러 주세요.";
+                    if (exe == null) return Loc.T("설치는 끝났는데 Ollama 를 찾지 못했어요. 컴퓨터를 다시 켠 뒤 다시 눌러 주세요.");
                 }
                 if (h.Cancelled) return Cancelled;
                 string serr = WaitServer(o, exe, h, report);
@@ -90,13 +88,13 @@ namespace SuperHeroes
 
             if (r == ProbeResult.ModelMissing)
             {
-                if (!agreed && !confirm("AI 모델 '" + o.Model + "' 을 내려받아요.\n\n용량이 커서(수 GB 일 수 있어요) 시간이 걸려요. 인터넷 연결이 필요해요.\n계속할까요?")) return Cancelled;
+                if (!agreed && !confirm(Loc.TF("AI 모델 '{0}' 을 내려받아요.\n\n용량이 커서(수 GB 일 수 있어요) 시간이 걸려요. 인터넷 연결이 필요해요.\n계속할까요?", o.Model))) return Cancelled;
                 string perr = Pull(o, h, report);
                 if (perr != null) return perr;
             }
 
-            report("마무리 확인 중...", -1, false);
-            return OllamaClient.Probe(o) == ProbeResult.Ok ? null : "설치는 했는데 아직 연결이 안 돼요. 잠시 뒤 '연결 확인'을 눌러 보세요.";
+            report(Loc.T("마무리 확인 중..."), -1, false);
+            return OllamaClient.Probe(o) == ProbeResult.Ok ? null : Loc.T("설치는 했는데 아직 연결이 안 돼요. 잠시 뒤 '연결 확인'을 눌러 보세요.");
         }
 
         // ───────── 내려받기 ─────────
@@ -123,14 +121,14 @@ namespace SuperHeroes
                         if (pct != lastPct && tick.ElapsedMilliseconds - lastTick >= 150)
                         {
                             lastPct = pct; lastTick = tick.ElapsedMilliseconds;
-                            report("Ollama 설치 파일 내려받는 중... " + (total > 0 ? pct + "%  (" + FmtBytes(got) + " / " + FmtBytes(total) + ")" : FmtBytes(got)), pct, true);
+                            report(Loc.TF("Ollama 설치 파일 내려받는 중... {0}", total > 0 ? pct + "%  (" + FmtBytes(got) + " / " + FmtBytes(total) + ")" : FmtBytes(got)), pct, true);
                         }
                     }
-                    if (total > 0 && got != total) return "내려받다가 연결이 끊겼어요. 인터넷 연결을 확인하고 다시 눌러 주세요.";
+                    if (total > 0 && got != total) return Loc.T("내려받다가 연결이 끊겼어요. 인터넷 연결을 확인하고 다시 눌러 주세요.");
                 }
                 return null;
             }
-            catch (Exception e) { return h.Cancelled ? Cancelled : "설치 파일을 내려받지 못했어요. 인터넷 연결을 확인해 주세요.\n(" + e.Message + ")"; }
+            catch (Exception e) { return h.Cancelled ? Cancelled : Loc.TF("설치 파일을 내려받지 못했어요. 인터넷 연결을 확인해 주세요.\n({0})", e.Message); }
         }
 
         // ───────── 서명 확인 (Authenticode) ─────────
@@ -158,28 +156,28 @@ namespace SuperHeroes
                 var data = new WinTrustData { cbStruct = Marshal.SizeOf(typeof(WinTrustData)), dwUIChoice = 2, fdwRevocationChecks = 0, dwUnionChoice = 1, pFile = pf, dwStateAction = 0 };
                 pd = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(WinTrustData))); Marshal.StructureToPtr(data, pd, false);
                 int rc = WinVerifyTrust(new IntPtr(-1), new Guid("00AAC56B-CD44-11d0-8CC2-00C04FC295EE"), pd);
-                return rc == 0 ? null : "내려받은 설치 파일의 디지털 서명이 올바르지 않아서 설치하지 않았어요. (코드 0x" + rc.ToString("X8") + ")";
+                return rc == 0 ? null : Loc.TF("내려받은 설치 파일의 디지털 서명이 올바르지 않아서 설치하지 않았어요. (코드 0x{0})", rc.ToString("X8"));
             }
-            catch (Exception e) { return "설치 파일의 서명을 확인하지 못해서 설치하지 않았어요. (" + e.Message + ")"; }
+            catch (Exception e) { return Loc.TF("설치 파일의 서명을 확인하지 못해서 설치하지 않았어요. ({0})", e.Message); }
             finally { if (pd != IntPtr.Zero) Marshal.FreeHGlobal(pd); if (pf != IntPtr.Zero) Marshal.FreeHGlobal(pf); }
         }
 
         // ───────── 설치 · 서버 켜기 ─────────
         private static string Install(string setup, Action<string, int, bool> report)
         {
-            report("Ollama 를 설치하는 중... (1~2분 걸려요. 취소할 수 없어요)", -1, false);
+            report(Loc.T("Ollama 를 설치하는 중... (1~2분 걸려요. 취소할 수 없어요)"), -1, false);
             try
             {
                 using (Process p = Process.Start(new ProcessStartInfo(setup, "/SILENT /SUPPRESSMSGBOXES /NORESTART") { UseShellExecute = true }))
                 {
-                    if (p == null) return "설치 프로그램을 실행하지 못했어요.";
-                    if (!p.WaitForExit(15 * 60 * 1000)) return "설치가 너무 오래 걸려서 멈췄어요.";
-                    if (p.ExitCode != 0) return "설치 프로그램이 오류로 끝났어요. (코드 " + p.ExitCode + ")";
+                    if (p == null) return Loc.T("설치 프로그램을 실행하지 못했어요.");
+                    if (!p.WaitForExit(15 * 60 * 1000)) return Loc.T("설치가 너무 오래 걸려서 멈췄어요.");
+                    if (p.ExitCode != 0) return Loc.TF("설치 프로그램이 오류로 끝났어요. (코드 {0})", p.ExitCode);
                 }
                 return null;
             }
-            catch (Win32Exception e) { return e.NativeErrorCode == 1223 ? "설치 허용을 취소했어요." : "설치 프로그램을 실행하지 못했어요. (" + e.Message + ")"; }
-            catch (Exception e) { return "설치 프로그램을 실행하지 못했어요. (" + e.Message + ")"; }
+            catch (Win32Exception e) { return e.NativeErrorCode == 1223 ? Loc.T("설치 허용을 취소했어요.") : Loc.TF("설치 프로그램을 실행하지 못했어요. ({0})", e.Message); }
+            catch (Exception e) { return Loc.TF("설치 프로그램을 실행하지 못했어요. ({0})", e.Message); }
         }
 
         private static void StartServer(string exe)
@@ -201,10 +199,10 @@ namespace SuperHeroes
                 if (h.Cancelled) return Cancelled;
                 if (OllamaClient.Probe(o) != ProbeResult.Offline) return null;
                 if (!started && sw.Elapsed.TotalSeconds >= 5) { started = true; StartServer(exe); }
-                report("Ollama 를 켜는 중...", -1, true);
+                report(Loc.T("Ollama 를 켜는 중..."), -1, true);
                 Thread.Sleep(800);
             }
-            return "Ollama 를 켜지 못했어요. 시작 메뉴에서 Ollama 를 직접 실행한 뒤 다시 눌러 주세요.";
+            return Loc.T("Ollama 를 켜지 못했어요. 시작 메뉴에서 Ollama 를 직접 실행한 뒤 다시 눌러 주세요.");
         }
 
         // ───────── 모델 받기 ─────────
@@ -229,7 +227,7 @@ namespace SuperHeroes
                         if (h.Cancelled) return Cancelled;
                         if (line.Length == 0) continue;
                         object j = Json.Parse(line);
-                        string err = Json.Str(j, "error"); if (err != null) return "모델을 받지 못했어요. (" + err + ")";
+                        string err = Json.Str(j, "error"); if (err != null) return Loc.TF("모델을 받지 못했어요. ({0})", err);
                         string status = Json.Str(j, "status") ?? "", digest = Json.Str(j, "digest");
                         if (status == "success") { success = true; continue; }
                         if (digest != null && Json.Get(j, "total") is double)
@@ -239,16 +237,16 @@ namespace SuperHeroes
                             double t = 0, d = 0; foreach (double v in totals.Values) t += v; foreach (double v in dones.Values) d += v;
                             int pct = t > 0 ? (int)Math.Min(100, d * 100 / t) : -1;
                             if (pct >= 0) { pct = Math.Max(pct, shown); shown = pct; }
-                            report("AI 모델 '" + o.Model + "' 받는 중... " + pct + "%  (" + FmtBytes((long)d) + " / " + FmtBytes((long)t) + ")", pct, true);
+                            report(Loc.TF("AI 모델 '{0}' 받는 중... {1}%  ({2} / {3})", o.Model, pct, FmtBytes((long)d), FmtBytes((long)t)), pct, true);
                         }
-                        else if (status.StartsWith("pulling manifest")) report("모델 정보를 확인하는 중...", -1, true);
-                        else if (status.StartsWith("verifying")) report("내려받은 모델을 확인하는 중...", -1, true);
-                        else if (status.StartsWith("writing")) report("모델을 저장하는 중...", -1, true);
+                        else if (status.StartsWith("pulling manifest")) report(Loc.T("모델 정보를 확인하는 중..."), -1, true);
+                        else if (status.StartsWith("verifying")) report(Loc.T("내려받은 모델을 확인하는 중..."), -1, true);
+                        else if (status.StartsWith("writing")) report(Loc.T("모델을 저장하는 중..."), -1, true);
                     }
                 }
-                return success ? null : "모델 받기가 중간에 끝났어요. 다시 누르면 이어서 받아요.";
+                return success ? null : Loc.T("모델 받기가 중간에 끝났어요. 다시 누르면 이어서 받아요.");
             }
-            catch (Exception e) { return h.Cancelled ? Cancelled : "모델을 받는 중에 연결이 끊겼어요. 다시 누르면 이어서 받아요.\n(" + e.Message + ")"; }
+            catch (Exception e) { return h.Cancelled ? Cancelled : Loc.TF("모델을 받는 중에 연결이 끊겼어요. 다시 누르면 이어서 받아요.\n({0})", e.Message); }
         }
 
         private static long FreeBytes(string path)

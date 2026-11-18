@@ -121,6 +121,10 @@ namespace SuperHeroes
 
         internal static int Count { get { return Infos.Length; } }
         internal static float Scale = 1f;
+        /// <summary>화면 DPI 배율(설정의 캐릭터 크기를 곱하기 전). 알림 · 트레이 아이콘 · 입력칸처럼 크기 설정과 상관없는 것에 쓴다.</summary>
+        internal static float DpiScale = 1f;
+        /// <summary>설정의 캐릭터 크기 비율(1 = 100%).</summary>
+        internal static float SizeFactor { get { return DpiScale > 0 ? Scale / DpiScale : 1f; } }
         internal const float BaseHeight = 108f;
 
         private static readonly Dictionary<int, CharacterArt> cache = new Dictionary<int, CharacterArt>();
@@ -131,7 +135,7 @@ namespace SuperHeroes
             if (!cache.TryGetValue(id, out a)) cache[id] = a = new CharacterArt(id);
             return a;
         }
-        internal static void Reset(float scale) { Scale = scale; cache.Clear(); }
+        internal static void Reset(float scale, float size = 1f) { DpiScale = scale; Scale = scale * size; cache.Clear(); }
 
         public readonly int Id;
         public readonly CharInfo Info;
@@ -197,7 +201,7 @@ namespace SuperHeroes
         {
             try
             {
-                int n = Math.Max(16, (int)Math.Round(16 * Scale));
+                int n = Math.Max(16, (int)Math.Round(16 * DpiScale));
                 using (Bitmap bmp = IconBitmap(id, n))
                 {
                     IntPtr hicon = bmp.GetHicon();

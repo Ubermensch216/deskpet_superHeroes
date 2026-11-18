@@ -46,11 +46,11 @@ namespace SuperHeroes
 
         internal FriendPanel(App app)
         {
-            FriendUI.Setup(this, app.TrayIconImage); Text = "수퍼히어로 · 오늘의 작은 도우미"; ClientSize = new Size(550, 540);
+            FriendUI.Setup(this, app.TrayIconImage); Text = Loc.T("수퍼히어로 · 오늘의 작은 도우미"); ClientSize = new Size(550, 540);
             MinimizeBox = true; ShowInTaskbar = true;
             var tabs = new TabControl { Name = "friendTabs", Dock = DockStyle.Fill, Padding = new Point(12, 7) }; Controls.Add(tabs);
 
-            var todo = new TabPage("할 일") { BackColor = BackColor, Padding = new Padding(12) }; tabs.TabPages.Add(todo);
+            var todo = new TabPage(Loc.T("할 일")) { BackColor = BackColor, Padding = new Padding(12) }; tabs.TabPages.Add(todo);
             var layout = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 3 };
             layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); layout.RowStyles.Add(new RowStyle(SizeType.AutoSize)); todo.Controls.Add(layout);
             taskHeader = FriendUI.Label(""); layout.Controls.Add(taskHeader, 0, 0);
@@ -58,8 +58,8 @@ namespace SuperHeroes
             layout.Controls.Add(tasks, 0, 1);
             var entryRow = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, WrapContents = false };
             var entry = new TextBox { Width = 230, Margin = new Padding(3, 9, 3, 3), MaxLength = 200 };
-            entryRow.Controls.Add(entry); entryRow.Controls.Add(FriendUI.Button("추가", delegate { AddTask(entry); }));
-            entryRow.Controls.Add(FriendUI.Button("삭제", delegate { int i = tasks.SelectedIndex; if (i >= 0) { FriendData.Current.Todos.RemoveAt(i); RefreshTasks(); SaveOrWarn(); } }));
+            entryRow.Controls.Add(entry); entryRow.Controls.Add(FriendUI.Button(Loc.T("추가"), delegate { AddTask(entry); }));
+            entryRow.Controls.Add(FriendUI.Button(Loc.T("삭제"), delegate { int i = tasks.SelectedIndex; if (i >= 0) { FriendData.Current.Todos.RemoveAt(i); RefreshTasks(); SaveOrWarn(); } }));
             entry.KeyDown += delegate (object sender, KeyEventArgs e) { if (e.KeyCode == Keys.Enter) { AddTask(entry); e.SuppressKeyPress = true; } };
             layout.Controls.Add(entryRow, 0, 2);
             RefreshTasks();
@@ -67,28 +67,28 @@ namespace SuperHeroes
             {
                 if (populating || e.Index >= FriendData.Current.Todos.Count) return;
                 FriendData.Current.Todos[e.Index].Done = e.NewValue == CheckState.Checked;
-                if (e.NewValue == CheckState.Checked) { FriendData.Current.Like(2); app.Announce("하나 끝냈다! 수고했어"); }
+                if (e.NewValue == CheckState.Checked) { FriendData.Current.Like(2); app.Announce(Loc.T("하나 끝냈다! 수고했어")); }
                 SaveOrWarn(); tasks.Invalidate(); UpdateTaskSummary();
             };
 
-            var memo = new TabPage("메모") { BackColor = BackColor, Padding = new Padding(12) }; tabs.TabPages.Add(memo);
+            var memo = new TabPage(Loc.T("메모")) { BackColor = BackColor, Padding = new Padding(12) }; tabs.TabPages.Add(memo);
             notes = new TextBox { Name = "memoText", Dock = DockStyle.Fill, Multiline = true, AcceptsReturn = true, ScrollBars = ScrollBars.Vertical, Text = FriendData.Current.Notes, MaxLength = 100000 };
             memo.Controls.Add(notes); notes.TextChanged += delegate { FriendData.Current.Notes = notes.Text; notesDirty = true; notesChanged = DateTime.UtcNow; };
 
-            var time = new TabPage("타이머") { BackColor = BackColor, Padding = new Padding(15) }; tabs.TabPages.Add(time);
+            var time = new TabPage(Loc.T("타이머")) { BackColor = BackColor, Padding = new Padding(15) }; tabs.TabPages.Add(time);
             var clock = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false }; time.Controls.Add(clock);
-            clock.Controls.Add(FriendUI.Label("집중 시간이나 잠깐 쉬는 시간을 정해줘."));
+            clock.Controls.Add(FriendUI.Label(Loc.T("집중 시간이나 잠깐 쉬는 시간을 정해줘.")));
             var duration = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
             var minutes = new NumericUpDown { Name = "timerMinutes", Minimum = 1, Maximum = 240, Value = 25, Width = 80, Margin = new Padding(4) };
-            duration.Controls.Add(minutes); duration.Controls.Add(FriendUI.Label("분 뒤에 알려주기")); clock.Controls.Add(duration);
-            var message = new TextBox { Name = "timerMessage", Width = 400, Text = FriendData.Current.TimerText, MaxLength = 200, Margin = new Padding(4, 8, 4, 8) }; clock.Controls.Add(message);
+            duration.Controls.Add(minutes); duration.Controls.Add(FriendUI.Label(Loc.T("분 뒤에 알려주기"))); clock.Controls.Add(duration);
+            var message = new TextBox { Name = "timerMessage", Width = 400, Text = Loc.Retarget(FriendData.Current.TimerText, "잠깐 쉬어가자!"), MaxLength = 200, Margin = new Padding(4, 8, 4, 8) }; clock.Controls.Add(message);
             var actions = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
-            var startTimer = FriendUI.Button("시작", delegate
+            var startTimer = FriendUI.Button(Loc.T("시작"), delegate
             { FriendData.Current.TimerText = message.Text; FriendData.Current.TimerUtc = DateTime.UtcNow.AddMinutes((double)minutes.Value); SaveOrWarn(); UpdateTimer(); });
             startTimer.Name = "startTimer"; actions.Controls.Add(startTimer);
-            actions.Controls.Add(FriendUI.Button("타이머 취소", delegate { FriendData.Current.TimerUtc = DateTime.MinValue; SaveOrWarn(); UpdateTimer(); })); clock.Controls.Add(actions);
+            actions.Controls.Add(FriendUI.Button(Loc.T("타이머 취소"), delegate { FriendData.Current.TimerUtc = DateTime.MinValue; SaveOrWarn(); UpdateTimer(); })); clock.Controls.Add(actions);
             remaining = FriendUI.Label(""); remaining.Font = new Font(Font.FontFamily, 20, FontStyle.Bold); clock.Controls.Add(remaining);
-            clock.Controls.Add(FriendUI.Label("시간이 되면 직접 닫는 알림창이 떠요.\n도우미 창을 닫아도 타이머는 계속 돌아가요."));
+            clock.Controls.Add(FriendUI.Label(Loc.T("시간이 되면 직접 닫는 알림창이 떠요.\n도우미 창을 닫아도 타이머는 계속 돌아가요.")));
 
             StyleTabs(tabs); ApplyOptions();
             timer = new System.Windows.Forms.Timer { Interval = 500 };
@@ -109,16 +109,16 @@ namespace SuperHeroes
         {
             if (taskHeader == null) return;
             int done = FriendData.Current.Todos.Count(t => t.Done);
-            taskHeader.Text = "하나씩 끝내자!   진행 " + (FriendData.Current.Todos.Count - done) + "  ·  완료 " + done;
+            taskHeader.Text = Loc.TF("하나씩 끝내자!   진행 {0}  ·  완료 {1}", FriendData.Current.Todos.Count - done, done);
         }
         private void UpdateTimer()
         {
             var d = FriendData.Current.TimerUtc;
-            if (d == DateTime.MinValue) remaining.Text = "타이머 대기 중";
-            else { int s = Math.Max(0, (int)Math.Ceiling((d - DateTime.UtcNow).TotalSeconds)); remaining.Text = string.Format("{0:00}:{1:00} 남았어", s / 60, s % 60); }
+            if (d == DateTime.MinValue) remaining.Text = Loc.T("타이머 대기 중");
+            else { int s = Math.Max(0, (int)Math.Ceiling((d - DateTime.UtcNow).TotalSeconds)); remaining.Text = Loc.TF("{0:00}:{1:00} 남았어", s / 60, s % 60); }
         }
         private void SaveOrWarn()
-        { if (!FriendData.Current.Save()) MessageBox.Show(this, "파일에 저장하지 못했어. 저장 위치의 쓰기 권한을 확인해 줘.", "수퍼히어로"); }
+        { if (!FriendData.Current.Save()) MessageBox.Show(this, Loc.T("파일에 저장하지 못했어. 저장 위치의 쓰기 권한을 확인해 줘."), Loc.T("수퍼히어로")); }
 
         // ───── 도우미 창 설정은 통합 설정창(화면 · 시스템)으로 옮겼다 ─────
         private void StyleTabs(TabControl tabs)

@@ -16,19 +16,19 @@ namespace SuperHeroes
         internal AlarmComposer(Icon icon, Func<UserAlarm, bool> create)
         {
             this.create = create; FriendUI.Setup(this, icon);
-            Text = "수퍼히어로 · 알람 만들기"; ClientSize = new Size(380, 222); ShowInTaskbar = false; TopMost = true;
-            Controls.Add(new Label { Text = "몇 시에 알려 줄까?", AutoSize = true, Left = 14, Top = 14, ForeColor = FriendUI.Ink });
+            Text = Loc.T("수퍼히어로 · 알람 만들기"); ClientSize = new Size(380, 222); ShowInTaskbar = false; TopMost = true;
+            Controls.Add(new Label { Text = Loc.T("몇 시에 알려 줄까?"), AutoSize = true, Left = 14, Top = 14, ForeColor = FriendUI.Ink });
             DateTime first = DateTime.Now.AddMinutes(30);
             time = new DateTimePicker { Left = 14, Top = 38, Width = 84, Format = DateTimePickerFormat.Custom, CustomFormat = "HH:mm", ShowUpDown = true, Value = DateTime.Today.AddHours(first.Hour).AddMinutes(first.Minute / 5 * 5) };
-            repeat = new CheckBox { Text = "매일 반복", Left = 116, Top = 40, AutoSize = true, ForeColor = FriendUI.Ink };
+            repeat = new CheckBox { Text = Loc.T("매일 반복"), Left = 116, Top = 40, AutoSize = true, ForeColor = FriendUI.Ink };
             Controls.Add(time); Controls.Add(repeat);
-            Controls.Add(new Label { Text = "알람 내용", AutoSize = true, Left = 14, Top = 78, ForeColor = FriendUI.Ink });
-            msg = new TextBox { Left = 14, Top = 100, Width = 352, MaxLength = 60, Text = "알람 시간이야!" };
+            Controls.Add(new Label { Text = Loc.T("알람 내용"), AutoSize = true, Left = 14, Top = 78, ForeColor = FriendUI.Ink });
+            msg = new TextBox { Left = 14, Top = 100, Width = 352, MaxLength = 60, Text = Loc.T("알람 시간이야!") };
             Controls.Add(msg);
             summary = new Label { Left = 14, Top = 134, Width = 352, Height = 40, ForeColor = Color.DimGray };
             Controls.Add(summary);
-            var ok = new Button { Text = "만들기", Left = 200, Top = 182, Width = 80, Height = 28 };
-            var cancel = new Button { Text = "취소", Left = 288, Top = 182, Width = 76, Height = 28, DialogResult = DialogResult.Cancel };
+            var ok = new Button { Text = Loc.T("만들기"), Left = 200, Top = 182, Width = 80, Height = 28 };
+            var cancel = new Button { Text = Loc.T("취소"), Left = 288, Top = 182, Width = 76, Height = 28, DialogResult = DialogResult.Cancel };
             Controls.Add(ok); Controls.Add(cancel); AcceptButton = ok; CancelButton = cancel;
             EventHandler update = delegate { UpdateSummary(); };
             time.ValueChanged += update; repeat.CheckedChanged += update;
@@ -48,8 +48,8 @@ namespace SuperHeroes
         {
             DateTime now = DateTime.Now, next = now.Date + time.Value.TimeOfDay;
             bool tomorrow = next.AddSeconds(60) <= now;   // 이미 지난 시각이면 다음 날
-            summary.Text = (repeat.Checked ? "매일 " + TimeText + "에 알려 줘요." : (tomorrow ? "내일 " : "오늘 ") + TimeText + "에 한 번만 알려 주고 꺼져요.")
-                + (repeat.Checked && tomorrow ? "\n오늘은 이미 지난 시각이라 내일부터 울려요." : "");
+            summary.Text = (repeat.Checked ? Loc.TF("매일 {0}에 알려 줘요.", TimeText) : (tomorrow ? Loc.TF("내일 {0}에 한 번만 알려 주고 꺼져요.", TimeText) : Loc.TF("오늘 {0}에 한 번만 알려 주고 꺼져요.", TimeText)))
+                + (repeat.Checked && tomorrow ? "\n" + Loc.T("오늘은 이미 지난 시각이라 내일부터 울려요.") : "");
         }
     }
 }

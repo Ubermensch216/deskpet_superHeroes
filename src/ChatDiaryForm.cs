@@ -17,15 +17,15 @@ namespace SuperHeroes
         internal ChatDiaryForm(Icon icon)
         {
             FriendUI.Setup(this, icon);
-            Text = "수퍼히어로 일기장"; ClientSize = new Size(480, 420); MinimumSize = new Size(380, 300); FormBorderStyle = FormBorderStyle.Sizable; MaximizeBox = true;
+            Text = Loc.T("수퍼히어로 일기장"); ClientSize = new Size(480, 420); MinimumSize = new Size(380, 300); FormBorderStyle = FormBorderStyle.Sizable; MaximizeBox = true;
             var bar = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 46, FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(8, 8, 8, 4) };
-            bar.Controls.Add(FriendUI.Button("닫기", delegate { Close(); }));
-            bar.Controls.Add(FriendUI.Button("일기 모두 지우기", delegate
+            bar.Controls.Add(FriendUI.Button(Loc.T("닫기"), delegate { Close(); }));
+            bar.Controls.Add(FriendUI.Button(Loc.T("일기 모두 지우기"), delegate
             {
-                if (MessageBox.Show(this, "일기를 모두 지울까요?", "수퍼히어로", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes) { ChatDiary.Clear(); Fill(); }
+                if (MessageBox.Show(this, Loc.T("일기를 모두 지울까요?"), Loc.T("수퍼히어로"), MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes) { ChatDiary.Clear(); Fill(); }
             }));
-            bar.Controls.Add(FriendUI.Button("선택한 일기 지우기", delegate { DeleteSelected(); }));
-            var note = new Label { Dock = DockStyle.Top, Height = 44, ForeColor = Color.DimGray, Padding = new Padding(8, 6, 8, 0), Text = "대화가 끝나면 오늘 있었던 일을 한 줄씩 적어 둬요. 이 PC 안(수퍼히어로_일기.txt)에만 저장되고, 언제든 지울 수 있어요." };
+            bar.Controls.Add(FriendUI.Button(Loc.T("선택한 일기 지우기"), delegate { DeleteSelected(); }));
+            var note = new Label { Dock = DockStyle.Top, Height = 44, ForeColor = Color.DimGray, Padding = new Padding(8, 6, 8, 0), Text = Loc.T("대화가 끝나면 오늘 있었던 일을 한 줄씩 적어 둬요. 이 PC 안(수퍼히어로_일기.txt)에만 저장되고, 언제든 지울 수 있어요.") };
             Controls.Add(list); Controls.Add(empty); Controls.Add(note); Controls.Add(bar);
             list.BringToFront();
             list.MeasureItem += OnMeasure; list.DrawItem += OnDraw;
@@ -42,7 +42,7 @@ namespace SuperHeroes
             list.Items.Clear();
             var all = ChatDiary.Entries;
             for (int i = all.Count - 1; i >= 0; i--) list.Items.Add(new Row { Index = i, Entry = all[i] });
-            empty.Text = all.Count == 0 ? "아직 쓴 일기가 없어요. 캐릭터들과 이야기를 나누면 한 줄씩 적어 둬요." : "";
+            empty.Text = all.Count == 0 ? Loc.T("아직 쓴 일기가 없어요. 캐릭터들과 이야기를 나누면 한 줄씩 적어 둬요.") : "";
             empty.Visible = all.Count == 0;
         }
 
@@ -63,8 +63,7 @@ namespace SuperHeroes
 
         private static string DateLabel(DateTime d)
         {
-            string[] day = { "일", "월", "화", "수", "목", "금", "토" };
-            return d.ToString("yyyy년 M월 d일", CultureInfo.InvariantCulture) + " (" + day[(int)d.DayOfWeek] + ")  " + d.ToString("HH:mm", CultureInfo.InvariantCulture);
+            return d.ToString(Loc.T("yyyy년 M월 d일"), Loc.Culture) + " (" + d.ToString("ddd", Loc.Culture) + ")  " + d.ToString("HH:mm", CultureInfo.InvariantCulture);
         }
 
         private int TextWidth() { return Math.Max(80, list.ClientSize.Width - 28); }

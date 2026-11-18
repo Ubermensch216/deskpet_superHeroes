@@ -138,6 +138,50 @@ namespace SuperHeroes
             var w = Show(note); w.FocusEditor(); return note;
         }
 
+        /// <summary>외부 연동 API 에서 본문과 함께 메모를 만든다. 기본은 포커스를 뺏지 않고 바탕화면에만 띄운다.</summary>
+        internal Note CreateNoteFromApi(string content, NoteSizePreset? preset = null, string colorKey = null, bool open = true, bool focus = false, bool? pinned = null)
+        {
+            var p = preset ?? DefaultSize;
+            var geometry = NotePlacement.PlaceNew(p, NotePlacement.Primary(), cascade++, NotePlacement.CurrentMonitors());
+            var note = store.Create(geometry, colorKey ?? DefaultColor, content ?? "", open);
+            if (pinned.HasValue) { store.SetAppearance(note.Id, note.ColorKey, note.Opacity, pinned.Value); store.FlushDirty(); }
+            if (open)
+            {
+                var w = Show(note);
+                if (focus) w.FocusEditor();
+            }
+            return note;
+        }
+
+        internal void SetOpenFromApi(Guid id, bool open, bool focus = false)
+        {
+            var note = store.Get(id); if (note == null) return;
+            if (open)
+            {
+                store.SetOpen(id, true); store.FlushDirty();
+                var w = Show(note);
+                if (focus) w.FocusEditor();
+            }
+            else
+            {
+                NoteWindow w;
+                if (windows.TryGetValue(id, out w)) w.Close();
+                else { store.SetOpen(id, false); store.FlushDirty(); }
+            }
+        }
+
+        internal void SetAppearanceFromApi(Guid id, string color, double? opacity, bool? pinned)
+        {
+            var note = store.Get(id); if (note == null) return;
+            NoteWindow w;
+            if (windows.TryGetValue(id, out w)) { w.SetAppearanceFromApi(color, opacity, pinned); store.FlushDirty(); }
+            else
+            {
+                store.SetAppearance(id, string.IsNullOrEmpty(color) ? note.ColorKey : color, opacity ?? note.Opacity, pinned ?? note.AlwaysOnTop);
+                store.FlushDirty();
+            }
+        }
+
         /// <summary>떠 있으면 앞으로, 닫혀 있으면 다시 연다.</summary>
         internal void Focus(Guid id)
         {
@@ -218,7 +262,7 @@ namespace SuperHeroes
 
         internal void PickImage(NoteWindow w)
         {
-            using (var dlg = new OpenFileDialog { Title = "이미지 넣기", Filter = "이미지|*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.webp;*.tif;*.tiff|모든 파일|*.*", Multiselect = true })
+            using (var dlg = new OpenFileDialog { Title = Loc.T("이미지 넣기"), Filter = Loc.T("이미지|*.png;*.jpg;*.jpeg;*.gif;*.bmp;*.webp;*.tif;*.tiff|모든 파일|*.*"), Multiselect = true })
                 if (dlg.ShowDialog(w) == DialogResult.OK) Attach(w, dlg.FileNames);
         }
 
@@ -230,13 +274,13 @@ namespace SuperHeroes
         internal void AddReminder(Guid noteId, TimeSpan offset)
         {
             DateTime due = offset == TimeSpan.Zero ? DateTime.Now.Date.AddDays(1).AddHours(9) : DateTime.Now.Add(offset);
-            store.AddReminder(noteId, due); app.Announce("알림을 맞췄어: " + NoteWindow.ReminderLabel(due));
+            store.AddReminder(noteId, due); app.Announce(Loc.TF("알림을 맞췄어: {0}", NoteWindow.ReminderLabel(due)));
         }
 
         /// <summary>이미 지난 시각도 버리거나 옮기지 않고 저장한다 — 바로 울리는 알림이 사용자의 날짜를 몰래 바꾸는 것보다 낫다.</summary>
         internal void AddReminderAt(Guid noteId, DateTime dueLocal, string rule)
         {
-            store.AddReminder(noteId, dueLocal, rule); app.Announce("알림을 맞췄어: " + NoteWindow.ReminderLabel(dueLocal));
+            store.AddReminder(noteId, dueLocal, rule); app.Announce(Loc.TF("알림을 맞췄어: {0}", NoteWindow.ReminderLabel(dueLocal)));
         }
 
         internal void ShowReminderComposer(Guid noteId, Form near)
@@ -265,7 +309,7 @@ namespace SuperHeroes
         /// <summary>알림이 울리면 화면 가운데의 큰 알림이 내용을 말하고, 그 메모를 바탕화면에 연다.</summary>
         private void ShowReminder(Note note)
         {
-            string title = note.Title.Length > 0 ? note.Title : "메모 알림";
+            string title = note.Title.Length > 0 ? note.Title : Loc.T("메모 알림");
             string flat = note.Content.Replace('\n', ' ').Trim();
             int at = note.Title.Length > 0 ? flat.IndexOf(note.Title, StringComparison.Ordinal) : -1;
             if (at >= 0 && at <= 4) flat = flat.Substring(at + note.Title.Length).Trim();   // 첫 줄이 곧 제목이라 말풍선에 두 번 나오지 않게

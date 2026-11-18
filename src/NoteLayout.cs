@@ -19,8 +19,8 @@ namespace SuperHeroes
         {
             switch (key)
             {
-                case Amber: return "호박"; case Green: return "초록"; case Teal: return "청록"; case Blue: return "파랑";
-                case Purple: return "보라"; case Pink: return "분홍"; case Gray: return "회색"; default: return "노랑";
+                case Amber: return Loc.T("호박"); case Green: return Loc.T("초록"); case Teal: return Loc.T("청록"); case Blue: return Loc.T("파랑");
+                case Purple: return Loc.T("보라"); case Pink: return Loc.T("분홍"); case Gray: return Loc.T("회색"); default: return Loc.T("노랑");
             }
         }
 

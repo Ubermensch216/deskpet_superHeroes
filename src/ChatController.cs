@@ -66,12 +66,12 @@ namespace SuperHeroes
         {
             var o = ChatOptions.Current; double now = app.Now;
             if (p == null) return;
-            if (!o.Enabled) { Say(p, "AI 대화가 꺼져 있어. 설정 → AI 대화에서 켤 수 있어!"); return; }
+            if (!o.Enabled) { Say(p, Loc.T("AI 대화가 꺼져 있어. 설정 → AI 대화에서 켤 수 있어!")); return; }
             if (pet == p && input != null) { input.Focus(); return; }
             if (pet != null && pet != p) End();
             if (pet == null)
             {
-                if (!p.CanChat) { Say(p, "잠깐, 땅에 내려가서 얘기하자!"); return; }
+                if (!p.CanChat) { Say(p, Loc.T("잠깐, 땅에 내려가서 얘기하자!")); return; }
                 if (!p.BeginChat(app, p.ChatSide)) return;
                 pet = p; streaming = false; chipsWanted = true;
                 ChatMood mood; string hello = ChatPersona.Greeting(rng, DateTime.Now, p.Art.Id, out mood);
@@ -100,7 +100,7 @@ namespace SuperHeroes
         /// <summary>입력칸은 캐릭터 발치 옆(공간이 있는 쪽)에 둔다. 캐릭터도 그쪽을 바라본다.</summary>
         private Point InputPosition()
         {
-            float s = CharacterArt.Scale; Rectangle a = pet.Area; int pw = input.PillWidth;
+            float s = CharacterArt.DpiScale; Rectangle a = pet.Area; int pw = input.PillWidth;
             double half = pet.Art.W * .5, gap = 6 * s;
             bool rightOk = pet.X + half + gap + pw <= a.Right - 2, leftOk = pet.X - half - gap - pw >= a.Left + 2;
             int side = pet.ChatSide;
@@ -117,9 +117,10 @@ namespace SuperHeroes
             if (request != null) request.Abort();
             streaming = false; chipsWanted = false; gen++;
             Pet p = pet; pet = null;
+            int charId = p != null ? p.Art.Id : 0;
             if (p != null) { p.OnChatChar = null; p.EndChat(app); }
             if (input != null) { var i = input; input = null; i.Dispose(); }
-            Digest(p != null ? p.Art.Id : 0);
+            Digest(charId);
         }
 
         // ───────── 말 보내기·받기 ─────────
@@ -128,11 +129,57 @@ namespace SuperHeroes
             if (pet == null) return;
             lastActivity = app.Now;
             if (request != null) request.Abort();
-            input.ClearChips(); chipsWanted = false;
-            input.Echo(text);
+            if (input != null) { input.ClearChips(); input.Echo(text); }
+            chipsWanted = false;
             history.Add(new ChatMessage("user", text));
             pet.ChatThink();
             StartStream(ChatPersona.Build(history, DateTime.Now, pet.Art.Id), false);
+        }
+
+        /// <summary>외부 API 에서 대화창(알약 입력칸)을 열고 바로 말을 보낼 때.</summary>
+        internal bool SendFromUiApi(string text, Pet target = null, bool openInput = true)
+        {
+            Pet p = target ?? pet ?? app.LiveWindows.Select(w => w.Pet).FirstOrDefault(x => !x.Hidden && x.CanChat)
+                ?? app.LiveWindows.Select(w => w.Pet).FirstOrDefault();
+            if (p == null) return false;
+            if (openInput)
+            {
+                Begin(p);
+                if (pet == null) return false;
+                if (!string.IsNullOrWhiteSpace(text)) Send(text.Trim());
+                return true;
+            }
+            if (pet != null && pet != p) End();
+            if (pet == null)
+            {
+                if (!p.CanChat || !p.BeginChat(app, p.ChatSide)) return false;
+                pet = p;
+                p.OnChatChar = ch => ChatSound.Char(ch, pet != null ? pet.Mood : ChatMood.Neutral);
+            }
+            if (!string.IsNullOrWhiteSpace(text)) Send(text.Trim());
+            return true;
+        }
+
+        /// <summary>외부 API 가 직접 응답을 기다릴 때: 현재 기억·대화 맥락이 반영된 프롬프트 목록을 만든다.</summary>
+        internal List<ChatMessage> BuildPromptForApi(string userText, int charId = 0)
+        {
+            var temp = new List<ChatMessage>(history);
+            temp.Add(new ChatMessage("user", userText));
+            return ChatPersona.Build(temp, DateTime.Now, charId);
+        }
+
+        /// <summary>외부 API 대화가 끝났을 때 대화 기록에 남기고, 화면 표시가 켜져 있으면 말풍선으로 말하게 한다.</summary>
+        internal void RecordApiTurn(string userText, ChatMood mood, string replyText, bool showOnScreen, Pet target = null)
+        {
+            history.Add(new ChatMessage("user", userText));
+            history.Add(new ChatMessage("assistant", "[" + ChatPersona.TagOf(mood) + "] " + replyText));
+            while (history.Count > 40) { history.RemoveAt(0); extractedUpTo = Math.Max(0, extractedUpTo - 1); }
+            if (!showOnScreen) return;
+            Pet p = target ?? pet ?? app.LiveWindows.Select(w => w.Pet).FirstOrDefault(x => !x.Hidden && x.CanChat)
+                ?? app.LiveWindows.Select(w => w.Pet).FirstOrDefault(x => !x.Hidden);
+            if (p == null) return;
+            p.Bubble = replyText;
+            p.BubbleUntil = app.Now + Math.Max(5.0, Math.Min(12.0, 3.0 + replyText.Length * 0.12));
         }
 
         private void StartStream(List<ChatMessage> msgs, bool proactive)
@@ -141,8 +188,9 @@ namespace SuperHeroes
             var mode = ChatMode.Current; parser = new ReplyParser(mode.MaxSentences, mode.MaxChars); var req = request = new ChatRequest(); streaming = true;
             var worker = new Thread(delegate ()
             {
-                if (proactive && OllamaClient.Probe(opts) != ProbeResult.Ok) { inbox.Enqueue(new Evt { Gen = g, Kind = Kind.Silent }); return; }
-                string err = OllamaClient.Stream(opts, msgs, tok => inbox.Enqueue(new Evt { Gen = g, Kind = Kind.Token, Text = tok }), req, mode.NumPredict, mode.Temperature);
+                // EXAONE 은 초당 호출 수 제한이 있어 확인 요청 바로 뒤 본 요청이 429 로 밀린다(재시도 1.2초). 실패해도 Silent 로 조용히 끝나니 확인은 Ollama 에서만 한다.
+                if (proactive && !opts.IsExaone && LlmClient.Probe(opts) != ProbeResult.Ok) { inbox.Enqueue(new Evt { Gen = g, Kind = Kind.Silent }); return; }
+                string err = LlmClient.Stream(opts, msgs, tok => inbox.Enqueue(new Evt { Gen = g, Kind = Kind.Token, Text = tok }), req, mode.NumPredict, mode.Temperature);
                 if (err == null) inbox.Enqueue(new Evt { Gen = g, Kind = Kind.Done });
                 else if (err != "cancelled") inbox.Enqueue(new Evt { Gen = g, Kind = proactive ? Kind.Silent : Kind.Error, Text = err });
             }) { IsBackground = true };
@@ -155,9 +203,9 @@ namespace SuperHeroes
             bool warm = now - lastWarm > 25 * 60; if (warm) lastWarm = now;
             new Thread(delegate ()
             {
-                ProbeResult r = OllamaClient.Probe(opts);
+                ProbeResult r = LlmClient.Probe(opts);
                 inbox.Enqueue(new Evt { Gen = g, Kind = Kind.Probe, Probe = r });
-                if (r == ProbeResult.Ok && warm) OllamaClient.Warmup(opts);
+                if (r == ProbeResult.Ok && warm) LlmClient.Warmup(opts);
             }) { IsBackground = true }.Start();
         }
 
@@ -200,8 +248,11 @@ namespace SuperHeroes
             switch (e.Kind)
             {
                 case Kind.Probe:
-                    if (e.Probe == ProbeResult.Offline) { pet.ChatSayInstant(ChatMood.Sleepy, "...zzz 아직 못 일어나겠어. Ollama가 꺼져 있나 봐!"); }
-                    else if (e.Probe == ProbeResult.ModelMissing) pet.ChatSayInstant(ChatMood.Think, "내가 쓸 모델(" + ChatOptions.Current.Model + ")이 안 보여. 설정에서 이름을 확인해 줘!");
+                    if (e.Probe == ProbeResult.Offline)
+                        pet.ChatSayInstant(ChatMood.Sleepy, ChatOptions.Current.IsExaone ? Loc.T("...zzz EXAONE 서버에 닿지 않아. 인터넷이 연결돼 있는지 봐 줄래?") : Loc.T("...zzz 아직 못 일어나겠어. Ollama가 꺼져 있나 봐!"));
+                    else if (e.Probe == ProbeResult.ModelMissing) pet.ChatSayInstant(ChatMood.Think, Loc.TF("내가 쓸 모델({0})이 안 보여. 설정에서 이름을 확인해 줘!", ChatOptions.Current.ActiveModel));
+                    else if (e.Probe == ProbeResult.NoKey) pet.ChatSayInstant(ChatMood.Think, Loc.T("EXAONE API 키가 없어. 설정 → AI 대화에 키를 넣어 줘!"));
+                    else if (e.Probe == ProbeResult.AuthFailed) pet.ChatSayInstant(ChatMood.Pout, Loc.T("EXAONE이 키가 틀렸대. 설정에서 API 키를 확인해 줘!"));
                     break;
                 case Kind.Token:
                     if (parser != null && parser.Feed(e.Text)) pet.ChatSay(parser.Mood, parser.Text, false);
@@ -210,7 +261,7 @@ namespace SuperHeroes
                 {
                     streaming = false; lastActivity = now; chipsWanted = true;
                     ChatMood mood = parser.Mood; string text = parser.Text;
-                    if (string.IsNullOrEmpty(text)) { mood = ChatMood.Think; text = "음... 뭐라고 해야 할지 모르겠어."; }
+                    if (string.IsNullOrEmpty(text)) { mood = ChatMood.Think; text = Loc.T("음... 뭐라고 해야 할지 모르겠어."); }
                     pet.ChatSay(mood, text, true);
                     history.Add(new ChatMessage("assistant", "[" + ChatPersona.TagOf(mood) + "] " + text));
                     while (history.Count > 40) { history.RemoveAt(0); extractedUpTo = Math.Max(0, extractedUpTo - 1); }
@@ -221,8 +272,10 @@ namespace SuperHeroes
                     if (history.Count > 0 && history[history.Count - 1].Role == "user") history.RemoveAt(history.Count - 1);
                     bool timeout = e.Text != null && (e.Text.Contains("초과") || e.Text.ToLowerInvariant().Contains("timeout"));
                     pet.ChatSayInstant(ChatMood.Sleepy, timeout
-                        ? "으음... 답변이 너무 늦어졌어. 모델을 불러오는 중일 수 있으니 잠시 뒤에 다시 말해 줄래?"
-                        : "으음... 잘 안 들렸어. Ollama가 켜져 있는지 확인해 줄래?");
+                        ? Loc.T("으음... 답변이 너무 늦어졌어. 모델을 불러오는 중일 수 있으니 잠시 뒤에 다시 말해 줄래?")
+                        : ChatOptions.Current.IsExaone
+                            ? (e.Text != null && e.Text.Contains("429") ? Loc.T("으음... 지금 너무 많이 물어봤대. 조금 있다가 다시 말해 줄래?") : Loc.T("으음... EXAONE 쪽에서 대답이 안 왔어. 인터넷이랑 API 키를 확인해 줄래?"))
+                            : Loc.T("으음... 잘 안 들렸어. Ollama가 켜져 있는지 확인해 줄래?"));
                     break;
                 case Kind.Silent:
                     streaming = false; End(); nextProactive = now + 600;
@@ -256,11 +309,11 @@ namespace SuperHeroes
         private string ProactiveReason()
         {
             DateTime n = DateTime.Now; bool weekday = n.DayOfWeek != DayOfWeek.Saturday && n.DayOfWeek != DayOfWeek.Sunday;
-            if (FriendData.Current.Satiety <= 30) return "네가 출출해서 밥이나 간식이 먹고 싶어";
-            if (n.Hour >= 23 || n.Hour < 5) return "사용자가 밤늦게까지 안 자고 있어";
-            if (n.Hour == 11 || n.Hour == 12) return "점심시간 무렵이야";
-            if (weekday && n.Hour >= 17 && n.Hour < 19) return "퇴근할 시간이 다가와";
-            string[] pool = { "심심해서 사용자에게 말을 건네고 싶어", "사용자에게 잠깐 쉬어 가자고 말하고 싶어", "사용자의 오늘 하루가 어땠는지 궁금해" };
+            if (FriendData.Current.Satiety <= 30) return Loc.T("네가 출출해서 밥이나 간식이 먹고 싶어");
+            if (n.Hour >= 23 || n.Hour < 5) return Loc.T("사용자가 밤늦게까지 안 자고 있어");
+            if (n.Hour == 11 || n.Hour == 12) return Loc.T("점심시간 무렵이야");
+            if (weekday && n.Hour >= 17 && n.Hour < 19) return Loc.T("퇴근할 시간이 다가와");
+            string[] pool = { Loc.T("심심해서 사용자에게 말을 건네고 싶어"), Loc.T("사용자에게 잠깐 쉬어 가자고 말하고 싶어"), Loc.T("사용자의 오늘 하루가 어땠는지 궁금해") };
             return pool[rng.Next(pool.Length)];
         }
 
@@ -269,25 +322,25 @@ namespace SuperHeroes
         {
             var o = ChatOptions.Current;
             var fresh = history.Skip(extractedUpTo).ToList(); extractedUpTo = history.Count;
-            if ((!o.Memory && !o.Diary) || fresh.Count(m => m.Role == "user" && !m.Content.StartsWith("(상황")) < 2) return;
+            if ((!o.Memory && !o.Diary) || fresh.Count(m => m.Role == "user" && !ChatPersona.IsSituation(m.Content)) < 2) return;
             string charName = ChatPersona.CharacterName(charId);
             var sb = new StringBuilder();
             foreach (var m in fresh)
             {
-                if (m.Role == "user" && m.Content.StartsWith("(상황")) continue;
-                sb.Append(m.Role == "user" ? "사용자: " : (charName + ": ")).Append(m.Content).Append('\n');
+                if (m.Role == "user" && ChatPersona.IsSituation(m.Content)) continue;
+                sb.Append(m.Role == "user" ? Loc.T("사용자: ") : (charName + ": ")).Append(m.Content).Append('\n');
             }
             string transcript = sb.ToString(); DateTime when = DateTime.Now;
             new Thread(delegate ()
             {
                 if (o.Memory)
                 {
-                    string reply = OllamaClient.Complete(o, ChatPersona.MemoryRequest(transcript), 120, .2);
+                    string reply = LlmClient.Complete(o, ChatPersona.MemoryRequest(transcript), 120, .2);
                     if (!string.IsNullOrWhiteSpace(reply)) inbox.Enqueue(new Evt { Kind = Kind.Facts, Facts = ChatPersona.ParseFacts(reply) });
                 }
                 if (o.Diary)
                 {
-                    string line = ChatPersona.ParseDiary(OllamaClient.Complete(o, ChatPersona.DiaryRequest(transcript, when, charId), 160, .7));
+                    string line = ChatPersona.ParseDiary(LlmClient.Complete(o, ChatPersona.DiaryRequest(transcript, when, charId), 160, .7));
                     if (line != null) inbox.Enqueue(new Evt { Kind = Kind.Diary, Text = line, When = when });
                 }
             }) { IsBackground = true }.Start();

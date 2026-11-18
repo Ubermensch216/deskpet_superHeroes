@@ -14,6 +14,12 @@ namespace SuperHeroes
         internal string Endpoint = "http://localhost:11434";
         internal string Model = "gemma4:e2b";
         internal string KeepAlive = "30m";
+        // 대화 상대: "ollama"(내 PC, 기본) 또는 "exaone"(LG AI연구원 EXAONE API — 대화가 인터넷으로 나간다)
+        internal string Provider = "ollama";
+        internal string ExaoneEndpoint = ExaoneClient.DefaultEndpoint;
+        internal string ExaoneModel = ExaoneClient.DefaultModel;
+        internal string ExaoneEffort = "low";   // 추론 강도 low·high·max (낮을수록 빨리 대답)
+        internal string ExaoneKey = "";         // 파일에는 DPAPI 로 암호화해 둔다(ExaoneKeyEnc)
         internal int Mode = 0;                // 대화 모드(ChatMode.All 의 번호): 친구·공감·설명·장난·간결
         internal bool Hotkey = true;          // 단축키로 말 걸기
         internal uint HotkeyMods = ChatHotkey.DefaultMods, HotkeyKey = ChatHotkey.DefaultKey;   // 기본 Ctrl+Alt+C
@@ -23,6 +29,20 @@ namespace SuperHeroes
         internal bool Diary = true;           // 대화가 끝나면 일기 한 줄 쓰기
         internal bool Proactive = false;      // 먼저 말 걸기
         internal int ProactiveMinutes = 40;   // 먼저 말 거는 평균 간격(분)
+
+        internal bool IsExaone { get { return Provider == "exaone"; } }
+        /// <summary>설정에 키가 없으면 환경 변수 EXAONE_API_KEY 를 쓴다.</summary>
+        internal string ExaoneKeyEffective
+        {
+            get
+            {
+                if (!string.IsNullOrEmpty(ExaoneKey)) return ExaoneKey.Trim();
+                try { return (Environment.GetEnvironmentVariable("EXAONE_API_KEY") ?? "").Trim(); } catch { return ""; }
+            }
+        }
+        /// <summary>말풍선 안내에 쓰는 대화 상대 이름.</summary>
+        internal string ServerName { get { return IsExaone ? "EXAONE" : "Ollama"; } }
+        internal string ActiveModel { get { return IsExaone ? ExaoneModel : Model; } }
 
         /// <summary>말 걸기 단축키 글(메뉴 표시용 "Ctrl+Alt+C").</summary>
         internal string HotkeyText { get { return ChatHotkey.Text(HotkeyMods, HotkeyKey, "+"); } }
@@ -47,6 +67,11 @@ namespace SuperHeroes
                 if (d.TryGetValue("Endpoint", out v) && v.Length > 0) o.Endpoint = v.TrimEnd('/');
                 if (d.TryGetValue("Model", out v) && v.Length > 0) o.Model = v;
                 if (d.TryGetValue("KeepAlive", out v) && v.Length > 0) o.KeepAlive = v;
+                if (d.TryGetValue("Provider", out v)) o.Provider = v.Trim().ToLowerInvariant() == "exaone" ? "exaone" : "ollama";
+                if (d.TryGetValue("ExaoneEndpoint", out v) && v.Length > 0) o.ExaoneEndpoint = v.TrimEnd('/');
+                if (d.TryGetValue("ExaoneModel", out v) && v.Length > 0) o.ExaoneModel = v;
+                if (d.TryGetValue("ExaoneEffort", out v) && Array.IndexOf(ExaoneClient.Efforts, v) >= 0) o.ExaoneEffort = v;
+                if (d.TryGetValue("ExaoneKeyEnc", out v)) o.ExaoneKey = SecretBox.Unprotect(v);
                 if (d.TryGetValue("ProactiveMinutes", out v) && int.TryParse(v, out n)) o.ProactiveMinutes = Math.Max(5, Math.Min(480, n));
             }
             catch { }
@@ -55,8 +80,10 @@ namespace SuperHeroes
         internal bool Save()
         {
             Func<bool, string> b = x => x ? "1" : "0";
-            var t = new StringBuilder("; 수퍼히어로 AI 대화 설정 (로컬 Ollama)\r\n");
+            var t = new StringBuilder("; 수퍼히어로 AI 대화 설정 (Provider=ollama 로컬 Ollama · exaone LG AI연구원 EXAONE API)\r\n");
             t.Append("Enabled=" + b(Enabled) + "\r\nEndpoint=" + Endpoint + "\r\nModel=" + Model + "\r\nKeepAlive=" + KeepAlive + "\r\n");
+            t.Append("Provider=" + Provider + "\r\nExaoneEndpoint=" + ExaoneEndpoint + "\r\nExaoneModel=" + ExaoneModel + "\r\nExaoneEffort=" + ExaoneEffort + "\r\n");
+            t.Append("; API 키는 이 Windows 계정에서만 풀리게 암호화돼 있어요. 비워 두면 환경 변수 EXAONE_API_KEY 를 써요.\r\nExaoneKeyEnc=" + SecretBox.Protect(ExaoneKey) + "\r\n");
             t.Append("Mode=" + Mode + "\r\nHotkey=" + b(Hotkey) + "\r\nHotkeyMods=" + HotkeyMods + "\r\nHotkeyKey=" + HotkeyKey + "\r\nSound=" + b(Sound) + "\r\nMemory=" + b(Memory) + "\r\nChips=" + b(Chips) + "\r\nDiary=" + b(Diary) + "\r\n");
             t.Append("Proactive=" + b(Proactive) + "\r\nProactiveMinutes=" + ProactiveMinutes + "\r\n");
             try { Directory.CreateDirectory(Paths.Dir); File.WriteAllText(FilePath, t.ToString(), new UTF8Encoding(true)); return true; }
@@ -99,7 +126,7 @@ namespace SuperHeroes
             foreach (string raw in newFacts)
             {
                 string f = (raw ?? "").Trim().TrimStart('-', '*', '·', ' ').Trim();
-                if (f.Length < 3 || f.Length > 80 || f == "없음") continue;
+                if (f.Length < 3 || f.Length > (Loc.IsEn ? 200 : 80) || f == "없음" || f.TrimEnd('.').Equals("none", StringComparison.OrdinalIgnoreCase)) continue;
                 if (Facts.Any(x => x == f || x.Contains(f) || f.Contains(x))) continue;
                 Facts.Add(f); added++;
             }

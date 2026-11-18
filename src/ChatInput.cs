@@ -23,7 +23,7 @@ namespace SuperHeroes
 
         internal static readonly Color Paper = Color.FromArgb(255, 252, 247), Ink = Color.FromArgb(30, 30, 30), Blue = Color.FromArgb(54, 96, 190);
 
-        private readonly float s = CharacterArt.Scale;
+        private readonly float s = CharacterArt.DpiScale;
         private readonly Frame frame;
         private readonly Editor edit;
         private readonly int pillW, pillH, margin, echoH, chipRow;
@@ -59,7 +59,7 @@ namespace SuperHeroes
 
         internal ChatInput()
         {
-            pillW = (int)Math.Round(272 * s); pillH = (int)Math.Round(38 * s); margin = (int)Math.Round(8 * s); echoH = (int)Math.Round(34 * s); chipRow = (int)Math.Round(34 * s);
+            pillW = (int)Math.Round(300 * s); pillH = (int)Math.Round(42 * s); margin = (int)Math.Round(8 * s); echoH = (int)Math.Round(36 * s); chipRow = (int)Math.Round(36 * s);
             frame = new Frame(); frame.Size = new Size(pillW + margin * 2, chipRow + echoH + pillH + margin * 2);
             edit = new Editor(s);
             edit.Box.TextChanged += delegate { if (edit.Box.TextLength > 0) chips = null; if (Typing != null) Typing(edit.Box.TextLength); Redraw(); };
@@ -189,20 +189,20 @@ namespace SuperHeroes
                 DrawStar(g, cx + 6 * s, cy - 6 * s, 2.6f * s, Color.FromArgb(255, 226, 70));
                 // 오른쪽: 엔터 안내(글자가 있을 때 진하게)
                 bool has = edit.Box.TextLength > 0;
-                using (var f = new Font("Malgun Gothic", 12f * s, FontStyle.Bold, GraphicsUnit.Pixel))
+                using (var f = new Font("Malgun Gothic", 14f * s, FontStyle.Bold, GraphicsUnit.Pixel))
                 using (var br = new SolidBrush(has ? Blue : Color.FromArgb(190, 190, 200)))
                 using (var fmt = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
                     g.DrawString("↵", f, br, new RectangleF(pill.Right - 34 * s, pill.Top, 28 * s, pill.Height), fmt);
                 // 보낸 말의 잔상
                 if (echoText != null && echoAlpha > 0)
                 {
-                    using (var f = new Font("Malgun Gothic", 11.5f * s, FontStyle.Regular, GraphicsUnit.Pixel))
+                    using (var f = new Font("Malgun Gothic", 13f * s, FontStyle.Regular, GraphicsUnit.Pixel))
                     using (var fmt = new StringFormat(StringFormat.GenericTypographic) { Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap | StringFormatFlags.NoClip })
                     {
                         float maxW = pillW - 40 * s;
                         SizeF sz = g.MeasureString(echoText, f, PointF.Empty, StringFormat.GenericTypographic);
-                        float w = Math.Min(maxW, sz.Width) + 22 * s, h = 24 * s;
-                        float lift = chips != null ? 32 * s : 0;              // 칩이 떠 있으면 그 위로 비켜 준다
+                        float w = Math.Min(maxW, sz.Width) + 22 * s, h = 26 * s;
+                        float lift = chips != null ? 34 * s : 0;              // 칩이 떠 있으면 그 위로 비켜 준다
                         var r = new RectangleF(pill.Right - w, pill.Top - h - 5 * s - lift - (1 - echoAlpha) * 6 * s, w, h);
                         int a = (int)(255 * echoAlpha);
                         using (var path = RoundPath(r, h / 2))
@@ -223,8 +223,8 @@ namespace SuperHeroes
         {
             if (chips == null) { chipRects = new RectangleF[0]; return; }
             var rects = new RectangleF[chips.Length];
-            float h = 26 * s, gap = 6 * s, x = pill.Left + 4 * s, y = pill.Top - h - 6 * s, now = (float)(Environment.TickCount / 1000.0 - chipsStart);
-            using (var f = new Font("Malgun Gothic", 11.5f * s, FontStyle.Regular, GraphicsUnit.Pixel))
+            float h = 28 * s, gap = 6 * s, x = pill.Left + 4 * s, y = pill.Top - h - 6 * s, now = (float)(Environment.TickCount / 1000.0 - chipsStart);
+            using (var f = new Font("Malgun Gothic", 13f * s, FontStyle.Regular, GraphicsUnit.Pixel))
             using (var fmt = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap })
             {
                 var fit = new System.Collections.Generic.List<string>(); float used = x;
@@ -303,7 +303,7 @@ namespace SuperHeroes
             internal Frame()
             {
                 FormBorderStyle = FormBorderStyle.None; ShowInTaskbar = false; StartPosition = FormStartPosition.Manual; TopMost = true;
-                Text = "수퍼히어로 · 말 걸기"; Size = new Size(1, 1); Location = new Point(-32000, -32000);
+                Text = Loc.T("수퍼히어로 · 말 걸기"); Size = new Size(1, 1); Location = new Point(-32000, -32000);
             }
             protected override void OnPaintBackground(PaintEventArgs e) { }
 
@@ -320,7 +320,7 @@ namespace SuperHeroes
             internal readonly TextBox Box;
             internal event Action Submit, Cancel, GotLostFocus;
             internal event Action<int> Chip;
-            private string cue = "친구에게 말 걸기…";
+            private string cue = Loc.T("친구에게 말 걸기…");
             internal void SetCue(string text) { cue = text; if (Box.IsHandleCreated) try { SendMessage(Box.Handle, 0x1501, new IntPtr(1), cue); } catch { } }
 
             protected override bool ShowWithoutActivation { get { return false; } }
@@ -332,7 +332,7 @@ namespace SuperHeroes
             internal Editor(float s)
             {
                 FormBorderStyle = FormBorderStyle.None; ShowInTaskbar = false; StartPosition = FormStartPosition.Manual; TopMost = true;
-                BackColor = Paper; Text = "말 걸기";
+                BackColor = Paper; Text = Loc.T("말 걸기");
                 Box = new TextBox
                 {
                     BorderStyle = BorderStyle.None, BackColor = Paper, ForeColor = Color.FromArgb(40, 40, 40), MaxLength = 200, Dock = DockStyle.Fill,

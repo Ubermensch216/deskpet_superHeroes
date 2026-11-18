@@ -10,7 +10,7 @@ namespace SuperHeroes
         public string Name, Desc;
         public double Dur;
         public SigDef(string name, double dur, string desc) { Name = name; Dur = dur; Desc = desc; }
-        public string Label { get { return "★ " + Name; } }
+        public string Label { get { return "★ " + Loc.T(Name); } }
     }
 
     /// <summary>수퍼히어로 4인 각 4가지씩, 총 16가지의 철저한 고증 시그니처 행동.</summary>
@@ -149,7 +149,7 @@ namespace SuperHeroes
 
             string cur = "";
             foreach (var l in line) if (t >= l.Item1) cur = l.Item2;
-            return cur;
+            return cur.Length > 0 ? Loc.T(cur) : "";
         }
     }
 
@@ -192,7 +192,7 @@ namespace SuperHeroes
             StateT = 0;
             extraDuration = sigDuration;
             stateDur = sigDuration;
-            Bubble = def.Name;
+            Bubble = Loc.T(def.Name);
             BubbleUntil = w.Now + sigDuration;
         }
 
@@ -225,7 +225,7 @@ namespace SuperHeroes
         {
             if (!IsSignatureActive) return;
             L.Bubble = Signatures.Shout(Art.Persona, sigIndex, sigTime);
-            L.BubbleTitle = Signatures.Get(Art.Persona, sigIndex).Name;
+            L.BubbleTitle = Loc.T(Signatures.Get(Art.Persona, sigIndex).Name);
         }
 
         private void ApplySignature(ref Look L, double now)

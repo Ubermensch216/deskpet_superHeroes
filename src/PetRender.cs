@@ -249,17 +249,29 @@ namespace SuperHeroes
         }
 
         // ───────────────────────── 그리기 ─────────────────────────
-        private static Font bubbleFont, affinityFont;
-        private static float fontScale;
+        private static Font bubbleFont, aiBubbleFont, affinityFont;
+        private static float fontScale, fontDpiScale;
         private static void EnsureFonts()
         {
-            float s = CharacterArt.Scale;
-            if (bubbleFont != null && fontScale == s) return;
-            fontScale = s;
-            try { bubbleFont = new Font("Malgun Gothic", 11f * s, FontStyle.Bold, GraphicsUnit.Pixel); }
-            catch { bubbleFont = new Font(FontFamily.GenericSansSerif, 11f * s, FontStyle.Bold, GraphicsUnit.Pixel); }
+            float s = CharacterArt.Scale, d = CharacterArt.DpiScale;
+            if (bubbleFont != null && aiBubbleFont != null && fontScale == s && fontDpiScale == d) return;
+            fontScale = s; fontDpiScale = d;
+            float bubblePx = 13f * d;
+            try { bubbleFont = new Font("Malgun Gothic", bubblePx, FontStyle.Bold, GraphicsUnit.Pixel); }
+            catch { bubbleFont = new Font(FontFamily.GenericSansSerif, bubblePx, FontStyle.Bold, GraphicsUnit.Pixel); }
+            float aiPx = 16f * d;
+            try { aiBubbleFont = new Font("Malgun Gothic", aiPx, FontStyle.Bold, GraphicsUnit.Pixel); }
+            catch { aiBubbleFont = new Font(FontFamily.GenericSansSerif, aiPx, FontStyle.Bold, GraphicsUnit.Pixel); }
             try { affinityFont = new Font("Segoe UI", 10f * s, FontStyle.Bold, GraphicsUnit.Pixel); }
             catch { affinityFont = new Font(FontFamily.GenericSansSerif, 10f * s, FontStyle.Bold, GraphicsUnit.Pixel); }
+        }
+        private static Font BubbleFontFor(Look L) { return L.BubbleFont ?? (L.Ai ? aiBubbleFont : bubbleFont); }
+        private static float BubbleScaleFor(Look L, float scale) { return L.BubbleFont != null ? scale : CharacterArt.DpiScale; }
+        private static int BubbleWidthFor(Look L, float scale)
+        {
+            if (L.BubbleWidth > 0) return (int)L.BubbleWidth;
+            float bScale = BubbleScaleFor(L, scale);
+            return (int)((L.Ai ? 245 : 195) * bScale);
         }
         private static FontFamily zFamily;
         private static FontFamily ZFamily
@@ -376,12 +388,13 @@ namespace SuperHeroes
                 using (var g = Graphics.FromImage(tmp))
                 {
                     g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
-                    textSize = g.MeasureString(L.Bubble, L.BubbleFont ?? bubbleFont, (int)(L.BubbleWidth > 0 ? L.BubbleWidth : 170 * scale), StringFormat.GenericTypographic);
+                    textSize = g.MeasureString(L.Bubble, BubbleFontFor(L), BubbleWidthFor(L, scale), StringFormat.GenericTypographic);
                 }
-                float pad = 7 * scale;
-                float bw = (float)Math.Ceiling(textSize.Width + pad * 2 + 2 * scale), bh = (float)Math.Ceiling(textSize.Height + pad * 1.4f + 2 * scale);
+                float bScale = BubbleScaleFor(L, scale);
+                float pad = 7 * bScale;
+                float bw = (float)Math.Ceiling(textSize.Width + pad * 2 + 2 * bScale), bh = (float)Math.Ceiling(textSize.Height + pad * 1.4f + 2 * bScale);
                 bubble = new RectangleF(-bw / 2, spriteTop - 3 * scale - tail - bh, bw, bh);
-                minX = Math.Min(minX, bubble.Left); maxX = Math.Max(maxX, bubble.Right); minY = Math.Min(minY, bubble.Top - (L.Ai ? 6 * scale : 0));
+                minX = Math.Min(minX, bubble.Left); maxX = Math.Max(maxX, bubble.Right); minY = Math.Min(minY, bubble.Top - (L.Ai ? 6 * bScale : 0));
                 if (L.CloseMark) { maxX = Math.Max(maxX, bubble.Right + CloseRadius * scale); minY = Math.Min(minY, bubble.Top - CloseRadius * scale); }
             }
             if (L.Neon.A != 0)
@@ -469,21 +482,22 @@ namespace SuperHeroes
 
         private static void DrawBubble(Graphics g, Look L, RectangleF r, SizeF textSize, float tail, float scale)
         {
-            using (GraphicsPath path = RoundRect(r, 8 * scale))
+            float bScale = BubbleScaleFor(L, scale);
+            using (GraphicsPath path = RoundRect(r, 8 * bScale))
             {
                 var tri = new[] { new PointF(-5 * scale, r.Bottom - 1), new PointF(1 * scale, r.Bottom + tail), new PointF(6 * scale, r.Bottom - 1) };
                 bool gold = L.Bubble != null && L.Bubble.StartsWith("★");
                 Color border = gold ? Color.FromArgb(255, 176, 108, 14) : Color.FromArgb(255, 30, 30, 30);
-                using (var pen = new Pen(border, (gold ? 2.6f : 2f) * scale) { LineJoin = LineJoin.Round })
+                using (var pen = new Pen(border, (gold ? 2.6f : 2f) * bScale) { LineJoin = LineJoin.Round })
                 using (var fill = new SolidBrush(gold ? Color.FromArgb(255, 255, 244, 196) : Color.White))
                 {
                     g.FillPath(fill, path); g.DrawPath(pen, path);
                     g.FillPolygon(fill, tri); g.DrawLine(pen, tri[0], tri[1]); g.DrawLine(pen, tri[1], tri[2]);
-                    using (var cover = new Pen(gold ? Color.FromArgb(255, 255, 244, 196) : Color.White, 2.2f * scale))
-                        g.DrawLine(cover, tri[0].X + 2.2f * scale, r.Bottom - .5f * scale, tri[2].X - 2.2f * scale, r.Bottom - .5f * scale);
+                    using (var cover = new Pen(gold ? Color.FromArgb(255, 255, 244, 196) : Color.White, 2.2f * bScale))
+                        g.DrawLine(cover, tri[0].X + 2.2f * scale, r.Bottom - .5f * bScale, tri[2].X - 2.2f * scale, r.Bottom - .5f * bScale);
                 }
             }
-            if (L.Ai) DrawAiMark(g, r, scale);
+            if (L.Ai) DrawAiMark(g, r, bScale);
             if (L.CloseMark) DrawCloseMark(g, r, scale);
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
             string textToShow = L.Bubble;
@@ -493,7 +507,7 @@ namespace SuperHeroes
             using (var fmt = new StringFormat(StringFormat.GenericTypographic) { Alignment = StringAlignment.Center })
             {
                 var box = new RectangleF(r.Left + (r.Width - textSize.Width) / 2, r.Top + (r.Height - textSize.Height) / 2, textSize.Width + 2, textSize.Height + 2);
-                g.DrawString(textToShow, L.BubbleFont ?? bubbleFont, text, box, fmt);
+                g.DrawString(textToShow, BubbleFontFor(L), text, box, fmt);
             }
         }
 

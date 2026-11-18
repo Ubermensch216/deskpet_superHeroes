@@ -28,11 +28,11 @@ namespace SuperHeroes
         internal static bool Valid(uint mods, uint key, out string reason)
         {
             reason = null;
-            if (key == 0 || ModCount(mods) + 1 < MinKeys) { reason = "키를 " + MinKeys + "개 이상 눌러야 해요 (예: Ctrl + Alt + C)"; return false; }
+            if (key == 0 || ModCount(mods) + 1 < MinKeys) { reason = Loc.TF("키를 {0}개 이상 눌러야 해요 (예: Ctrl + Alt + C)", MinKeys); return false; }
             Keys k = (Keys)key;
             if (k == Keys.Escape || k == Keys.Back || k == Keys.Tab || k == Keys.LWin || k == Keys.RWin)
-            { reason = "이 키는 단축키로 쓸 수 없어요"; return false; }
-            if (Taken.Any(t => t.Key == mods && t.Value == key)) { reason = "메모 단축키와 겹쳐요. 다른 조합을 눌러 주세요"; return false; }
+            { reason = Loc.T("이 키는 단축키로 쓸 수 없어요"); return false; }
+            if (Taken.Any(t => t.Key == mods && t.Value == key)) { reason = Loc.T("메모 단축키와 겹쳐요. 다른 조합을 눌러 주세요"); return false; }
             return true;
         }
 
@@ -97,7 +97,7 @@ namespace SuperHeroes
         private void Begin()
         {
             if (capturing) return;
-            capturing = true; pending = 0; order.Clear(); ShowPending(); Notify("키를 하나씩 누르세요. 보조키(Ctrl · Alt · Shift) 2개 이상 + 글쇠 1개");
+            capturing = true; pending = 0; order.Clear(); ShowPending(); Notify(Loc.T("키를 하나씩 누르세요. 보조키(Ctrl · Alt · Shift) 2개 이상 + 글쇠 1개"));
         }
 
         private void Cancel() { if (!capturing) return; capturing = false; ForeColor = SystemColors.WindowText; Text = ChatHotkey.Text(mods, key); Notify(null); }
@@ -105,7 +105,7 @@ namespace SuperHeroes
         private void ShowPending()
         {
             ForeColor = Color.FromArgb(54, 96, 190);
-            Text = pending == 0 ? "키를 누르세요..." : string.Join(" + ", ChatHotkey.ModNames(pending).ToArray()) + " + ";
+            Text = pending == 0 ? Loc.T("키를 누르세요...") : string.Join(" + ", ChatHotkey.ModNames(pending).ToArray()) + " + ";
             SelectionStart = Text.Length;
         }
 

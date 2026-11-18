@@ -154,13 +154,23 @@ namespace SuperHeroes
         internal void Feed(IWorld w)
         {
             if (State == PetState.Drag || State == PetState.Falling || State == PetState.Thrown || State == PetState.PowerRise)
-            { Bubble = "내려가면 간식 먹자!"; BubbleUntil = w.Now + 3; return; }
+            { Bubble = Loc.T("내려가면 간식 먹자!"); BubbleUntil = w.Now + 3; return; }
             if (State == PetState.Wall || State == PetState.Ceiling || State == PetState.WindowClimb)
             { ClearAttachments(); SetState(PetState.Falling, w); return; }
             if (!FriendData.Current.TrySnack())
-            { Bubble = "배가 꽉 찼어! 조금 출출해지면 먹자"; BubbleUntil = w.Now + 3; return; }
+            {
+                string[] refusals =
+                {
+                    Loc.T("배가 빵빵해서 한 입도 안 들어가... 히어로 슈트 터지겠어!"),
+                    Loc.T("이 이상 먹으면 날아다니기 무거울지도 몰라! 조금 이따 먹자"),
+                    Loc.T("간식은 사랑이지만 지금은 배가 꽉 찼어... 위장 파업 선언!"),
+                    Loc.T("배가 꽉 찼어! 조금 출출해지면 먹자"),
+                };
+                int idx = w.Rng != null ? w.Rng.Next(refusals.Length) : 0;
+                Bubble = refusals[idx]; BubbleUntil = w.Now + 3.5; return;
+            }
             AfterReaction = PetState.Walk; extraDuration = 3;
-            SetState(PetState.Eating, w); Bubble = "냠냠! 고마워"; BubbleUntil = w.Now + 3;
+            SetState(PetState.Eating, w); Bubble = Loc.T("냠냠! 고마워"); BubbleUntil = w.Now + 3;
             mouseGrace = w.Now + 5; DelayIdle(w);
         }
 
@@ -187,20 +197,20 @@ namespace SuperHeroes
                     X = approachSide == 1 ? WallX(win.Bounds.Right, win.Bounds.Right, -1, false) : WallX(win.Bounds.Left, win.Bounds.Left, 1, false);
                     Y = Math.Min(Area.Bottom, win.Bounds.Bottom) - BottomExt(false); SetState(PetState.WindowClimb, w);
                 }
-                else { Bubble = "창 크기를 줄여서 띄워줘!"; BubbleUntil = w.Now + 4; }
+                else { Bubble = Loc.T("창 크기를 줄여서 띄워줘!"); BubbleUntil = w.Now + 4; }
                 return;
             }
             if (State == PetState.Falling || State == PetState.Drag || State == PetState.Thrown) return;
             if (kind == "dizzy") { ClearAttachments(); SnapToFloor(w); StartDizzy(w); return; }
             if (kind == "krypto")
             {
-                if (Who != Persona.Superman) { Bubble = "크립토나이트는 수퍼맨만 약해져!"; BubbleUntil = w.Now + 3; return; }
+                if (Who != Persona.Superman) { Bubble = Loc.T("크립토나이트는 수퍼맨만 약해져!"); BubbleUntil = w.Now + 3; return; }
                 ClearAttachments(); SnapToFloor(w); krypCooldown = 0; StartKryptonite(w); return;
             }
             if (kind.StartsWith("sig"))
             {
                 if (State == PetState.Wall || State == PetState.Ceiling || State == PetState.WindowClimb)
-                { ClearAttachments(); Vy = 0; SetState(PetState.Falling, w); Bubble = "내려가서 보여줄게!"; BubbleUntil = w.Now + 3; return; }
+                { ClearAttachments(); Vy = 0; SetState(PetState.Falling, w); Bubble = Loc.T("내려가서 보여줄게!"); BubbleUntil = w.Now + 3; return; }
                 StartSignature(w, Math.Max(0, Math.Min(Signatures.Count(Art.Persona) - 1, kind[3] - '0'))); return;
             }
             AfterReaction = PetState.Walk;

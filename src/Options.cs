@@ -16,7 +16,7 @@ namespace SuperHeroes
         public bool Repeat = true;                    // true: 매일 반복 · false: 다음 그 시각에 한 번만 울리고 스스로 꺼진다
         internal DateTime Done = DateTime.MinValue;   // 오늘 이미 울렸는지(저장하지 않음)
         internal bool FiredOff;                       // 한 번만 울리고 꺼졌음을 설정창에 알리는 표시(저장하지 않음)
-        internal string Text { get { return string.IsNullOrWhiteSpace(Msg) ? "알람 시간이야!" : Msg; } }
+        internal string Text { get { return string.IsNullOrWhiteSpace(Msg) ? Loc.T("알람 시간이야!") : Msg; } }
     }
 
     /// <summary>알림·낮잠·정각 알림 설정 (수퍼히어로_설정.ini).</summary>
@@ -25,13 +25,15 @@ namespace SuperHeroes
         internal const int MaxAlarms = 12;
         public List<UserAlarm> Alarms = new List<UserAlarm>();
         internal const string FileName = "수퍼히어로_설정.ini";
-        public bool LunchOn = true; public string LunchTime = "12:00"; public string LunchMsg = "점심 먹으러 가자!";
-        public bool LeaveOn = true; public string LeaveTime = "18:00"; public string LeaveMsg = "퇴근이다! 오늘도 수고했어";
+        public bool LunchOn = true; public string LunchTime = "12:00"; public string LunchMsg = Loc.T("점심 먹으러 가자!");
+        public bool LeaveOn = true; public string LeaveTime = "18:00"; public string LeaveMsg = Loc.T("퇴근이다! 오늘도 수고했어");
         public bool NapOn = true; public int NapMinutes = 10;
         public bool HourlyOn = true, AlertPet = true;
         public bool EdgeGlow = true; public int EdgeGlowTheme = 0, EdgeGlowWidth = 1, EdgeGlowStrength = 1;
         public bool QuietWeekdays; public int QuietStart = 9, QuietEnd = 18;
         public string Roster = "";   // 마지막에 불러 둔 친구들(캐릭터 번호, 쉼표 구분)
+        public const int DefaultApiPort = 19480;
+        public bool ApiOn = true; public int ApiPort = DefaultApiPort;   // 로컬 외부 연동 API (127.0.0.1)
 
         internal static string FilePath { get { return Path.Combine(Paths.Dir, FileName); } }
 
@@ -56,10 +58,10 @@ namespace SuperHeroes
                 var d = ReadIni(FilePath); string v;
                 if (d.TryGetValue("LunchOn", out v)) s.LunchOn = v != "0";
                 if (d.TryGetValue("LunchTime", out v) && ParseTime(v).HasValue) s.LunchTime = v;
-                if (d.TryGetValue("LunchMsg", out v)) s.LunchMsg = v;
+                if (d.TryGetValue("LunchMsg", out v)) s.LunchMsg = Loc.Retarget(v, "점심 먹으러 가자!");
                 if (d.TryGetValue("LeaveOn", out v)) s.LeaveOn = v != "0";
                 if (d.TryGetValue("LeaveTime", out v) && ParseTime(v).HasValue) s.LeaveTime = v;
-                if (d.TryGetValue("LeaveMsg", out v)) s.LeaveMsg = v;
+                if (d.TryGetValue("LeaveMsg", out v)) s.LeaveMsg = Loc.Retarget(v, "퇴근이다! 오늘도 수고했어");
                 if (d.TryGetValue("NapOn", out v)) s.NapOn = v != "0";
                 int n;
                 if (d.TryGetValue("NapMinutes", out v) && int.TryParse(v, out n)) s.NapMinutes = Math.Max(1, Math.Min(600, n));
@@ -73,6 +75,8 @@ namespace SuperHeroes
                 if (d.TryGetValue("QuietStart", out v) && int.TryParse(v, out n)) s.QuietStart = Math.Max(0, Math.Min(23, n));
                 if (d.TryGetValue("QuietEnd", out v) && int.TryParse(v, out n)) s.QuietEnd = Math.Max(0, Math.Min(23, n));
                 if (d.TryGetValue("Roster", out v)) s.Roster = v;
+                if (d.TryGetValue("ApiOn", out v)) s.ApiOn = v != "0";
+                if (d.TryGetValue("ApiPort", out v) && int.TryParse(v, out n) && n >= 1024 && n <= 65535) s.ApiPort = n;
                 for (int i = 1; i <= MaxAlarms; i++)   // Alarm1=켜짐(1/0)|반복(1/0)|HH:mm|내용
                 {
                     if (!d.TryGetValue("Alarm" + i, out v)) continue;
@@ -107,6 +111,8 @@ namespace SuperHeroes
             b.AppendLine("[내 알람]");
             for (int i = 0; i < Alarms.Count && i < MaxAlarms; i++) b.AppendLine("Alarm" + (i + 1) + "=" + (Alarms[i].On ? "1" : "0") + "|" + (Alarms[i].Repeat ? "1" : "0") + "|" + Alarms[i].Time + "|" + OneLine(Alarms[i].Msg));
             b.AppendLine("[친구]"); b.AppendLine("Roster=" + Roster);
+            b.AppendLine("[연동]"); b.AppendLine("ApiOn=" + (ApiOn ? "1" : "0")); b.AppendLine("ApiPort=" + ApiPort);
+            b.AppendLine("[언어]"); b.AppendLine("Language=" + Loc.Code);
             try { Directory.CreateDirectory(Paths.Dir); File.WriteAllText(FilePath, b.ToString(), new UTF8Encoding(true)); return true; }
             catch { return false; }
         }
@@ -254,10 +260,11 @@ namespace SuperHeroes
         internal List<TodoItem> Todos = new List<TodoItem>();
         internal string Notes = "";
         internal DateTime TimerUtc = DateTime.MinValue;
-        internal string TimerText = "잠깐 쉬어가자!";
+        internal string TimerText = Loc.T("잠깐 쉬어가자!");
         private DateTime lastSave = DateTime.MinValue;
 
-        internal bool CanSnack { get { return Satiety < 100; } }
+        internal const double SnackFullThreshold = 80;
+        internal bool CanSnack { get { return Satiety < SnackFullThreshold; } }
         internal bool Hungry { get { return PlayOptions.Current.HungerCry && (PlayOptions.Current.HungerMinutes == 0 || Satiety <= 20); } }
 
         internal static double Number(XmlNode node, string name, double fallback)
@@ -366,16 +373,16 @@ namespace SuperHeroes
         internal static string FormatTogether(double seconds)
         {
             long total = Math.Max(0, (long)(seconds / 60));
-            return (total / 60).ToString("N0") + "시간 " + (total % 60) + "분";
+            return Loc.TF("{0}시간 {1}분", (total / 60).ToString("N0"), total % 60);
         }
 
         internal void PollTimer(App app)
         {
             if (TimerUtc == DateTime.MinValue || DateTime.UtcNow < TimerUtc) return;
             TimerUtc = DateTime.MinValue; Save();
-            var notice = new HourlyNotice(app.TrayIconImage) { Text = "수퍼히어로 · 타이머" };
-            notice.SetMessage(string.IsNullOrWhiteSpace(TimerText) ? "설정한 시간이 됐어!" : TimerText); notice.Show();
-            app.Announce(string.IsNullOrWhiteSpace(TimerText) ? "설정한 시간이 됐어!" : TimerText);
+            var notice = new HourlyNotice(app.TrayIconImage) { Text = Loc.T("수퍼히어로 · 타이머") };
+            notice.SetMessage(string.IsNullOrWhiteSpace(TimerText) ? Loc.T("설정한 시간이 됐어!") : TimerText); notice.Show();
+            app.Announce(string.IsNullOrWhiteSpace(TimerText) ? Loc.T("설정한 시간이 됐어!") : TimerText);
         }
     }
 }

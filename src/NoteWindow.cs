@@ -75,7 +75,7 @@ namespace SuperHeroes
             };
             editor = new NoteEditor(box);
             editorHost = new Panel { Dock = DockStyle.Fill, Padding = new Padding(6, 2, 2, 0) }; editorHost.Controls.Add(box);
-            placeholder = new Label { Text = "첫 줄이 제목이 됩니다", AutoSize = true, Left = 10, Top = 4, Cursor = Cursors.IBeam, Font = new Font("Malgun Gothic", 10.5f) };
+            placeholder = new Label { Text = Loc.T("첫 줄이 제목이 됩니다"), AutoSize = true, Left = 10, Top = 4, Cursor = Cursors.IBeam, Font = new Font("Malgun Gothic", 10.5f) };
             editorHost.Controls.Add(placeholder); placeholder.BringToFront();
             placeholder.Click += delegate { box.Focus(); };
 
@@ -95,14 +95,14 @@ namespace SuperHeroes
                 var b = new ChromeButton(text, w) { Height = 26 }; if (style.HasValue) b.Font = new Font("Malgun Gothic", 10f, style.Value);
                 b.Click += delegate { box.Focus(); click(); }; formatButtons.Add(b); bar.Controls.Add(b); tips.SetToolTip(b, tip);
             };
-            addFormat("B", 30, FontStyle.Bold, () => Inline(InlineStyle.Bold), "굵게 (Ctrl+B)");
-            addFormat("I", 30, FontStyle.Italic, () => Inline(InlineStyle.Italic), "기울임 (Ctrl+I)");
-            addFormat("U", 30, FontStyle.Underline, () => Inline(InlineStyle.Underline), "밑줄 (Ctrl+U)");
-            addFormat("S", 30, FontStyle.Strikeout, () => Inline(InlineStyle.Strikethrough), "취소선 (Ctrl+Shift+X)");
-            addFormat("•", 30, null, () => LineCommand(LineStyle.Bullet), "글머리 목록 (Ctrl+Shift+L)");
-            addFormat("☑", 30, null, () => LineCommand(LineStyle.Checklist), "체크리스트 (Ctrl+Shift+C)");
-            addFormat("▣", 30, null, () => mgr.PickImage(this), "이미지 넣기");
-            tips.SetToolTip(newBtn, "새 메모"); tips.SetToolTip(moreBtn, "메모 설정"); tips.SetToolTip(closeBtn, "닫기 (메모는 라이브러리에 그대로 있어요)");
+            addFormat("B", 30, FontStyle.Bold, () => Inline(InlineStyle.Bold), Loc.T("굵게 (Ctrl+B)"));
+            addFormat("I", 30, FontStyle.Italic, () => Inline(InlineStyle.Italic), Loc.T("기울임 (Ctrl+I)"));
+            addFormat("U", 30, FontStyle.Underline, () => Inline(InlineStyle.Underline), Loc.T("밑줄 (Ctrl+U)"));
+            addFormat("S", 30, FontStyle.Strikeout, () => Inline(InlineStyle.Strikethrough), Loc.T("취소선 (Ctrl+Shift+X)"));
+            addFormat("•", 30, null, () => LineCommand(LineStyle.Bullet), Loc.T("글머리 목록 (Ctrl+Shift+L)"));
+            addFormat("☑", 30, null, () => LineCommand(LineStyle.Checklist), Loc.T("체크리스트 (Ctrl+Shift+C)"));
+            addFormat("▣", 30, null, () => mgr.PickImage(this), Loc.T("이미지 넣기"));
+            tips.SetToolTip(newBtn, Loc.T("새 메모")); tips.SetToolTip(moreBtn, Loc.T("메모 설정")); tips.SetToolTip(closeBtn, Loc.T("닫기 (메모는 라이브러리에 그대로 있어요)"));
 
             Controls.Add(editorHost); Controls.Add(formatBar); Controls.Add(images); Controls.Add(strip);
 
@@ -228,7 +228,7 @@ namespace SuperHeroes
 
         private void ShowTitle()
         {
-            string title = CurrentTitle; titleLabel.Text = title; Text = title.Length > 0 ? title : "수퍼히어로 메모";
+            string title = CurrentTitle; titleLabel.Text = title; Text = title.Length > 0 ? title : Loc.T("수퍼히어로 메모");
             placeholder.Visible = box.TextLength == 0;
         }
 
@@ -306,6 +306,14 @@ namespace SuperHeroes
 
         internal void ToggleAlwaysOnTop() { pinned = !pinned; TopMost = pinned; mgr.AppearanceChanged(this); }
 
+        internal void SetAppearanceFromApi(string newColor, double? newOpacity, bool? newPinned)
+        {
+            if (!string.IsNullOrEmpty(newColor)) { colorKey = NoteColors.Normalize(newColor); ApplyPaper(); }
+            if (newOpacity.HasValue) { opacityValue = Math.Max(Note.MinOpacity, Math.Min(1.0, newOpacity.Value)); Opacity = opacityValue; }
+            if (newPinned.HasValue) { pinned = newPinned.Value; TopMost = pinned; }
+            mgr.AppearanceChanged(this);
+        }
+
         // ───────── 첨부(끌어다 놓기) ─────────
 
         private void OnDragEnter(object sender, DragEventArgs e) { e.Effect = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None; }
@@ -342,7 +350,7 @@ namespace SuperHeroes
             catch { img = null; }
             if (img == null)
             {
-                var missing = new Label { Text = "⚠ " + a.DisplayName + " — 이미지를 찾을 수 없어요", AutoSize = false, Dock = DockStyle.Fill, ForeColor = Mix(NoteColors.Ink, BackColor, 0.3) };
+                var missing = new Label { Text = "⚠ " + a.DisplayName + " — " + Loc.T("이미지를 찾을 수 없어요"), AutoSize = false, Dock = DockStyle.Fill, ForeColor = Mix(NoteColors.Ink, BackColor, 0.3) };
                 card.Controls.Add(missing); card.Height = 36;
             }
             else
@@ -356,7 +364,7 @@ namespace SuperHeroes
             var rm = new Button { Text = "✕", Width = 24, Height = 24, FlatStyle = FlatStyle.Flat, Visible = false, Tag = a.Id, Anchor = AnchorStyles.Top | AnchorStyles.Right, Font = new Font("Segoe UI Symbol", 8.5f), Cursor = Cursors.Hand, BackColor = BackColor, ForeColor = NoteColors.Ink };
             rm.SetBounds(card.Width - 28, 4, 24, 24); rm.FlatAppearance.BorderSize = 0; rm.UseVisualStyleBackColor = false;
             rm.Click += delegate { mgr.RemoveImage(this, a); };
-            tips.SetToolTip(rm, "이 이미지 떼기"); card.Controls.Add(rm); rm.BringToFront(); removeButtons.Add(rm);
+            tips.SetToolTip(rm, Loc.T("이 이미지 떼기")); card.Controls.Add(rm); rm.BringToFront(); removeButtons.Add(rm);
             return card;
         }
 
@@ -397,7 +405,7 @@ namespace SuperHeroes
         private void ShowMoreMenu()
         {
             var menu = new ContextMenuStrip { ShowImageMargin = true };
-            var color = new ToolStripMenuItem("색상");
+            var color = new ToolStripMenuItem(Loc.T("색상"));
             foreach (string key in NoteColors.All)
             {
                 string k = key; var item = new ToolStripMenuItem(NoteColors.Label(key)) { Checked = key == colorKey, Image = Swatch(NoteColors.Background(key), NoteColors.Border(key)) };
@@ -406,7 +414,7 @@ namespace SuperHeroes
             }
             menu.Items.Add(color);
 
-            var opacity = new ToolStripMenuItem("불투명도");
+            var opacity = new ToolStripMenuItem(Loc.T("불투명도"));
             foreach (int pct in new[] { 100, 85, 70, 55, 40 })
             {
                 int p = pct; var item = new ToolStripMenuItem(pct + "%") { Checked = Math.Abs(opacityValue * 100 - pct) < 8 };
@@ -415,30 +423,30 @@ namespace SuperHeroes
             }
             menu.Items.Add(opacity);
 
-            var size = new ToolStripMenuItem("크기");
+            var size = new ToolStripMenuItem(Loc.T("크기"));
             foreach (var preset in new[] { NoteSizePreset.Small, NoteSizePreset.Medium, NoteSizePreset.Large })
             {
                 var p = preset; var s = NoteGeometry.SizeOf(preset);
-                var item = new ToolStripMenuItem((preset == NoteSizePreset.Small ? "작게" : preset == NoteSizePreset.Large ? "크게" : "보통") + "  " + s.Width + "×" + s.Height) { Checked = geometry.Preset == preset };
+                var item = new ToolStripMenuItem((preset == NoteSizePreset.Small ? Loc.T("작게") : preset == NoteSizePreset.Large ? Loc.T("크게") : Loc.T("보통")) + "  " + s.Width + "×" + s.Height) { Checked = geometry.Preset == preset };
                 item.Click += delegate { SetSizePreset(p); }; size.DropDownItems.Add(item);
             }
             menu.Items.Add(size);
 
-            var remind = new ToolStripMenuItem("알림");
-            remind.DropDownItems.Add("10분 뒤", null, delegate { mgr.AddReminder(NoteId, TimeSpan.FromMinutes(10)); });
-            remind.DropDownItems.Add("1시간 뒤", null, delegate { mgr.AddReminder(NoteId, TimeSpan.FromHours(1)); });
-            remind.DropDownItems.Add("내일 아침 9시", null, delegate { mgr.AddReminder(NoteId, TimeSpan.Zero); });
+            var remind = new ToolStripMenuItem(Loc.T("알림"));
+            remind.DropDownItems.Add(Loc.T("10분 뒤"), null, delegate { mgr.AddReminder(NoteId, TimeSpan.FromMinutes(10)); });
+            remind.DropDownItems.Add(Loc.T("1시간 뒤"), null, delegate { mgr.AddReminder(NoteId, TimeSpan.FromHours(1)); });
+            remind.DropDownItems.Add(Loc.T("내일 아침 9시"), null, delegate { mgr.AddReminder(NoteId, TimeSpan.Zero); });
             remind.DropDownItems.Add(new ToolStripSeparator());
-            remind.DropDownItems.Add("직접 정하기…", null, delegate { mgr.ShowReminderComposer(NoteId, this); });
+            remind.DropDownItems.Add(Loc.T("직접 정하기…"), null, delegate { mgr.ShowReminderComposer(NoteId, this); });
             var next = NoteStore.Current.NextReminder(NoteId, DateTime.Now);
-            if (next.HasValue) { remind.DropDownItems.Add(new ToolStripSeparator()); remind.DropDownItems.Add(new ToolStripMenuItem("다음 알림: " + ReminderLabel(next.Value)) { Enabled = false }); }
+            if (next.HasValue) { remind.DropDownItems.Add(new ToolStripSeparator()); remind.DropDownItems.Add(new ToolStripMenuItem(Loc.TF("다음 알림: {0}", ReminderLabel(next.Value))) { Enabled = false }); }
             menu.Items.Add(remind);
 
             menu.Items.Add(new ToolStripSeparator());
-            var pin = new ToolStripMenuItem("항상 위에 두기") { Checked = pinned, CheckOnClick = false }; pin.Click += delegate { ToggleAlwaysOnTop(); }; menu.Items.Add(pin);
-            menu.Items.Add("메모 라이브러리", null, delegate { mgr.ShowLibrary(); });
-            menu.Items.Add("기록", null, delegate { mgr.ShowHistory(NoteId, this); });
-            var delete = new ToolStripMenuItem("삭제") { ForeColor = Color.FromArgb(0xC0, 0x39, 0x2B) };
+            var pin = new ToolStripMenuItem(Loc.T("항상 위에 두기")) { Checked = pinned, CheckOnClick = false }; pin.Click += delegate { ToggleAlwaysOnTop(); }; menu.Items.Add(pin);
+            menu.Items.Add(Loc.T("메모 라이브러리"), null, delegate { mgr.ShowLibrary(); });
+            menu.Items.Add(Loc.T("기록"), null, delegate { mgr.ShowHistory(NoteId, this); });
+            var delete = new ToolStripMenuItem(Loc.T("삭제")) { ForeColor = Color.FromArgb(0xC0, 0x39, 0x2B) };
             delete.Click += delegate { ConfirmDelete(); };
             menu.Items.Add(delete);
 
@@ -450,7 +458,7 @@ namespace SuperHeroes
         internal static string ReminderLabel(DateTime due)
         {
             string time = due.ToString("HH:mm"); DateTime now = DateTime.Now;
-            if (due.Date == now.Date) return "오늘 " + time; if (due.Date == now.Date.AddDays(1)) return "내일 " + time;
+            if (due.Date == now.Date) return Loc.TF("오늘 {0}", time); if (due.Date == now.Date.AddDays(1)) return Loc.TF("내일 {0}", time);
             return due.ToString(due.Year == now.Year ? "M/d" : "yyyy/M/d") + " " + time;
         }
 
@@ -464,7 +472,7 @@ namespace SuperHeroes
         /// <summary>삭제는 되돌릴 수 없다(휴지통이 없다). 그래서 한 번 더 묻는다.</summary>
         private void ConfirmDelete()
         {
-            if (MessageBox.Show(this, "이 메모를 완전히 삭제할까요?\n기록과 첨부도 함께 사라지고 되돌릴 수 없어요.", "메모 삭제", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes) mgr.DeleteNotes(new[] { NoteId });
+            if (MessageBox.Show(this, Loc.T("이 메모를 완전히 삭제할까요?\n기록과 첨부도 함께 사라지고 되돌릴 수 없어요."), Loc.T("메모 삭제"), MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) == DialogResult.Yes) mgr.DeleteNotes(new[] { NoteId });
         }
 
         protected override void Dispose(bool disposing) { if (disposing && tips != null) { try { tips.Dispose(); } catch { } } base.Dispose(disposing); }

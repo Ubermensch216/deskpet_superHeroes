@@ -1,4 +1,4 @@
-# 수퍼히어로 데스크톱 펫 빌드 스크립트
+﻿# 수퍼히어로 데스크톱 펫 빌드 스크립트
 # .NET SDK 의 Roslyn(csc.dll)로 .NET Framework 4.8 대상 단일 EXE 를 만든다. (설치 없이 EXE 한 개로 실행)
 param([string]$Out = "$PSScriptRoot\output\superheroes.exe")
 $ErrorActionPreference = 'Stop'
@@ -8,7 +8,7 @@ $csc = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\dotnet\sdk\*\Roslyn\bincore\cs
     Sort-Object FullName -Descending | Select-Object -First 1
 if (-not $csc) { throw 'Roslyn csc.dll 을 찾지 못했어요. .NET SDK 를 설치해 주세요.' }
 $fw = 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319'
-$refs = 'mscorlib', 'System', 'System.Core', 'System.Drawing', 'System.Windows.Forms', 'System.Xml', 'System.Xml.Linq'
+$refs = 'mscorlib', 'System', 'System.Core', 'System.Drawing', 'System.Windows.Forms', 'System.Xml', 'System.Xml.Linq', 'System.Security'
 New-Item -ItemType Directory -Force "$root\output", "$root\obj" | Out-Null
 
 function Invoke-Csc([string]$target, [string]$icon) {

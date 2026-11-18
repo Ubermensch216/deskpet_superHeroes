@@ -14,6 +14,7 @@ namespace SuperHeroes
         private bool orbitMotionSeen, orbitSeen, powerFlight;
         private int orbitDirection, throwCount;
         private double throwSequenceStarted, danceStarted, contactReactionUntil, avoidUntil;
+        private double contactChainStart = -1, lastContactAt = -99, ghostUntil;
         private int avoidDir;
 
         internal bool IsCompanionFloorPose
@@ -33,13 +34,13 @@ namespace SuperHeroes
             if (throwCount == 0 || w.Now - throwSequenceStarted > 10) { throwCount = 0; throwSequenceStarted = w.Now; }
             throwCount++;
             if (throwCount >= 3)
-            { throwCount = 0; powerFlight = true; FriendData.Current.Discover("power"); Bubble = "기가 폭발한다! 천장까지 솟구쳐라!"; BubbleUntil = w.Now + 4; }
+            { throwCount = 0; powerFlight = true; FriendData.Current.Discover("power"); Bubble = Loc.T("기가 폭발한다! 천장까지 솟구쳐라!"); BubbleUntil = w.Now + 4; }
         }
 
         internal void StartFlower(IWorld w, long milestone)
         {
             flowerStarted = w.Now; flowerUntil = w.Now + 6; mouseGrace = flowerUntil + 1;
-            Bubble = "친밀도 " + milestone.ToString("N0") + " 달성!\n꽃다발 받아줘 ♥"; BubbleUntil = flowerUntil;
+            Bubble = Loc.TF("친밀도 {0} 달성!\n꽃다발 받아줘 ♥", milestone.ToString("N0")); BubbleUntil = flowerUntil;
             SetState(PetState.Pause, w);
         }
 
@@ -49,7 +50,7 @@ namespace SuperHeroes
         internal void StartDizzy(IWorld w)
         {
             dizzyCooldown = w.Now + 20; orbitTotal = 0; orbitSeen = false;
-            extraDuration = 4; mouseGrace = w.Now + 5; Bubble = "빙글빙글… 어질어질!"; BubbleUntil = w.Now + 3.5;
+            extraDuration = 4; mouseGrace = w.Now + 5; Bubble = Loc.T("빙글빙글… 어질어질!"); BubbleUntil = w.Now + 3.5;
             SetState(PetState.Dizzy, w); FriendData.Current.Discover("dizzy");
         }
 
@@ -75,7 +76,7 @@ namespace SuperHeroes
                     X = Math.Max(Area.Left + half + 1, Math.Min(Area.Right - half - 1, X));
                     if (X > Area.Right - Art.Ceiling.W * 2) Dir = -1; else if (X < Area.Left + Art.Ceiling.W * 2) Dir = 1;
                     Y = Area.Top + Art.CeilingContactHeight; mouseGrace = w.Now + 1; SetState(PetState.Ceiling, w);
-                    Bubble = "천장 도착! 살금살금…"; BubbleUntil = w.Now + 2.5;
+                    Bubble = Loc.T("천장 도착! 살금살금…"); BubbleUntil = w.Now + 2.5;
                 }
                 return true;
             }
@@ -156,6 +157,10 @@ namespace SuperHeroes
         internal void Bump(IWorld w, int direction)
         {
             if (PlayOptions.Current.PositionFixed) return;
+            // 1.2초 넘게 끊기지 않고 계속 부딪히고 있으면 벽·구석·다른 친구에 끼어 서로 못 비키는 상태 → 아래 BreakFree 로 빠져나온다
+            if (w.Now - lastContactAt > 1.2) contactChainStart = w.Now;
+            lastContactAt = w.Now;
+            if (w.Now - contactChainStart > StuckSeconds && (State == PetState.Walk || State == PetState.Squish || State == PetState.Pause)) { BreakFree(w); return; }
             Dir = direction; avoidDir = direction; avoidUntil = w.Now + 2.5;
             if (State == PetState.Wall) { wallDescending = direction > 0; return; }
             if (State == PetState.Thrown) { throwVx = direction * Math.Max(110 * S, Math.Abs(throwVx) * .65); return; }
@@ -164,6 +169,18 @@ namespace SuperHeroes
             if (w.Now < contactReactionUntil) return;
             contactReactionUntil = w.Now + .45;
             StartSquish(w, .22, .12, PetState.Walk, false); mouseGrace = w.Now + .6;
+        }
+
+        /// <summary>서로 엉켜 오래 못 비킨 친구는 잠시 몸이 겹쳐도 되게(부딪힘 무시) 화면 안쪽으로 걸어 나와 빠져나간다.</summary>
+        internal const double StuckSeconds = 2.5, GhostSeconds = 4;
+        internal bool IsGhost(double now) { return now < ghostUntil; }
+
+        private void BreakFree(IWorld w)
+        {
+            ghostUntil = w.Now + GhostSeconds; contactChainStart = w.Now; avoidUntil = 0;
+            Dir = X < (Area.Left + Area.Right) / 2.0 ? 1 : -1;
+            contactReactionUntil = w.Now + GhostSeconds; mouseGrace = w.Now + GhostSeconds;
+            if (State != PetState.Walk) SetState(PetState.Walk, w);
         }
 
         internal void ClampContact()

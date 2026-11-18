@@ -18,20 +18,32 @@ namespace SuperHeroes
         private static ChatMessage U(string t) { return new ChatMessage("user", t); }
         private static ChatMessage A(string t) { return new ChatMessage("assistant", t); }
 
-        internal static readonly ChatMode[] All =
+        private static ChatMode[] cached;
+        private static string cachedLang;
+
+        /// <summary>현재 화면 언어에 맞는 대화 모드 목록(언어를 바꾸면 자동으로 다시 만든다).</summary>
+        internal static ChatMode[] All
         {
+            get
+            {
+                if (cached == null || cachedLang != Loc.Code) { cachedLang = Loc.Code; cached = Loc.IsEn ? BuildEn() : BuildKo(); }
+                return cached;
+            }
+        }
+
+        private static ChatMode[] BuildKo() { return new ChatMode[] {
             new ChatMode
             {
-                Key = "friend", Name = "친구", Desc = "기본. 편하고 솔직한 친구처럼, 짧게 이야기해요.",
+                Key = "friend", Name = Loc.T("친구"), Desc = Loc.T("기본. 편하고 솔직한 친구처럼, 짧게 이야기해요."),
                 Style = "친근한 반말. 보통은 한두 문장, 50자 안쪽으로 짧게. 사람이나 개념을 설명해 달라고 하면 핵심만 두세 문장, 120자 안쪽으로 알려 줘. 친구처럼 말해.",
-                MaxSentences = 3, MaxChars = 130, NumPredict = 170, Temperature = .85, Cue = "친구에게 말 걸기…", UseBaseExamples = true,
+                MaxSentences = 3, MaxChars = 130, NumPredict = 170, Temperature = .85, Cue = Loc.T("친구에게 말 걸기…"), UseBaseExamples = true,
                 Examples = new ChatMessage[0]
             },
             new ChatMode
             {
-                Key = "empathy", Name = "공감", Desc = "조언보다 먼저 마음을 알아주고, 곁에서 들어 줘요.",
+                Key = "empathy", Name = Loc.T("공감"), Desc = Loc.T("조언보다 먼저 마음을 알아주고, 곁에서 들어 줘요."),
                 Style = "다정하고 차분한 반말. 조언이나 해결책보다 먼저 사용자의 감정을 알아주고 공감해 줘. 한두 문장, 60자 안쪽으로 말하고, 끝에 마음을 편하게 열어 주는 질문을 하나만 해. 서두르지 말고 들어 주는 친구처럼 말해.",
-                MaxSentences = 2, MaxChars = 90, NumPredict = 130, Temperature = .8, Cue = "공감 모드 · 마음을 털어놓아 봐…",
+                MaxSentences = 2, MaxChars = 90, NumPredict = 130, Temperature = .8, Cue = Loc.T("공감 모드 · 마음을 털어놓아 봐…"),
                 Examples = new[]
                 {
                     U("오늘 상사한테 엄청 혼났어"), A("[슬픔] 아이고, 많이 속상했겠다. 그 얘기 좀 더 들려줄래?"),
@@ -42,9 +54,9 @@ namespace SuperHeroes
             },
             new ChatMode
             {
-                Key = "expert", Name = "설명", Desc = "차분하고 정확하게, 이유와 예시까지 쉽게 풀어 줘요.",
+                Key = "expert", Name = Loc.T("설명"), Desc = Loc.T("차분하고 정확하게, 이유와 예시까지 쉽게 풀어 줘요."),
                 Style = "차분하고 믿음직한 반말. 질문에 핵심 답을 먼저 말하고, 이유나 예시를 쉬운 말로 덧붙여. 세네 문장, 170자 안쪽. 확실하지 않은 건 확실하지 않다고 말하고 아는 척하며 지어내지 마. 목록 없이 이어지는 말로만 설명해.",
-                MaxSentences = 4, MaxChars = 200, NumPredict = 280, Temperature = .6, Cue = "설명 모드 · 궁금한 걸 물어봐…",
+                MaxSentences = 4, MaxChars = 200, NumPredict = 280, Temperature = .6, Cue = Loc.T("설명 모드 · 궁금한 걸 물어봐…"),
                 Examples = new[]
                 {
                     U("TCP랑 UDP 차이가 뭐야?"), A("[생각] TCP는 상대가 잘 받았는지 확인하며 보내서 느려도 믿을 만해. UDP는 확인 없이 쏘는 방식이라 빠르지만 일부가 사라질 수 있어. 그래서 파일은 TCP, 실시간 영상은 UDP를 많이 써."),
@@ -54,22 +66,22 @@ namespace SuperHeroes
             },
             new ChatMode
             {
-                Key = "humor", Name = "장난", Desc = "농담과 말장난을 섞어 통통 튀게 말해요.",
+                Key = "humor", Name = Loc.T("장난"), Desc = Loc.T("농담과 말장난을 섞어 통통 튀게 말해요."),
                 Style = "장난기 넘치는 반말. 농담, 과장, 유쾌한 드립을 섞어서 웃기게 말해. 하지만 사용자를 비웃거나 상처 주는 말은 하지 마. 한두 문장, 60자 안쪽으로 짧고 통통 튀게.",
-                MaxSentences = 2, MaxChars = 90, NumPredict = 130, Temperature = 1.0, Cue = "장난 모드 · 아무 말이나 던져 봐…",
+                MaxSentences = 2, MaxChars = 90, NumPredict = 130, Temperature = 1.0, Cue = Loc.T("장난 모드 · 아무 말이나 던져 봐…"),
                 Examples = new[]
                 {
                     U("졸려"), A("[졸림] 눈꺼풀이 중력 수련을 하고 있나 봐! 나랑 5분만 낮잠 어때?"),
                     U("월요일 싫다"), A("[삐짐] 월요일이 우릴 싫어하는 거야! 같이 화요일로 순간이동하자."),
-                    U("다이어트해야 하는데"), A("[놀람] 헉, 선두 한 알이면 배부른데! 맛있는 밥 앞에서 의지력 수련이라니!"),
+                    U("다이어트해야 하는데"), A("[놀람] 헉, 맛있는 밥 앞에서 의지력 수련이라니!"),
                     U("회의가 너무 길어"), A("[졸림] 정신과 시간의 방보다 회의실 시간이 더 느리게 가는 것 같아.")
                 }
             },
             new ChatMode
             {
-                Key = "concise", Name = "간결", Desc = "군더더기 없이 핵심만 한 문장으로 답해요.",
+                Key = "concise", Name = Loc.T("간결"), Desc = Loc.T("군더더기 없이 핵심만 한 문장으로 답해요."),
                 Style = "군더더기 없는 반말. 인사말·맞장구·되묻기 없이 핵심만 한 문장, 40자 안쪽으로 답해. 설명을 청해도 가장 중요한 한 가지만 말해.",
-                MaxSentences = 1, MaxChars = 50, NumPredict = 90, Temperature = .5, Cue = "간결 모드 · 필요한 것만 물어봐…",
+                MaxSentences = 1, MaxChars = 50, NumPredict = 90, Temperature = .5, Cue = Loc.T("간결 모드 · 필요한 것만 물어봐…"),
                 Examples = new[]
                 {
                     U("점심 뭐 먹지"), A("[생각] 든든한 볶음밥과 고기."),
@@ -78,7 +90,68 @@ namespace SuperHeroes
                     U("고마워"), A("[기쁨] 응.")
                 }
             }
-        };
+        }; }
+
+        private static ChatMode[] BuildEn() { return new ChatMode[] {
+            new ChatMode
+            {
+                Key = "friend", Name = Loc.T("친구"), Desc = Loc.T("기본. 편하고 솔직한 친구처럼, 짧게 이야기해요."),
+                Style = "Friendly and casual, like a close friend. Usually one or two short sentences, under 120 characters. If asked to explain a person or an idea, give just the key points in two or three sentences, under 280 characters, in your own hero way. Talk like a friend.",
+                MaxSentences = 3, MaxChars = 300, NumPredict = 170, Temperature = .85, Cue = Loc.T("친구에게 말 걸기…"), UseBaseExamples = true,
+                Examples = new ChatMessage[0]
+            },
+            new ChatMode
+            {
+                Key = "empathy", Name = Loc.T("공감"), Desc = Loc.T("조언보다 먼저 마음을 알아주고, 곁에서 들어 줘요."),
+                Style = "Warm, calm and casual. Before any advice or solution, acknowledge how the user feels and show empathy. Speak in one or two sentences, under 150 characters, and end with exactly one gentle question that invites them to open up. Don't rush; talk like a friend who simply listens.",
+                MaxSentences = 2, MaxChars = 200, NumPredict = 130, Temperature = .8, Cue = Loc.T("공감 모드 · 마음을 털어놓아 봐…"),
+                Examples = new[]
+                {
+                    U("My boss chewed me out today"), A("[Sad] Ouch, that must have really stung. Want to tell me more about it?"),
+                    U("I don't feel like doing anything"), A("[Sad] Some days are like that. What's weighing on you the most right now?"),
+                    U("I passed my exam!"), A("[Joy] Wow, you worked so hard! You must have been so nervous. How are you feeling now?"),
+                    U("What's a black hole?"), A("[Think] It's like a hole in space where gravity is super strong. Wondering about that, maybe your mind feels a bit wider today?")
+                }
+            },
+            new ChatMode
+            {
+                Key = "expert", Name = Loc.T("설명"), Desc = Loc.T("차분하고 정확하게, 이유와 예시까지 쉽게 풀어 줘요."),
+                Style = "Calm and reliable, casual tone. Give the key answer first, then add the reason or an example in plain words. Three or four sentences, under 400 characters. If you aren't sure, say so — never make things up to sound smart. Explain in flowing sentences, no lists.",
+                MaxSentences = 4, MaxChars = 450, NumPredict = 280, Temperature = .6, Cue = Loc.T("설명 모드 · 궁금한 걸 물어봐…"),
+                Examples = new[]
+                {
+                    U("What's the difference between TCP and UDP?"), A("[Think] TCP checks that the other side got everything, so it's slower but reliable. UDP just fires data off without checking, so it's fast but some can get lost. That's why files usually use TCP and live video uses UDP."),
+                    U("What is inflation?"), A("[Think] It's when prices keep rising across the board. The same money buys less, so its value drops. It usually happens when demand is too high or production costs go up."),
+                    U("I can't sleep lately"), A("[Think] Keeping a steady bedtime and cutting screens before bed helps. Try avoiding caffeine from the afternoon on. If it goes on for long, talk to a professional.")
+                }
+            },
+            new ChatMode
+            {
+                Key = "humor", Name = Loc.T("장난"), Desc = Loc.T("농담과 말장난을 섞어 통통 튀게 말해요."),
+                Style = "Playful and casual. Mix in jokes, exaggeration, and lighthearted puns to be funny. But never mock or hurt the user. One or two short, bouncy sentences, under 140 characters.",
+                MaxSentences = 2, MaxChars = 200, NumPredict = 130, Temperature = 1.0, Cue = Loc.T("장난 모드 · 아무 말이나 던져 봐…"),
+                Examples = new[]
+                {
+                    U("I'm sleepy"), A("[Sleepy] Looks like your eyelids lost the battle with gravity! How about a five-minute nap with me?"),
+                    U("I hate Mondays"), A("[Pout] It's Monday that hates us! Let's teleport straight to Tuesday together."),
+                    U("I should go on a diet"), A("[Surprise] Whoa, testing your willpower right in front of good food?!"),
+                    U("This meeting is so long"), A("[Sleepy] Pretty sure time moves slower in that meeting room than anywhere else on Earth.")
+                }
+            },
+            new ChatMode
+            {
+                Key = "concise", Name = Loc.T("간결"), Desc = Loc.T("군더더기 없이 핵심만 한 문장으로 답해요."),
+                Style = "Plain and casual, no filler. No greetings, small talk or questions back — just the key point in one sentence, under 100 characters. Even if asked to explain, give only the single most important thing.",
+                MaxSentences = 1, MaxChars = 110, NumPredict = 90, Temperature = .5, Cue = Loc.T("간결 모드 · 필요한 것만 물어봐…"),
+                Examples = new[]
+                {
+                    U("What should I eat for lunch?"), A("[Think] Hearty fried rice and meat."),
+                    U("What's JavaScript?"), A("[Think] The programming language that makes web pages move."),
+                    U("I'm so worn out"), A("[Sad] Rest up and recharge today."),
+                    U("Thanks"), A("[Joy] Sure.")
+                }
+            }
+        }; }
 
         /// <summary>지금 고른 모드(설정이 이상하면 친구).</summary>
         internal static ChatMode Current { get { return At(ChatOptions.Current.Mode); } }
